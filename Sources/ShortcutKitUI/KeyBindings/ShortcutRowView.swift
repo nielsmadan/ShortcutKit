@@ -42,15 +42,17 @@ public struct ShortcutRowView: View {
     }
 
     public var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: style == .dense ? 8 : 10) {
             ConflictStripeView(conflicts: row.conflicts, onJump: onJump)
+                .frame(width: 3)
             Text(row.displayName)
-            Spacer()
+                .font(.system(size: style == .dense ? 11 : 13))
+                .lineLimit(1)
+            Spacer(minLength: 8)
             recorders
-            if canAddMore { addButton }
             resetButton
         }
-        .padding(.vertical, style == .dense ? 2 : 6)
+        .padding(.vertical, style == .dense ? 1 : 10)
     }
 
     // MARK: - Testable internals
@@ -79,23 +81,52 @@ public struct ShortcutRowView: View {
 
     @ViewBuilder
     private var recorders: some View {
-        ForEach(Array(row.effectiveShortcuts.enumerated()), id: \.offset) { idx, shortcut in
-            ScopedShortcutRecorder(
-                shortcut: binding(for: idx, current: shortcut),
-                policy: policy
-            )
+        if style == .dense {
+            // Two fixed slots: primary + alternative. Empty slot lets the
+            // user record an alternative on the same row.
+            ScopedShortcutRecorder(shortcut: slotBinding(at: 0), policy: policy)
+            ScopedShortcutRecorder(shortcut: slotBinding(at: 1), policy: policy)
+        } else {
+            ForEach(Array(row.effectiveShortcuts.enumerated()), id: \.offset) { idx, shortcut in
+                ScopedShortcutRecorder(
+                    shortcut: binding(for: idx, current: shortcut),
+                    policy: policy
+                )
+            }
         }
-    }
-
-    private var addButton: some View {
-        Button { appendEmptyBinding() } label: { Image(systemName: "plus") }
-            .buttonStyle(.plain)
     }
 
     private var resetButton: some View {
         Button { onReset() } label: { Image(systemName: "arrow.uturn.backward") }
             .buttonStyle(.plain)
             .opacity(row.isCustomized ? 1 : 0)
+    }
+
+    /// Binding for a fixed-position recorder slot — used by the dense layout
+    /// where each row always shows Primary + Alternative columns. Reading
+    /// returns the binding at `idx` or `nil` if the row has fewer bindings;
+    /// writing appends or replaces and trims an empty Alternative back to
+    /// just a Primary.
+    private func slotBinding(at idx: Int) -> Binding<Shortcut?> {
+        Binding(
+            get: {
+                idx < row.effectiveShortcuts.count ? row.effectiveShortcuts[idx] : nil
+            },
+            set: { new in
+                var copy = row.effectiveShortcuts
+                if let new {
+                    if idx < copy.count { copy[idx] = new } else {
+                        while copy.count < idx {
+                            copy.append(new)
+                        }
+                        copy.append(new)
+                    }
+                    onSet(copy)
+                } else if idx < copy.count {
+                    onClear(idx)
+                }
+            }
+        )
     }
 
     private func binding(for idx: Int, current: Shortcut) -> Binding<Shortcut?> {

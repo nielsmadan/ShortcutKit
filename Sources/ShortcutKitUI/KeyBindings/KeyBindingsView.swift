@@ -4,16 +4,16 @@ import SwiftUI
 
 /// The top-level settings page for shortcut customisation.
 ///
-/// Full mode (`init(registry:searchEnabled:)`) renders a search field, a
-/// "Reset All to Defaults" button, a `ContextPickerView` over registry
-/// contexts (filtered to `includeInSettings == true`), and a scrolling list
-/// of `ShortcutRowView`s for the rows of the currently-selected context.
+/// Full mode (`init(registry:searchEnabled:)`) renders one bold-header section
+/// per registry context (filtered to `includeInSettings == true`), each with
+/// its rows inside a rounded grouped container — the standard macOS settings
+/// layout pattern. A top toolbar holds an optional search field and a small
+/// "Reset All…" trailing button.
 ///
-/// Inline mode (`init(context:searchEnabled:)`) renders only the rows for
-/// the given context — no picker, no "Reset All" toolbar, search optional
-/// (default OFF). Designed to embed inside a `Form { Section { ... } }`
-/// which provides its own scrolling. Side effects route to the context's
-/// attached registry.
+/// Inline mode (`init(context:searchEnabled:)`) renders only the rows for the
+/// given context — no section header, no toolbar, search optional (default
+/// OFF). Designed to embed inside a custom Settings tab. Side effects route
+/// to the context's attached registry.
 @MainActor
 public struct KeyBindingsView: View {
     enum Mode {
@@ -26,7 +26,7 @@ public struct KeyBindingsView: View {
     @ObservedObject var registry: ShortcutRegistry
     let mode: Mode
 
-    @State private var selectedContextID: String = ""
+    @Environment(\.shortcutStyle) private var style
     @State private var query: String = ""
     @State private var resetAlertShown: Bool = false
 
@@ -77,24 +77,21 @@ public struct KeyBindingsView: View {
 
     @ViewBuilder
     private func fullBody(registry: ShortcutRegistry, searchEnabled: Bool) -> some View {
-        VStack(alignment: .leading) {
-            HStack {
-                if searchEnabled { SearchField(query: $query) }
-                Spacer()
-                Button("Reset All to Defaults") { resetAlertShown = true }
+        ScrollView {
+            VStack(alignment: .leading, spacing: style == .dense ? 12 : 22) {
+                if searchEnabled {
+                    HStack(spacing: 10) {
+                        searchBar
+                        Button("Reset All…") { resetAlertShown = true }
+                            .controlSize(.small)
+                    }
+                }
+                ForEach(visibleSections(registry), id: \.contextID) { section in
+                    contextSection(section, registry: registry)
+                }
             }
-            ContextPickerView(
-                contexts: registry.allContexts,
-                selection: $selectedContextID,
-                conflictedIDs: registry.contextIDsWithConflicts()
-            )
-            rowList(registry: registry)
-        }
-        .onAppear {
-            if selectedContextID.isEmpty {
-                selectedContextID = registry.allContexts
-                    .first(where: \.includeInSettings)?.id ?? ""
-            }
+            .padding(.horizontal, style == .dense ? 14 : 24)
+            .padding(.vertical, style == .dense ? 10 : 20)
         }
         .alert("Reset all shortcuts to defaults?", isPresented: $resetAlertShown) {
             Button("Cancel", role: .cancel) {}
@@ -104,44 +101,113 @@ public struct KeyBindingsView: View {
         }
     }
 
+    /// Column header for the dense layout: aligns the labels above the two
+    /// recorder slots (Primary / Alternative) and leaves a placeholder over
+    /// the trailing reset-button column so the headers don't drift right.
+    private var denseColumnHeader: some View {
+        HStack(spacing: 8) {
+            Spacer()
+            Text("Primary")
+                .frame(width: ScopedShortcutRecorder.discreteWidth.dense,
+                       alignment: .center)
+            Text("Alternative")
+                .frame(width: ScopedShortcutRecorder.discreteWidth.dense,
+                       alignment: .center)
+            // Reserve room for the reset icon column to keep header centred
+            // above the recorders rather than spreading.
+            Color.clear.frame(width: 16, height: 1)
+        }
+        .font(.system(size: 10, weight: .semibold))
+        .foregroundStyle(.secondary)
+        .textCase(.uppercase)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Search shortcuts", text: $query)
+                .textFieldStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    /// Sections to render in full mode, filtered to `includeInSettings`.
+    private func visibleSections(_ registry: ShortcutRegistry) -> [KeyBindingsTable.Section] {
+        let allowed = Set(registry.allContexts.filter(\.includeInSettings).map(\.id))
+        return registry.keyBindingsTable.sections.filter { allowed.contains($0.contextID) }
+    }
+
     @ViewBuilder
-    private func rowList(registry: ShortcutRegistry) -> some View {
-        let scoped = registry.keyBindingsTable.sections
-            .first(where: { $0.contextID == selectedContextID })?
-            .rows ?? []
-        let filtered = SearchField.filter(scoped, query: query)
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(filtered, id: \.actionID) { row in
-                    ShortcutRowView(
-                        row: row,
-                        policy: ScopePolicy(registry.scope(forContextID: row.contextID)),
-                        bindingsPerAction: registry.bindingsPerAction,
-                        onSet: { shortcuts in
-                            registry.setShortcuts(
-                                shortcuts,
-                                contextID: row.contextID,
-                                actionID: row.actionID
-                            )
-                        },
-                        onClear: { idx in
-                            registry.removeShortcut(
-                                at: idx,
-                                contextID: row.contextID,
-                                actionID: row.actionID
-                            )
-                        },
-                        onReset: {
-                            registry.resetAction(
-                                contextID: row.contextID,
-                                actionID: row.actionID
-                            )
-                        }
-                    )
-                    Divider()
+    private func contextSection(
+        _ section: KeyBindingsTable.Section,
+        registry: ShortcutRegistry
+    ) -> some View {
+        let filtered = SearchField.filter(section.rows, query: query)
+        if !filtered.isEmpty {
+            VStack(alignment: .leading, spacing: style == .dense ? 4 : 8) {
+                Text(ContextPickerView.displayName(forID: section.contextID))
+                    .font(.system(size: style == .dense ? 12 : 14, weight: .semibold))
+                rowsCard(rows: filtered, registry: registry)
+            }
+        }
+    }
+
+    private func rowsCard(
+        rows: [KeyBindingsTable.Row],
+        registry: ShortcutRegistry
+    ) -> some View {
+        VStack(spacing: 0) {
+            if style == .dense {
+                denseColumnHeader
+                Divider().padding(.leading, 10)
+            }
+            ForEach(Array(rows.enumerated()), id: \.element.actionID) { idx, row in
+                ShortcutRowView(
+                    row: row,
+                    policy: ScopePolicy(registry.scope(forContextID: row.contextID)),
+                    bindingsPerAction: registry.bindingsPerAction,
+                    onSet: { shortcuts in
+                        registry.setShortcuts(
+                            shortcuts,
+                            contextID: row.contextID,
+                            actionID: row.actionID
+                        )
+                    },
+                    onClear: { idx in
+                        registry.removeShortcut(
+                            at: idx,
+                            contextID: row.contextID,
+                            actionID: row.actionID
+                        )
+                    },
+                    onReset: {
+                        registry.resetAction(
+                            contextID: row.contextID,
+                            actionID: row.actionID
+                        )
+                    }
+                )
+                .padding(.horizontal, style == .dense ? 10 : 14)
+                if idx < rows.count - 1 {
+                    Divider().padding(.leading, style == .dense ? 10 : 14)
                 }
             }
         }
+        .background(Color.gray.opacity(0.18),
+                    in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.gray.opacity(0.25), lineWidth: 1)
+        )
     }
 
     // MARK: - Inline mode body

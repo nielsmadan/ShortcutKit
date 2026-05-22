@@ -47,10 +47,14 @@ public final class CarbonSystemShortcuts: SystemShortcutsProvider {
                   let code = entry[kHISymbolicHotKeyCode as String] as? Int,
                   let mods = entry[kHISymbolicHotKeyModifiers as String] as? Int
             else { continue }
-            result.insert(.init(
-                keyCode: UInt16(code),
-                modifiers: Self.nsModifiers(fromCarbon: UInt32(mods))
-            ))
+            // CopySymbolicHotKeys sometimes reports enabled-but-unassigned entries
+            // with modifiers == 0. macOS effectively has no bare-key system
+            // hotkeys (accessibility/VoiceOver navigation aside), so filtering
+            // these removes the false positives that otherwise flag adopters'
+            // bare-letter bindings as systemShared conflicts.
+            let flags = Self.nsModifiers(fromCarbon: UInt32(mods))
+            guard !flags.isEmpty else { continue }
+            result.insert(.init(keyCode: UInt16(code), modifiers: flags))
         }
         return result
     }

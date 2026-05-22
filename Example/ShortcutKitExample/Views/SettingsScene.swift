@@ -26,14 +26,37 @@ private struct StyledSettingsTab: View {
     private var hintsEnabled = true
 
     var body: some View {
-        Form {
-            Section("General") {
-                Toggle("Show shortcut hints", isOn: $hintsEnabled)
+        KeyBindingsView(registry: ContextWiring.shared)
+            .shortcutStyle(style)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                displaySection
             }
-            Section("Shortcuts") {
-                KeyBindingsView(registry: ContextWiring.shared)
-                    .shortcutStyle(style)
+    }
+
+    /// Juggler-style "Display" group: a bold header above a single-row card
+    /// containing the hints toggle, rendered as a pinned banner above the
+    /// scrolling bindings list.
+    private var displaySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Display")
+                .font(.system(size: 14, weight: .semibold))
+            HStack {
+                Text("Show shortcut hints")
+                Spacer()
+                Toggle("", isOn: $hintsEnabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.gray.opacity(0.18),
+                        in: RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Color.gray.opacity(0.25), lineWidth: 1)
+            )
         }
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
     }
 }

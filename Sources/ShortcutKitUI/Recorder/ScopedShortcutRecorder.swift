@@ -15,7 +15,25 @@ import SwiftUI
 public struct ScopedShortcutRecorder: View {
     @Binding var shortcut: Shortcut?
     let policy: ScopePolicy
+    @Environment(\.shortcutStyle) private var style
     @State private var rejection: ScopePolicy.RejectReason?
+
+    /// Width of the embedded recorder field. Smaller in `.dense` so two
+    /// recorders side-by-side don't push labels off the row. These widths
+    /// are also pushed down into ShortcutField's `.minimumWidth(_:)` so the
+    /// underlying NSSearchField actually honors them (without that, the
+    /// AppKit view renders at its intrinsic placeholder width and overflows
+    /// into the next column).
+    static let discreteWidth: (native: CGFloat, dense: CGFloat) = (110, 85)
+    static let continuousWidth: (native: CGFloat, dense: CGFloat) = (130, 100)
+
+    private var fieldWidth: CGFloat {
+        style == .dense ? Self.discreteWidth.dense : Self.discreteWidth.native
+    }
+
+    private var continuousFieldWidth: CGFloat {
+        style == .dense ? Self.continuousWidth.dense : Self.continuousWidth.native
+    }
 
     public init(shortcut: Binding<Shortcut?>, policy: ScopePolicy) {
         _shortcut = shortcut
@@ -54,7 +72,9 @@ public struct ScopedShortcutRecorder: View {
                 shortcut = candidate
             }
         ))
-        .frame(width: 130)
+        .placeholder(style == .dense ? "Record" : "Record Shortcut")
+        .minimumWidth(fieldWidth)
+        .frame(width: fieldWidth)
     }
 
     private func continuousRecorder(initial: ContinuousShortcut) -> some View {
@@ -73,7 +93,7 @@ public struct ScopedShortcutRecorder: View {
                 shortcut = candidate
             }
         ))
-        .frame(width: 160)
+        .frame(width: continuousFieldWidth)
     }
 }
 
