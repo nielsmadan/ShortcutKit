@@ -20,6 +20,9 @@ public final class CarbonGlobalActivator: GlobalActivator {
     private var isStarted = false
     /// Observes `didBecomeActive` to re-verify against an updated system set.
     private var activeObserver: NSObjectProtocol?
+    /// Observes `didEndTracking` to re-verify after a menu closes, catching
+    /// hotkeys that failed to re-register in `resumeAllHotKeys()`.
+    private var menuEndObserver: NSObjectProtocol?
     /// Snapshot of the shortcut currently registered for each BindingID —
     /// the diff baseline.
     private var currentShortcuts: [BindingID: Shortcut] = [:]
@@ -34,6 +37,11 @@ public final class CarbonGlobalActivator: GlobalActivator {
         syncRegistrations()
         activeObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.verifyRegistrations() }
+        }
+        menuEndObserver = NotificationCenter.default.addObserver(
+            forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.verifyRegistrations() }
         }
@@ -52,6 +60,10 @@ public final class CarbonGlobalActivator: GlobalActivator {
             NotificationCenter.default.removeObserver(activeObserver)
         }
         activeObserver = nil
+        if let menuEndObserver {
+            NotificationCenter.default.removeObserver(menuEndObserver)
+        }
+        menuEndObserver = nil
         tableSubscription?.cancel()
         tableSubscription = nil
         registered.removeAll()
@@ -121,15 +133,23 @@ public final class CarbonGlobalActivator: GlobalActivator {
     }
 
     /// Cross-checks every registered combo against the live system set,
-    /// downgrading any system-claimed binding to `.shadowedBySystem`.
+    /// downgrading any system-claimed binding to `.shadowedBySystem`, and
+    /// surfaces hotkeys that failed to re-register after a menu closed.
     private func verifyRegistrations() {
         let system = systemCombos()
+        let menuTracking = (center.mode == .menuOpen)
         for (id, hotKey) in registered {
-            if let current = status[id] {
-                status[id] = Self.verifiedStatus(
-                    current: current, combo: hotKey.combo, systemCombos: system
-                )
+            guard let current = status[id] else { continue }
+            // A registered hotkey with no live Carbon ref while NOT in menu
+            // mode means a re-registration failed (e.g. resumeAllHotKeys could
+            // not reclaim the combo after the menu closed). Surface it.
+            if !menuTracking, hotKey.eventHotKeyRef == nil, current == .registered {
+                status[id] = .failed(reason: "Hot key could not be re-registered (combo may be in use)")
+                continue
             }
+            status[id] = Self.verifiedStatus(
+                current: current, combo: hotKey.combo, systemCombos: system
+            )
         }
     }
 }

@@ -23,11 +23,4 @@ import Testing
         let noisy: NSEvent.ModifierFlags = [.command, .capsLock, .function]
         #expect(CarbonModifiers.carbon(from: noisy) == UInt32(cmdKey))
     }
-
-    @Test("round-trips back to NSEvent flags")
-    func roundTrip() {
-        let original: NSEvent.ModifierFlags = [.command, .control, .option]
-        let carbon = CarbonModifiers.carbon(from: original)
-        #expect(CarbonModifiers.nsFlags(from: carbon) == original)
-    }
 }

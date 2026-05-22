@@ -7,6 +7,10 @@ struct ShortcutKitExampleApp: App {
     @Environment(\.openWindow) private var openWindow
     @ObservedObject private var appModel = ContextWiring.app
 
+    init() {
+        ContextWiring.startGlobalActivator()
+    }
+
     var body: some Scene {
         WindowGroup("ShortcutKit Example") {
             RootBridge(appModel: appModel)

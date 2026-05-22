@@ -67,15 +67,16 @@ final class CarbonHotKeyCenter {
         let id = nextID
         nextID += 1
         let hotKey = CarbonHotKey(id: id, combo: combo, onKeyDown: onKeyDown)
+        if mode == .menuOpen {
+            // A menu is tracking — stay paused; the raw-key monitor matches
+            // this hotkey via the `hotKeys` table. resumeAllHotKeys() performs
+            // the real Carbon registration when the menu closes.
+            hotKeys[id] = hotKey
+            return hotKey
+        }
         guard let ref = carbonRegister(hotKey) else { return nil }
         hotKey.eventHotKeyRef = ref
         hotKeys[id] = hotKey
-        // A menu is already tracking: pause this fresh registration so it is
-        // consistent with the others (the raw-key monitor still matches it).
-        if mode == .menuOpen {
-            UnregisterEventHotKey(ref)
-            hotKey.eventHotKeyRef = nil
-        }
         return hotKey
     }
 

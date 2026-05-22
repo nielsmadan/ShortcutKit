@@ -1,4 +1,5 @@
 import ShortcutKit
+import ShortcutKitGlobal
 
 @MainActor
 enum ContextWiring {
@@ -7,6 +8,23 @@ enum ContextWiring {
     static let canvas = CanvasModeContextModel()
     static let inspector = InspectorContextModel()
     static let wizard = WizardContextModel()
+    static let global = GlobalContextModel()
+
+    /// The Carbon-backed global hotkey activator. Call `startGlobalActivator()`
+    /// once at app launch.
+    static let globalActivator = CarbonGlobalActivator()
+
+    private static var globalActivatorStarted = false
+
+    static func startGlobalActivator() {
+        guard !globalActivatorStarted else { return }
+        globalActivatorStarted = true
+        do {
+            try globalActivator.start(shared)
+        } catch {
+            assertionFailure("global activator failed to start: \(error)")
+        }
+    }
 
     static let shared: ShortcutRegistry = {
         // Per-mode contexts: heterogeneous (each has its own Action type) but
@@ -34,6 +52,7 @@ enum ContextWiring {
             inspector.context,
             wizard.context,
             canvas.sharedContext,
+            global.context,
         ]
 
         let allContexts = nonModeContexts + modeContexts + selectionContexts

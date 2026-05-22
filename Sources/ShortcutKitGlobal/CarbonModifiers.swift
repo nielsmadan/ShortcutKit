@@ -21,13 +21,4 @@ enum CarbonModifiers {
         }
         return result
     }
-
-    /// Inverse of `carbon(from:)`.
-    static func nsFlags(from carbon: UInt32) -> NSEvent.ModifierFlags {
-        var result: NSEvent.ModifierFlags = []
-        for pair in pairs where carbon & UInt32(pair.carbon) != 0 {
-            result.insert(pair.ns)
-        }
-        return result
-    }
 }
