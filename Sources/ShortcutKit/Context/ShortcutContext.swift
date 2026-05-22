@@ -147,6 +147,23 @@ extension ShortcutContext: RegistryAttachable {
             return Occurrence(contextID: id, actionID: action.rawValue, shortcut: shortcut)
         }
     }
+
+    // swiftlint:disable:next identifier_name
+    func __currentRows(
+        conflictsForAction: (String) -> [Conflict]
+    ) -> [KeyBindingsTable.Row] {
+        Action.allCases.map { action in
+            KeyBindingsTable.Row(
+                contextID: id,
+                actionID: action.rawValue,
+                displayName: action.definition.displayName,
+                kind: action.definition.kind,
+                effectiveShortcut: shortcut(for: action),
+                isCustomized: isCustomized(action),
+                conflicts: conflictsForAction(action.rawValue)
+            )
+        }
+    }
 }
 
 extension ShortcutContext: ContextActivation {

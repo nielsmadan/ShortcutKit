@@ -69,6 +69,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         overrides = loaded.overrides
         reanalyzeConflicts()
         checkDefaultLevelConflicts()
+        rebuildKeyBindingsTable()
     }
 
     private func attach(context: any AnyShortcutContext) {
@@ -118,6 +119,59 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             mutuallyExclusiveContexts: mutuallyExclusiveContexts,
             systemShortcuts: systemShortcutsProvider.currentSystemShortcuts()
         )
+        rebuildKeyBindingsTable()
+    }
+
+    func rebuildKeyBindingsTable() {
+        let byAction = conflictsByActionFQN()
+        var sections: [KeyBindingsTable.Section] = []
+        for context in contexts {
+            guard let p = context as? RegistryAttachable else { continue }
+            let rows = p.__currentRows { actionID in
+                byAction["\(context.id).\(actionID)"] ?? []
+            }
+            sections.append(.init(contextID: context.id, rows: rows))
+        }
+        keyBindingsTable = .init(sections: sections)
+    }
+
+    public func legend(for activeContextIDs: Set<String>) -> KeyBindingsLegend {
+        var groups: [KeyBindingsLegend.Group] = []
+        for context in contexts where activeContextIDs.contains(context.id) {
+            guard let p = context as? RegistryAttachable else { continue }
+            let rows = p.__currentRows { _ in [] }
+            let entries = rows.compactMap { row -> KeyBindingsLegend.Entry? in
+                guard let shortcut = row.effectiveShortcut else { return nil }
+                return .init(displayName: row.displayName, shortcut: shortcut)
+            }
+            if !entries.isEmpty {
+                groups.append(.init(contextID: context.id, entries: entries))
+            }
+        }
+        return KeyBindingsLegend(groups: groups)
+    }
+
+    private func conflictsByActionFQN() -> [String: [Conflict]] {
+        var result: [String: [Conflict]] = [:]
+        for conflict in conflicts {
+            for fqn in touchedActionFQNs(in: conflict) {
+                result[fqn, default: []].append(conflict)
+            }
+        }
+        return result
+    }
+
+    private func touchedActionFQNs(in conflict: Conflict) -> [String] {
+        switch conflict {
+        case let .duplicate(occurrences):
+            occurrences.map { "\($0.contextID).\($0.actionID)" }
+        case let .unreachablePrefix(blocker, blocked):
+            ["\(blocker.contextID).\(blocker.actionID)", "\(blocked.contextID).\(blocked.actionID)"]
+        case let .systemShared(_, action):
+            ["\(action.contextID).\(action.actionID)"]
+        case let .menuCollision(_, action, _):
+            ["\(action.contextID).\(action.actionID)"]
+        }
     }
 
     public func menuCollisions(in menu: NSMenu? = NSApp.mainMenu) -> [Conflict] {
@@ -222,6 +276,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     func __buildMatcher(coalescer: ContinuousCoalescer) -> any ContextMatching
     func __currentOccurrences() -> [Occurrence]
     func __defaultOccurrences() -> [Occurrence]
+    func __currentRows(conflictsForAction: (String) -> [Conflict]) -> [KeyBindingsTable.Row]
 }
 
 // swiftlint:enable identifier_name
