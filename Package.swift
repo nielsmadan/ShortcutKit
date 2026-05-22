@@ -12,7 +12,7 @@ let package = Package(
         .library(name: "ShortcutKitGlobal", targets: ["ShortcutKitGlobal"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/nielsmadan/ShortcutField", from: "2.0.0"),
+        .package(url: "https://github.com/nielsmadan/ShortcutField", from: "2.1.0"),
     ],
     targets: [
         .target(

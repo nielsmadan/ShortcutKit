@@ -21,6 +21,13 @@ clean:
     @rm -rf .build
     @echo "Build directory cleaned."
 
+# Build the example app (run via Xcode ⌘R; the build product lives in DerivedData).
+example:
+    @xcodebuild -project Example/ShortcutKitExample.xcodeproj \
+                -scheme ShortcutKitExample \
+                -configuration Debug build \
+                CODE_SIGNING_ALLOWED=NO
+
 # Usage: just tag-release-patch, just tag-release-minor, just tag-release-major
 tag-release-patch:
     @just tag-release patch
