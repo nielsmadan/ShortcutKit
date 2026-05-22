@@ -304,6 +304,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     func __currentOccurrences() -> [Occurrence]
     func __defaultOccurrences() -> [Occurrence]
     func __currentRows(conflictsForAction: (String) -> [Conflict]) -> [KeyBindingsTable.Row]
+    func __dispatchFromMatcher(actionID: String)
 }
 
 // swiftlint:enable identifier_name

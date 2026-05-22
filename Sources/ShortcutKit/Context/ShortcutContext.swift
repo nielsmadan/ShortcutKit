@@ -175,6 +175,13 @@ extension ShortcutContext: RegistryAttachable {
     }
 
     // swiftlint:disable:next identifier_name
+    func __dispatchFromMatcher(actionID: String) {
+        guard let action = Action.allCases.first(where: { $0.rawValue == actionID })
+        else { return }
+        dispatchFromMatcher(action, kind: .discrete)
+    }
+
+    // swiftlint:disable:next identifier_name
     func __currentRows(
         conflictsForAction: (String) -> [Conflict]
     ) -> [KeyBindingsTable.Row] {
