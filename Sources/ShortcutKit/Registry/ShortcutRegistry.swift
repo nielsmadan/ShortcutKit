@@ -27,6 +27,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     private let actionFiredSubject = PassthroughSubject<ActionFiredEvent, Never>()
     var overrides: [String: [String: Shortcut]] = [:]
     private var pendingSave: DispatchWorkItem?
+    let router = RegistryEventRouter()
+    var matchers: [String: any ContextMatching] = [:]
+    let coalescer = ContinuousCoalescer()
 
     public init(
         contexts: [any AnyShortcutContext],
@@ -63,7 +66,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     }
 
     private func attach(context: any AnyShortcutContext) {
-        (context as? RegistryAttachable)?.__attach(registry: self)
+        guard let attachable = context as? RegistryAttachable else { return }
+        attachable.__attach(registry: self)
+        matchers[context.id] = attachable.__buildMatcher(coalescer: coalescer)
     }
 
     // MARK: - RegistryOverrideSource
@@ -74,6 +79,15 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 
     func recordActionFired(_ event: ActionFiredEvent) {
         actionFiredSubject.send(event)
+    }
+
+    func activateContext(id: String) {
+        guard let matcher = matchers[id] else { return }
+        router.push(matcher)
+    }
+
+    func deactivateContext(id: String) {
+        router.remove(contextID: id)
     }
 
     // MARK: - Debounced save
@@ -104,6 +118,13 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         flushSave()
     }
 
+    /// Test hook: the active context IDs in router order (outer → innermost).
+    var __activeContextIDs: [String] {
+        router.__currentStackIDs
+    }
+
+    /// Test hook: the underlying router so tests can drive `handle(_:)` directly.
+    var __router: RegistryEventRouter { router }
     // swiftlint:enable identifier_name
 }
 
@@ -113,6 +134,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 @MainActor protocol RegistryAttachable: AnyObject {
     func __attach(registry: any RegistryOverrideSource)
     func __notifyOverrideChange(actionID: String)
+    func __buildMatcher(coalescer: ContinuousCoalescer) -> any ContextMatching
 }
 
 // swiftlint:enable identifier_name

@@ -104,6 +104,16 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 @MainActor protocol RegistryOverrideSource: AnyObject {
     func override(contextID: String, actionID: String) -> Shortcut?
     func recordActionFired(_ event: ActionFiredEvent)
+    func activateContext(id: String)
+    func deactivateContext(id: String)
+}
+
+/// Internal: same-module hook called by `.activeShortcutContext`.
+@MainActor protocol ContextActivation: AnyObject {
+    // swiftlint:disable identifier_name
+    func __activate()
+    func __deactivate()
+    // swiftlint:enable identifier_name
 }
 
 extension ShortcutContext: RegistryAttachable {
@@ -116,4 +126,16 @@ extension ShortcutContext: RegistryAttachable {
     func __notifyOverrideChange(actionID: String) {
         notifyOverrideChange(actionID: actionID)
     }
+
+    // swiftlint:disable:next identifier_name
+    func __buildMatcher(coalescer: ContinuousCoalescer) -> any ContextMatching {
+        ContextMatcher(context: self, coalescer: coalescer)
+    }
+}
+
+extension ShortcutContext: ContextActivation {
+    // swiftlint:disable identifier_name
+    func __activate() { registry?.activateContext(id: id) }
+    func __deactivate() { registry?.deactivateContext(id: id) }
+    // swiftlint:enable identifier_name
 }
