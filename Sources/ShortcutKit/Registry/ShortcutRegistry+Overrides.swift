@@ -118,6 +118,10 @@ public extension ShortcutRegistry {
     private func notifyChange(contextID: String, actionID: String) {
         guard let context = contexts.first(where: { $0.id == contextID }) else { return }
         (context as? RegistryAttachable)?.__notifyOverrideChange(actionID: actionID)
+        // Rebuild the live matcher for this context so override-driven changes
+        // (new bindings, edited sensitivity on continuous shortcuts, etc.)
+        // take effect immediately instead of waiting for a registry rebuild.
+        matchers[contextID]?.rebuild()
         reanalyzeConflicts()
         rebuildKeyBindingsTable()
     }

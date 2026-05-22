@@ -2,16 +2,15 @@ import ShortcutField
 import ShortcutKit
 import SwiftUI
 
-/// Wraps `ShortcutRecorderView` and refuses commits that violate the scope policy.
+/// Wraps the appropriate ShortcutField recorder for the bound shortcut's kind
+/// and refuses commits that violate the scope policy.
 ///
-/// On rejection the underlying binding is not updated and an inline reason
-/// message is shown below the recorder until the next valid commit clears it.
+/// - Discrete shortcuts (and empty state) render `ShortcutRecorderView`.
+/// - Continuous shortcuts render `ContinuousShortcutRecorderView`, which
+///   includes a sensitivity slider.
 ///
-/// The wrapped recorder records `DiscreteShortcut` values; the umbrella
-/// `Shortcut` binding is hydrated as `.discrete(...)` on commit. Continuous
-/// shortcuts can only enter the binding from outside (e.g. existing persisted
-/// state); the policy still rejects them in `.global` scope for symmetry with
-/// `ConflictAnalyzer.detectUnsupportedInScope`.
+/// On rejection (scope policy violation) the underlying binding is not updated
+/// and an inline reason message is shown until the next valid commit clears it.
 @MainActor
 public struct ScopedShortcutRecorder: View {
     @Binding var shortcut: Shortcut?
@@ -25,28 +24,56 @@ public struct ScopedShortcutRecorder: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            ShortcutRecorderView(Binding<DiscreteShortcut?>(
-                get: {
-                    if case let .discrete(discrete) = shortcut { return discrete }
-                    return nil
-                },
-                set: { newValue in
-                    let candidate: Shortcut? = newValue.map { Shortcut.discrete($0) }
-                    if let candidate, case let .reject(reason) = policy.validate(candidate) {
-                        rejection = reason
-                        return
-                    }
-                    rejection = nil
-                    shortcut = candidate
-                }
-            ))
-            .frame(width: 130)
+            switch shortcut {
+            case let .continuous(continuous):
+                continuousRecorder(initial: continuous)
+            case .discrete, nil:
+                discreteRecorder
+            }
             if let rejection {
                 Text(rejection.userMessage)
                     .font(.caption2)
                     .foregroundStyle(.red)
             }
         }
+    }
+
+    private var discreteRecorder: some View {
+        ShortcutRecorderView(Binding<DiscreteShortcut?>(
+            get: {
+                if case let .discrete(discrete) = shortcut { return discrete }
+                return nil
+            },
+            set: { newValue in
+                let candidate: Shortcut? = newValue.map { Shortcut.discrete($0) }
+                if let candidate, case let .reject(reason) = policy.validate(candidate) {
+                    rejection = reason
+                    return
+                }
+                rejection = nil
+                shortcut = candidate
+            }
+        ))
+        .frame(width: 130)
+    }
+
+    private func continuousRecorder(initial: ContinuousShortcut) -> some View {
+        ContinuousShortcutRecorderView(Binding<ContinuousShortcut?>(
+            get: {
+                if case let .continuous(continuous) = shortcut { return continuous }
+                return initial
+            },
+            set: { newValue in
+                let candidate: Shortcut? = newValue.map { Shortcut.continuous($0) }
+                if let candidate, case let .reject(reason) = policy.validate(candidate) {
+                    rejection = reason
+                    return
+                }
+                rejection = nil
+                shortcut = candidate
+            }
+        ))
+        .frame(width: 160)
     }
 }
 

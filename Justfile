@@ -27,6 +27,14 @@ example:
         -derivedDataPath .build/Example build
     @.build/Example/Build/Products/Debug/ShortcutKitExample.app/Contents/MacOS/ShortcutKitExample
 
+# Clear all persisted shortcut overrides for the example app so it starts
+# fresh on the next launch. Useful after experimenting with re-bindings in
+# Settings → Shortcuts.
+reset-example:
+    @defaults delete com.nielsmadan.shortcutkit.ShortcutKitExample shortcutkit.overrides 2>/dev/null \
+        && echo "Cleared shortcutkit.overrides for ShortcutKitExample." \
+        || echo "No overrides to clear (or app preferences not yet written)."
+
 # Usage: just tag-release-patch, just tag-release-minor, just tag-release-major
 tag-release-patch:
     @just tag-release patch

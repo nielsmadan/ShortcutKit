@@ -12,6 +12,14 @@ struct CanvasView: View {
             Text("Canvas — \(canvasModel.activeMode.rawValue.capitalized) mode")
                 .font(.title)
                 .foregroundStyle(.secondary)
+
+            // Render canvas objects positioned absolutely.
+            ForEach(canvasModel.objects) { obj in
+                objectView(obj)
+                    .position(obj.position)
+                    .onTapGesture { canvasModel.selectedObjectID = obj.id }
+            }
+
             VStack {
                 Spacer()
                 SpinnerView()
@@ -26,6 +34,40 @@ struct CanvasView: View {
                 Spacer()
             }
             ConfettiOverlay(triggerCount: appModel.confettiTriggerCount)
+        }
+    }
+
+    @ViewBuilder
+    private func objectView(_ obj: CanvasObject) -> some View {
+        let isSelected = canvasModel.selectedObjectID == obj.id
+        switch obj.kind {
+        case let .rectangle(size, fillIndex):
+            Rectangle()
+                .fill(CanvasPalette.color(at: fillIndex).opacity(0.7))
+                .overlay(
+                    Rectangle()
+                        .stroke(isSelected ? Color.accentColor : Color.black.opacity(0.2),
+                                lineWidth: isSelected ? 3 : 1)
+                )
+                .frame(width: size, height: size)
+        case let .ellipse(size, fillIndex):
+            Ellipse()
+                .fill(CanvasPalette.color(at: fillIndex).opacity(0.7))
+                .overlay(
+                    Ellipse()
+                        .stroke(isSelected ? Color.accentColor : Color.black.opacity(0.2),
+                                lineWidth: isSelected ? 3 : 1)
+                )
+                .frame(width: size, height: size)
+        case let .text(content, fontSize, bold):
+            Text(content)
+                .font(.system(size: fontSize, weight: bold ? .bold : .regular))
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(isSelected ? Color.accentColor : Color.black.opacity(0.2),
+                                lineWidth: isSelected ? 3 : 1)
+                )
         }
     }
 

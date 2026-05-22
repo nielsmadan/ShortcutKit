@@ -17,10 +17,13 @@ import SwiftUI
 @MainActor
 public struct KeyBindingsView: View {
     enum Mode {
-        case full(registry: ShortcutRegistry, searchEnabled: Bool)
-        case inline(context: any AnyShortcutContext, registry: ShortcutRegistry, searchEnabled: Bool)
+        case full(searchEnabled: Bool)
+        case inline(context: any AnyShortcutContext, searchEnabled: Bool)
     }
 
+    /// Observed so `@Published` changes (`keyBindingsTable`, `conflicts`, …)
+    /// re-render the rows when overrides change at runtime.
+    @ObservedObject var registry: ShortcutRegistry
     let mode: Mode
 
     @State private var selectedContextID: String = ""
@@ -28,7 +31,8 @@ public struct KeyBindingsView: View {
     @State private var resetAlertShown: Bool = false
 
     public init(registry: ShortcutRegistry, searchEnabled: Bool = true) {
-        mode = .full(registry: registry, searchEnabled: searchEnabled)
+        self.registry = registry
+        mode = .full(searchEnabled: searchEnabled)
     }
 
     /// Inline single-context init. The context must already be attached to a
@@ -40,14 +44,15 @@ public struct KeyBindingsView: View {
         searchEnabled: Bool = false
     ) {
         let registry = context.__attachedRegistry ?? ShortcutRegistry(contexts: [])
-        mode = .inline(context: context, registry: registry, searchEnabled: searchEnabled)
+        self.registry = registry
+        mode = .inline(context: context, searchEnabled: searchEnabled)
     }
 
     public var body: some View {
         switch mode {
-        case let .full(registry, searchEnabled):
+        case let .full(searchEnabled):
             fullBody(registry: registry, searchEnabled: searchEnabled)
-        case let .inline(context, registry, searchEnabled):
+        case let .inline(context, searchEnabled):
             inlineBody(context: context, registry: registry, searchEnabled: searchEnabled)
         }
     }
@@ -61,8 +66,8 @@ public struct KeyBindingsView: View {
 
     var __searchEnabledForTest: Bool {
         switch mode {
-        case let .full(_, enabled): enabled
-        case let .inline(_, _, enabled): enabled
+        case let .full(enabled): enabled
+        case let .inline(_, enabled): enabled
         }
     }
 

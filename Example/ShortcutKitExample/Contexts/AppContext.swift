@@ -12,9 +12,9 @@ enum AppAction: String, ShortcutAction {
 
     var definition: ShortcutActionDefinition {
         switch self {
-        case .toggleLegend: .init("Toggle Legend", Shortcut("cmd+h"))
+        case .toggleLegend: .init("Toggle Legend", Shortcut("cmd+shift+l"))
         case .closeWindow: .init("Close Window", Shortcut("cmd+w"))
-        case .openSettings: .init("Settings…", Shortcut("cmd+,"))
+        case .openSettings: .init("Settings…", Shortcut("cmd+comma"))
         case .fireConfetti: .init("Fire Confetti", Shortcut("cmd+shift+f"))
         case .openInspector: .init("Show Inspector", Shortcut("cmd+i"))
         case .newProject: .init("New Project…", Shortcut("cmd+n"))
@@ -28,6 +28,7 @@ final class AppContextModel: ObservableObject {
     @Published var confettiTriggerCount = 0
     @Published var inspectorOpenSignal = 0
     @Published var newProjectSignal = 0
+    @Published var openSettingsSignal = 0
     let context: ShortcutContext<AppAction>
 
     init() {
@@ -41,7 +42,7 @@ final class AppContextModel: ObservableObject {
             case .closeWindow:
                 NSApp.keyWindow?.close()
             case .openSettings:
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                target.openSettingsSignal += 1
             case .fireConfetti:
                 target.confettiTriggerCount += 1
             case .openInspector:

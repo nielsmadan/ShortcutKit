@@ -80,14 +80,10 @@ public struct ShortcutRowView: View {
     @ViewBuilder
     private var recorders: some View {
         ForEach(Array(row.effectiveShortcuts.enumerated()), id: \.offset) { idx, shortcut in
-            HStack(spacing: 2) {
-                ScopedShortcutRecorder(
-                    shortcut: binding(for: idx, current: shortcut),
-                    policy: policy
-                )
-                Button { onClear(idx) } label: { Image(systemName: "xmark.circle") }
-                    .buttonStyle(.plain)
-            }
+            ScopedShortcutRecorder(
+                shortcut: binding(for: idx, current: shortcut),
+                policy: policy
+            )
         }
     }
 

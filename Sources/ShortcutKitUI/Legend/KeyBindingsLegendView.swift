@@ -30,15 +30,15 @@ private struct SidebarLegend: View {
             ForEach(Array(legend.groups.enumerated()), id: \.offset) { _, group in
                 if !group.entries.isEmpty {
                     Text(group.contextID)
-                        .font(.caption.bold())
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(.secondary)
                     ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in
                         HStack {
                             Text(entry.displayName)
-                                .font(.caption)
+                                .font(.system(size: 13))
                             Spacer()
                             Text(entry.shortcut.displayString)
-                                .font(.caption.monospaced())
+                                .font(.system(size: 13, design: .monospaced))
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -47,7 +47,7 @@ private struct SidebarLegend: View {
             }
         }
         .padding(8)
-        .frame(maxWidth: 220, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: 240, maxHeight: .infinity, alignment: .top)
         .background(.thinMaterial)
     }
 }
@@ -62,15 +62,15 @@ private struct CompactStripLegend: View {
                     ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in
                         HStack(spacing: 4) {
                             Text(entry.shortcut.displayString)
-                                .font(.caption.monospaced())
+                                .font(.system(size: 13, design: .monospaced))
                             Text(entry.displayName)
-                                .font(.caption)
+                                .font(.system(size: 13))
                                 .foregroundStyle(.secondary)
                         }
                         .padding(.horizontal, 6)
                     }
                     if groupIdx < legend.groups.count - 1 {
-                        Divider().frame(height: 12)
+                        Divider().frame(height: 14)
                     }
                 }
             }

@@ -10,5 +10,6 @@ struct SpinnerView: View {
             .frame(width: 60, height: 60)
             .foregroundStyle(.purple)
             .rotationEffect(.degrees(canvasModel.rotation))
+            .animation(.linear(duration: 0.1), value: canvasModel.rotation)
     }
 }

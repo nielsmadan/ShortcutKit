@@ -12,7 +12,11 @@ public struct ShortcutPreferencesView: View {
     /// can read/write it from anywhere (e.g. their own preferences scene).
     public static let hintsEnabledStorageKey = "shortcutkit.hintsEnabled"
 
+    /// Stable AppStorage key for the dense-style toggle.
+    public static let denseStyleStorageKey = "shortcutkit.style.dense"
+
     @AppStorage("shortcutkit.hintsEnabled") private var hintsEnabled = true
+    @AppStorage("shortcutkit.style.dense") private var denseStyle = false
 
     public init(registry: ShortcutRegistry) {
         self.registry = registry
@@ -24,9 +28,11 @@ public struct ShortcutPreferencesView: View {
         Form {
             Section("General") {
                 Toggle("Show shortcut hints", isOn: $hintsEnabled)
+                Toggle("Dense layout", isOn: $denseStyle)
             }
             Section("Shortcuts") {
                 KeyBindingsView(registry: registry)
+                    .shortcutStyle(denseStyle ? .dense : .native)
             }
         }
     }
