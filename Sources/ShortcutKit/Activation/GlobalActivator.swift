@@ -16,7 +16,7 @@ public struct BindingID: Sendable, Hashable {
 }
 
 /// Outcome of an attempted global registration for a single binding.
-public enum GlobalBindingStatus: Sendable {
+public enum GlobalBindingStatus: Sendable, Equatable {
     case registered
     case failed(reason: String)
     case shadowedBySystem

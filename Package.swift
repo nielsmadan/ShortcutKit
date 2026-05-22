@@ -32,7 +32,8 @@ let package = Package(
         ),
         .target(
             name: "ShortcutKitGlobal",
-            dependencies: ["ShortcutKit"]
+            dependencies: ["ShortcutKit"],
+            linkerSettings: [.linkedFramework("Carbon")]
         ),
         .testTarget(name: "ShortcutKitTests", dependencies: ["ShortcutKit"]),
         .testTarget(
