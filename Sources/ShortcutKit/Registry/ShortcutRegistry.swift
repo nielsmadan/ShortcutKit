@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import os.log
 import ShortcutField
 
 /// The hub: owns contexts, persistence, conflicts, and routing. `@MainActor`
@@ -17,6 +18,11 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     let mutuallyExclusiveContexts: [Set<String>]
     let migrations: [ShortcutMigration]
     let store: any ShortcutBindingsStore
+
+    static let logger = Logger(
+        subsystem: "com.nielsmadan.shortcutkit",
+        category: "registry"
+    )
 
     private let actionFiredSubject = PassthroughSubject<ActionFiredEvent, Never>()
     var overrides: [String: [String: Shortcut]] = [:]
@@ -38,13 +44,22 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             attach(context: context)
         }
 
-        do {
-            let loaded = try store.load()
-            overrides = loaded.overrides
-        } catch {
-            // Corrupt persistence — Task 7 adds os.Logger wiring.
-            overrides = [:]
+        // Load — log + reset on corruption.
+        var loaded: RawState
+        do { loaded = try store.load() } catch {
+            Self.logger.error("load failed: \(String(describing: error)); resetting")
+            loaded = RawState()
         }
+
+        // Apply migrations; persist only if anything changed.
+        let before = loaded
+        ShortcutMigrationApplier.apply(migrations, to: &loaded)
+        if loaded != before {
+            do { try store.save(loaded) } catch {
+                Self.logger.error("post-migration save failed: \(String(describing: error))")
+            }
+        }
+        overrides = loaded.overrides
     }
 
     private func attach(context: any AnyShortcutContext) {

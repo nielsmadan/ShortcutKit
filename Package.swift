@@ -13,11 +13,15 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/nielsmadan/ShortcutField", from: "2.1.0"),
+        .package(url: "https://github.com/LebJe/TOMLKit", from: "0.6.0"),
     ],
     targets: [
         .target(
             name: "ShortcutKit",
-            dependencies: [.product(name: "ShortcutField", package: "ShortcutField")]
+            dependencies: [
+                .product(name: "ShortcutField", package: "ShortcutField"),
+                .product(name: "TOMLKit", package: "TOMLKit"),
+            ]
         ),
         .target(
             name: "ShortcutKitUI",
