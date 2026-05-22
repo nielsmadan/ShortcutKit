@@ -35,7 +35,11 @@ let package = Package(
             dependencies: ["ShortcutKit"]
         ),
         .testTarget(name: "ShortcutKitTests", dependencies: ["ShortcutKit"]),
-        .testTarget(name: "ShortcutKitUITests", dependencies: ["ShortcutKitUI"]),
+        .testTarget(
+            name: "ShortcutKitUITests",
+            dependencies: ["ShortcutKitUI", "ShortcutKit"],
+            path: "Tests/ShortcutKitUITests"
+        ),
         .testTarget(name: "ShortcutKitGlobalTests", dependencies: ["ShortcutKitGlobal"]),
     ]
 )
