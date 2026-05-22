@@ -37,6 +37,6 @@ public extension ShortcutRegistry {
     private func notifyChange(contextID: String, actionID: String) {
         guard let context = contexts.first(where: { $0.id == contextID }) else { return }
         (context as? RegistryAttachable)?.__notifyOverrideChange(actionID: actionID)
-        // Task 12 / 15 hook: re-run conflict analysis + rebuild the table.
+        reanalyzeConflicts()
     }
 }

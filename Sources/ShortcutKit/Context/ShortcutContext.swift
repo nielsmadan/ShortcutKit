@@ -131,6 +131,22 @@ extension ShortcutContext: RegistryAttachable {
     func __buildMatcher(coalescer: ContinuousCoalescer) -> any ContextMatching {
         ContextMatcher(context: self, coalescer: coalescer)
     }
+
+    // swiftlint:disable:next identifier_name
+    func __currentOccurrences() -> [Occurrence] {
+        Action.allCases.compactMap { action in
+            guard let shortcut = self.shortcut(for: action) else { return nil }
+            return Occurrence(contextID: id, actionID: action.rawValue, shortcut: shortcut)
+        }
+    }
+
+    // swiftlint:disable:next identifier_name
+    func __defaultOccurrences() -> [Occurrence] {
+        Action.allCases.compactMap { action in
+            guard let shortcut = action.definition.defaultShortcut else { return nil }
+            return Occurrence(contextID: id, actionID: action.rawValue, shortcut: shortcut)
+        }
+    }
 }
 
 extension ShortcutContext: ContextActivation {

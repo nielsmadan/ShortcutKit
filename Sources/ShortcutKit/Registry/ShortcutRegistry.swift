@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import os.log
@@ -18,6 +19,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     let mutuallyExclusiveContexts: [Set<String>]
     let migrations: [ShortcutMigration]
     let store: any ShortcutBindingsStore
+    let systemShortcutsProvider: any SystemShortcutsProvider
 
     static let logger = Logger(
         subsystem: "com.nielsmadan.shortcutkit",
@@ -35,12 +37,14 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         contexts: [any AnyShortcutContext],
         mutuallyExclusiveContexts: [Set<String>] = [],
         migrations: [ShortcutMigration] = [],
-        store: any ShortcutBindingsStore = UserDefaultsStore()
+        store: any ShortcutBindingsStore = UserDefaultsStore(),
+        systemShortcutsProvider: any SystemShortcutsProvider = CarbonSystemShortcuts()
     ) {
         self.contexts = contexts
         self.mutuallyExclusiveContexts = mutuallyExclusiveContexts
         self.migrations = migrations
         self.store = store
+        self.systemShortcutsProvider = systemShortcutsProvider
         actionFired = actionFiredSubject.eraseToAnyPublisher()
 
         for context in contexts {
@@ -63,6 +67,8 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             }
         }
         overrides = loaded.overrides
+        reanalyzeConflicts()
+        checkDefaultLevelConflicts()
     }
 
     private func attach(context: any AnyShortcutContext) {
@@ -88,6 +94,85 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 
     func deactivateContext(id: String) {
         router.remove(contextID: id)
+    }
+
+    // MARK: - Assertion seam
+
+    /// Test seam: replace to intercept assertion-trap messages. Production
+    /// builds use `Swift.assertionFailure`.
+    nonisolated(unsafe) static var assertionFunction: @MainActor (String) -> Void = { message in
+        Swift.assertionFailure(message)
+    }
+
+    // MARK: - Conflict analysis
+
+    func reanalyzeConflicts() {
+        var occurrences: [Occurrence] = []
+        for context in contexts {
+            if let p = context as? RegistryAttachable {
+                occurrences.append(contentsOf: p.__currentOccurrences())
+            }
+        }
+        conflicts = ConflictAnalyzer.analyze(
+            bindings: occurrences,
+            mutuallyExclusiveContexts: mutuallyExclusiveContexts,
+            systemShortcuts: systemShortcutsProvider.currentSystemShortcuts()
+        )
+    }
+
+    public func menuCollisions(in menu: NSMenu? = NSApp.mainMenu) -> [Conflict] {
+        guard let menu else { return [] }
+        let menuShortcuts = MenuShortcutWalker.shortcuts(in: menu)
+        var occurrences: [Occurrence] = []
+        for context in contexts {
+            if let p = context as? RegistryAttachable {
+                occurrences.append(contentsOf: p.__currentOccurrences())
+            }
+        }
+        var collisions: [Conflict] = []
+        for occurrence in occurrences {
+            guard case let .discrete(d) = occurrence.shortcut,
+                  d.steps.count == 1,
+                  case let .key(keyCode) = d.steps[0].kind else { continue }
+            let key = SystemHotKey(keyCode: keyCode, modifiers: d.steps[0].modifiers)
+            if let title = menuShortcuts[key] {
+                collisions.append(.menuCollision(
+                    shortcut: occurrence.shortcut, action: occurrence, menuItemTitle: title
+                ))
+            }
+        }
+        return collisions
+    }
+
+    func checkDefaultLevelConflicts() {
+        var occurrences: [Occurrence] = []
+        for context in contexts {
+            if let p = context as? RegistryAttachable {
+                occurrences.append(contentsOf: p.__defaultOccurrences())
+            }
+        }
+        let defaultConflicts = ConflictAnalyzer.analyze(
+            bindings: occurrences,
+            mutuallyExclusiveContexts: mutuallyExclusiveContexts
+        )
+        let errors = defaultConflicts.filter { $0.severity == .error }
+        guard !errors.isEmpty else { return }
+        let descriptions = errors.map(Self.describeConflict).joined(separator: "; ")
+        Self.assertionFunction("ShortcutKit: default-level conflicts: \(descriptions)")
+    }
+
+    private static func describeConflict(_ conflict: Conflict) -> String {
+        switch conflict {
+        case let .duplicate(occurrences):
+            let label = occurrences.map { "\($0.contextID).\($0.actionID)" }.joined(separator: " / ")
+            return "duplicate trigger across [\(label)]"
+        case let .unreachablePrefix(blocker, blocked):
+            return "[\(blocker.contextID).\(blocker.actionID)] blocks prefix of [\(blocked.contextID).\(blocked.actionID)]"
+        case let .systemShared(_, action):
+            return "system collision on [\(action.contextID).\(action.actionID)]"
+        case let .menuCollision(_, action, _):
+            return "menu collision on [\(action.contextID).\(action.actionID)]"
+        }
     }
 
     // MARK: - Debounced save
@@ -135,6 +220,8 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     func __attach(registry: any RegistryOverrideSource)
     func __notifyOverrideChange(actionID: String)
     func __buildMatcher(coalescer: ContinuousCoalescer) -> any ContextMatching
+    func __currentOccurrences() -> [Occurrence]
+    func __defaultOccurrences() -> [Occurrence]
 }
 
 // swiftlint:enable identifier_name

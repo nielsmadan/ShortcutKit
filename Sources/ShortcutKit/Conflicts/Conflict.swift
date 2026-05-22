@@ -9,14 +9,18 @@ public enum Conflict: Sendable, Hashable {
 
     public enum Severity: Sendable { case error, warning }
 
-    /// Severity rule (refined by `ConflictAnalyzer` in Task 12 when context
-    /// scopes are known): within-context `duplicate` / `unreachablePrefix` are
-    /// `.error`; cross-context `duplicate`, `systemShared`, and `menuCollision`
-    /// are `.warning`. The default here is conservative.
+    /// Severity rule: within-context `duplicate` / `unreachablePrefix` are
+    /// `.error`; cross-context variants, `systemShared`, and `menuCollision`
+    /// are `.warning`.
     public var severity: Severity {
         switch self {
-        case .duplicate, .unreachablePrefix: .error
-        case .systemShared, .menuCollision: .warning
+        case let .duplicate(occurrences):
+            let contexts = Set(occurrences.map(\.contextID))
+            return contexts.count == 1 ? .error : .warning
+        case let .unreachablePrefix(blocker, blocked):
+            return blocker.contextID == blocked.contextID ? .error : .warning
+        case .systemShared, .menuCollision:
+            return .warning
         }
     }
 }
