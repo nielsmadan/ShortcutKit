@@ -12,20 +12,20 @@ import Testing
         }
     }
 
-    @Test("definition carries displayName, kind, and defaultShortcut")
+    @Test("definition carries displayName, kind, and defaultShortcuts")
     func definitionFields() {
         let save = SampleAction.save.definition
         #expect(save.displayName == "Save")
         #expect(save.kind == .discrete)
         let expected: Shortcut = "cmd+s"
-        #expect(save.defaultShortcut == expected)
+        #expect(save.defaultShortcuts == [expected])
     }
 
     @Test("kind defaults to .discrete when no shortcut is given")
     func defaultsToDiscrete() {
         let quit = SampleAction.quit.definition
         #expect(quit.kind == .discrete)
-        #expect(quit.defaultShortcut == nil)
+        #expect(quit.defaultShortcuts.isEmpty)
     }
 
     @Test("raw value is the stable persistence ID")

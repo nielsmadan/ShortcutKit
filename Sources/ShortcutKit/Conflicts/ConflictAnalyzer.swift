@@ -5,12 +5,15 @@ enum ConflictAnalyzer {
     static func analyze(
         bindings: [Occurrence],
         mutuallyExclusiveContexts: [Set<String>],
-        systemShortcuts: Set<SystemHotKey> = []
+        systemShortcuts: Set<SystemHotKey> = [],
+        contextScopes: [String: ContextScope] = [:]
     ) -> [Conflict] {
         var conflicts: [Conflict] = []
         conflicts.append(contentsOf: detectDuplicates(bindings, mutex: mutuallyExclusiveContexts))
         conflicts.append(contentsOf: detectUnreachablePrefixes(bindings, mutex: mutuallyExclusiveContexts))
         conflicts.append(contentsOf: detectSystemShared(bindings: bindings, systemShortcuts: systemShortcuts))
+        conflicts.append(contentsOf: detectShadowedByGlobal(bindings: bindings, scopes: contextScopes))
+        conflicts.append(contentsOf: detectUnsupportedInScope(bindings: bindings, scopes: contextScopes))
         return conflicts
     }
 
@@ -86,6 +89,41 @@ enum ConflictAnalyzer {
                 conflicts.append(.systemShared(
                     shortcut: occurrence.shortcut, action: occurrence
                 ))
+            }
+        }
+        return conflicts
+    }
+
+    // MARK: Shadowed by global
+
+    private static func detectShadowedByGlobal(
+        bindings: [Occurrence], scopes: [String: ContextScope]
+    ) -> [Conflict] {
+        let locals = bindings.filter { scopes[$0.contextID] == .local && isCompleteAtTrigger($0.shortcut) }
+        let globals = bindings.filter { scopes[$0.contextID] == .global && isCompleteAtTrigger($0.shortcut) }
+        var conflicts: [Conflict] = []
+        for global in globals {
+            for local in locals where TriggerSignature(global.shortcut) == TriggerSignature(local.shortcut) {
+                conflicts.append(.shadowedByGlobal(local: local, global: global))
+            }
+        }
+        return conflicts
+    }
+
+    // MARK: Unsupported in scope
+
+    private static func detectUnsupportedInScope(
+        bindings: [Occurrence], scopes: [String: ContextScope]
+    ) -> [Conflict] {
+        var conflicts: [Conflict] = []
+        for occurrence in bindings where scopes[occurrence.contextID] == .global {
+            switch occurrence.shortcut {
+            case let .discrete(discrete):
+                if discrete.steps.count > 1 {
+                    conflicts.append(.unsupportedInScope(occurrence: occurrence, reason: .multiStepInGlobal))
+                }
+            case .continuous:
+                conflicts.append(.unsupportedInScope(occurrence: occurrence, reason: .continuousInGlobal))
             }
         }
         return conflicts

@@ -32,7 +32,8 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
     func handle(_ event: NSEvent) -> ShortcutMatchResult {
         var didAdvance = false
         var consumeFromAdvance = false
-        for (action, matcher) in perAction {
+        for index in perAction.indices {
+            let (action, matcher) = perAction[index]
             switch matcher.handle(event) {
             case .ignored:
                 continue
@@ -40,7 +41,7 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
                 didAdvance = true
                 consumeFromAdvance = consumeFromAdvance || consume
             case .fired:
-                resetOthers(except: action)
+                resetOthers(exceptIndex: index)
                 context?.dispatchFromMatcher(action, kind: .discrete)
                 return .fired
             case let .continuousFired(magnitude):
@@ -71,15 +72,18 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
 
     func rebuild() {
         guard let context else { perAction = []; return }
-        perAction = Action.allCases.compactMap { action in
-            guard let shortcut = context.shortcut(for: action) else { return nil }
-            return (action, ShortcutMatcher(shortcut))
+        var built: [(action: Action, matcher: ShortcutMatcher)] = []
+        for action in Action.allCases {
+            for shortcut in context.shortcuts(for: action) {
+                built.append((action, ShortcutMatcher(shortcut)))
+            }
         }
+        perAction = built
     }
 
-    private func resetOthers(except action: Action) {
-        for (a, matcher) in perAction where a != action {
-            matcher.reset()
+    private func resetOthers(exceptIndex keepIndex: Int) {
+        for index in perAction.indices where index != keepIndex {
+            perAction[index].matcher.reset()
         }
     }
 }

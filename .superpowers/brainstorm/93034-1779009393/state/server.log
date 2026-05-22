@@ -1,0 +1,6 @@
+{"type":"server-started","port":63829,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:63829","screen_dir":"/Users/nielsmadan/wrksp/juggler/ShortcutKit/.superpowers/brainstorm/93034-1779009393/content","state_dir":"/Users/nielsmadan/wrksp/juggler/ShortcutKit/.superpowers/brainstorm/93034-1779009393/state"}
+{"type":"screen-added","file":"/Users/nielsmadan/wrksp/juggler/ShortcutKit/.superpowers/brainstorm/93034-1779009393/content/style-philosophy.html"}
+{"source":"user-event","type":"click","text":"C\n    \n      Two flavours: .style(.native) / .style(.dense)\n      One view, two opinionated presets selectable via a modifier. Default to .native. Adopters pick the preset that fits.\n      Pros: Best of both — drop-in for typical apps, dense option for power tools · Cons: ~2× rendering code; presets always lag behind real custom design","choice":"c","id":null,"timestamp":1779009519829}
+{"type":"screen-added","file":"/Users/nielsmadan/wrksp/juggler/ShortcutKit/.superpowers/brainstorm/93034-1779009393/content/recording-ux.html"}
+{"type":"screen-added","file":"/Users/nielsmadan/wrksp/juggler/ShortcutKit/.superpowers/brainstorm/93034-1779009393/content/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -22,10 +22,10 @@ import Testing
     func roundTrip() throws {
         let store = UserDefaultsStore(defaults: isolatedDefaults())
         var state = RawState()
-        state.overrides["editor"] = ["save": "cmd+shift+s"]
+        state.overrides["editor"] = ["save": ["cmd+shift+s"]]
         state
             .overrides["viewer"] =
-            ["zoom-in": .continuous(.init(kind: .pinchOut, modifiers: .command, sensitivity: 0.5))]
+            ["zoom-in": [.continuous(.init(kind: .pinchOut, modifiers: .command, sensitivity: 0.5))]]
         try store.save(state)
 
         let loaded = try store.load()
@@ -38,7 +38,7 @@ import Testing
         let storeA = UserDefaultsStore(defaults: defaults, key: "a")
         let storeB = UserDefaultsStore(defaults: defaults, key: "b")
         var state = RawState()
-        state.overrides["editor"] = ["save": "cmd+s"]
+        state.overrides["editor"] = ["save": ["cmd+s"]]
         try storeA.save(state)
         #expect(try storeB.load().overrides.isEmpty)
         #expect(try storeA.load() == state)

@@ -1,0 +1,31 @@
+<h2>How does a row enter "recording" mode?</h2>
+<p class="subtitle">This dictates row layout. Same choice applies to both style flavors.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Click-to-record (inline)</h3>
+      <p>Default row shows the binding as a label (<code>⌘S</code> or "No shortcut"). Click the label area → the cell <em>becomes</em> a <code>ShortcutRecorderView</code> in place. Capture finishes → cell reverts to label.</p>
+      <p class="label">Compact · feels like Xcode's Key Bindings pane · one-click to edit</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Always-on recorder</h3>
+      <p>Every row shows a live <code>ShortcutRecorderView</code> always. Click anywhere on it to start recording; bare-click elsewhere finalizes (existing ShortcutField behavior). No mode toggle.</p>
+      <p class="label">Simplest mental model · always shows ShortcutField field chrome · taller rows</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Row-click → sheet / popover</h3>
+      <p>Row is read-only display. Click row → a small sheet (or popover) opens with the recorder + reset + cancel buttons + room for a "currently bound to: ⌘S" hint and conflict messages.</p>
+      <p class="label">More room for affordances · two-click workflow · matches System Settings → Keyboard → Shortcuts</p>
+    </div>
+  </div>
+</div>

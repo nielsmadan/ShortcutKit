@@ -58,6 +58,22 @@ enum TableAct: String, ShortcutAction {
         #expect(filteredByAscii.sections[0].rows.map(\.actionID) == ["undo"])
     }
 
+    @Test("rows expose all default bindings via effectiveShortcuts")
+    func rowExposesAllBindings() {
+        enum MultiAct: String, ShortcutAction, CaseIterable {
+            case save
+            var definition: ShortcutActionDefinition {
+                .init("Save", defaults: [Shortcut("cmd+s"), Shortcut("ctrl+s")])
+            }
+        }
+        let ctx = ShortcutContext<MultiAct>("editor") { _, _ in }
+        let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
+        let row = registry.keyBindingsTable.sections[0].rows.first!
+        #expect(row.effectiveShortcuts.count == 2)
+        #expect(row.effectiveShortcuts == [Shortcut("cmd+s"), Shortcut("ctrl+s")])
+        #expect(row.effectiveShortcut == Shortcut("cmd+s"))
+    }
+
     @Test("legend(for:) returns only active contexts and only bound rows")
     func legendActiveOnly() {
         let editor = ShortcutContext<TableAct>("editor") { _, _ in }

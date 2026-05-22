@@ -1,0 +1,35 @@
+<h2>What styling philosophy for `KeyBindingsView`?</h2>
+<p class="subtitle">This frames everything else in Phase 2 — recording UX, search, conflict display, theming. Pick the closest match; we can refine.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Native macOS Preferences look</h3>
+      <p>SwiftUI <code>Form</code> + <code>Section</code> per context, system styling, indistinguishable from Xcode's "Key Bindings" pane or Settings → Keyboard → Shortcuts. Inherits OS dark/light + system fonts. Adopters who want a different look style their own via the headless <code>KeyBindingsTable</code>.</p>
+      <p class="label">Pros: Zero theme work, looks "right" by default · Cons: Less distinctive, harder to make denser</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Custom-styled, denser (Zed / VS Code feel)</h3>
+      <p>Hand-rolled <code>List</code> rows, monospace shortcut display chips, search bar at top, conflict badges inline. Looks more like a power-user shortcut manager than a settings pane.</p>
+      <p class="label">Pros: Distinctive, denser, scans faster · Cons: More theming code to maintain; opinionated style may clash with some adopters' apps</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Two flavours: <code>.style(.native)</code> / <code>.style(.dense)</code></h3>
+      <p>One view, two opinionated presets selectable via a modifier. Default to <code>.native</code>. Adopters pick the preset that fits.</p>
+      <p class="label">Pros: Best of both — drop-in for typical apps, dense option for power tools · Cons: ~2× rendering code; presets always lag behind real custom design</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 1.5rem">
+  <p class="subtitle">Either way, the headless <code>KeyBindingsTable</code> from Phase 1 stays the escape hatch — adopters who want a fully custom UI render their own from that data type.</p>
+</div>

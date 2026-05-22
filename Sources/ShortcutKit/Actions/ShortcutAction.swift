@@ -9,23 +9,28 @@ public protocol ShortcutAction:
     var definition: ShortcutActionDefinition { get }
 }
 
-/// Per-action metadata: display name, kind, and optional default shortcut.
+/// Per-action metadata: display name, kind, and zero-or-more default shortcuts.
 public struct ShortcutActionDefinition: Sendable {
     public let displayName: String
     public let kind: Shortcut.Kind
-    public let defaultShortcut: Shortcut?
+    public let defaultShortcuts: [Shortcut]
 
-    /// Infers `kind` from `defaultShortcut`; falls back to `.discrete` when absent.
-    public init(_ displayName: String, _ defaultShortcut: Shortcut? = nil) {
+    /// Primary init. `kind` is inferred from the first default; defaults to `.discrete`.
+    public init(_ displayName: String, defaults: [Shortcut] = []) {
         self.displayName = displayName
-        kind = defaultShortcut?.kind ?? .discrete
-        self.defaultShortcut = defaultShortcut
+        kind = defaults.first?.kind ?? .discrete
+        defaultShortcuts = defaults
     }
 
     /// Explicit `kind` for actions with no default shortcut.
     public init(_ displayName: String, kind: Shortcut.Kind) {
         self.displayName = displayName
         self.kind = kind
-        defaultShortcut = nil
+        defaultShortcuts = []
+    }
+
+    /// Convenience matching Phase 1 single-binding ergonomics.
+    public init(_ displayName: String, _ defaultShortcut: Shortcut) {
+        self.init(displayName, defaults: [defaultShortcut])
     }
 }

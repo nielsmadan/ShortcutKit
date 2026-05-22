@@ -4,11 +4,16 @@ import Foundation
 import os.log
 import ShortcutField
 
+/// How many bindings a registry permits per action. Phase 1.5 schema knob;
+/// downstream UI (`KeyBindingsView`) and conflict analysis consume this.
+public enum BindingsPerAction: Sendable { case one, two, unlimited }
+
 /// The hub: owns contexts, persistence, conflicts, and routing. `@MainActor`
 /// throughout (meta-spec concurrency decision). Contexts always live inside a
 /// registry; single-context apps still construct one.
 @MainActor
 public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
+    public let bindingsPerAction: BindingsPerAction
     // Public outputs — empty here, populated by Tasks 12 (conflicts) and 15 (table).
     @Published public private(set) var conflicts: [Conflict] = []
     @Published public private(set) var keyBindingsTable: KeyBindingsTable = .init()
@@ -27,7 +32,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     )
 
     private let actionFiredSubject = PassthroughSubject<ActionFiredEvent, Never>()
-    var overrides: [String: [String: Shortcut]] = [:]
+    var overrides: [String: [String: [Shortcut]]] = [:]
     private var pendingSave: DispatchWorkItem?
     let router = RegistryEventRouter()
     var matchers: [String: any ContextMatching] = [:]
@@ -38,13 +43,17 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         mutuallyExclusiveContexts: [Set<String>] = [],
         migrations: [ShortcutMigration] = [],
         store: any ShortcutBindingsStore = UserDefaultsStore(),
-        systemShortcutsProvider: any SystemShortcutsProvider = CarbonSystemShortcuts()
+        systemShortcutsProvider: any SystemShortcutsProvider = CarbonSystemShortcuts(),
+        bindingsPerAction: BindingsPerAction = .one
     ) {
         self.contexts = contexts
         self.mutuallyExclusiveContexts = mutuallyExclusiveContexts
-        self.migrations = migrations
+        // Always prepend the Phase 1.5 wrap-single-bindings breadcrumb; the
+        // shape upgrade itself happens at the decoder boundary.
+        self.migrations = [WrapSingleBindingsMigration.entry] + migrations
         self.store = store
         self.systemShortcutsProvider = systemShortcutsProvider
+        self.bindingsPerAction = bindingsPerAction
         actionFired = actionFiredSubject.eraseToAnyPublisher()
 
         for context in contexts {
@@ -80,7 +89,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 
     // MARK: - RegistryOverrideSource
 
-    func override(contextID: String, actionID: String) -> Shortcut? {
+    func overrides(contextID: String, actionID: String) -> [Shortcut]? {
         overrides[contextID]?[actionID]
     }
 
@@ -117,9 +126,18 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         conflicts = ConflictAnalyzer.analyze(
             bindings: occurrences,
             mutuallyExclusiveContexts: mutuallyExclusiveContexts,
-            systemShortcuts: systemShortcutsProvider.currentSystemShortcuts()
+            systemShortcuts: systemShortcutsProvider.currentSystemShortcuts(),
+            contextScopes: contextScopes()
         )
         rebuildKeyBindingsTable()
+    }
+
+    private func contextScopes() -> [String: ContextScope] {
+        var result: [String: ContextScope] = [:]
+        for context in contexts {
+            result[context.id] = context.scope
+        }
+        return result
     }
 
     func rebuildKeyBindingsTable() {
@@ -171,6 +189,10 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             ["\(action.contextID).\(action.actionID)"]
         case let .menuCollision(_, action, _):
             ["\(action.contextID).\(action.actionID)"]
+        case let .shadowedByGlobal(local, global):
+            ["\(local.contextID).\(local.actionID)", "\(global.contextID).\(global.actionID)"]
+        case let .unsupportedInScope(occurrence, _):
+            ["\(occurrence.contextID).\(occurrence.actionID)"]
         }
     }
 
@@ -207,7 +229,8 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         }
         let defaultConflicts = ConflictAnalyzer.analyze(
             bindings: occurrences,
-            mutuallyExclusiveContexts: mutuallyExclusiveContexts
+            mutuallyExclusiveContexts: mutuallyExclusiveContexts,
+            contextScopes: contextScopes()
         )
         let errors = defaultConflicts.filter { $0.severity == .error }
         guard !errors.isEmpty else { return }
@@ -226,6 +249,10 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             return "system collision on [\(action.contextID).\(action.actionID)]"
         case let .menuCollision(_, action, _):
             return "menu collision on [\(action.contextID).\(action.actionID)]"
+        case let .shadowedByGlobal(local, global):
+            return "[\(global.contextID).\(global.actionID)] shadows [\(local.contextID).\(local.actionID)]"
+        case let .unsupportedInScope(occurrence, reason):
+            return "[\(occurrence.contextID).\(occurrence.actionID)] unsupported in scope (\(reason))"
         }
     }
 

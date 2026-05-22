@@ -97,7 +97,7 @@ enum DemoAction: String, ShortcutAction {
     func loadedOverridesVisibleOnInit() throws {
         let store = isolatedStore()
         var initial = RawState()
-        initial.overrides["editor"] = ["save": "cmd+shift+s"]
+        initial.overrides["editor"] = ["save": ["cmd+shift+s"]]
         try store.save(initial)
 
         let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
@@ -119,6 +119,6 @@ enum DemoAction: String, ShortcutAction {
         registry.__flushPendingSave()
         let loaded = try store.load()
         let expected: Shortcut = "cmd+shift+s"
-        #expect(loaded.overrides["editor"]?["save"] == expected)
+        #expect(loaded.overrides["editor"]?["save"] == [expected])
     }
 }

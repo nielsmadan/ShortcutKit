@@ -13,10 +13,10 @@ import Testing
 
     private func sampleState() -> RawState {
         var s = RawState()
-        s.overrides["editor"] = ["save": "cmd+s", "undo": "cmd+z"]
-        s.overrides["viewer"] = ["zoom-in": .continuous(.init(
+        s.overrides["editor"] = ["save": ["cmd+s"], "undo": ["cmd+z"]]
+        s.overrides["viewer"] = ["zoom-in": [.continuous(.init(
             kind: .pinchOut, modifiers: .command, sensitivity: 0.5
-        ))]
+        ))]]
         return s
     }
 
@@ -58,7 +58,7 @@ import Testing
         """.write(to: url, atomically: true, encoding: .utf8)
         let loaded = try FileStore(url: url, format: .toml).load()
         let expected: Shortcut = "cmd+s"
-        #expect(loaded.overrides == ["editor": ["save": expected]])
+        #expect(loaded.overrides == ["editor": ["save": [expected]]])
     }
 
     @Test("missing file returns empty state")

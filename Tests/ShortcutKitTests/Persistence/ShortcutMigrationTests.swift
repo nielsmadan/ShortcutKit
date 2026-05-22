@@ -5,7 +5,13 @@ import Testing
 @MainActor
 @Suite("ShortcutMigration") struct ShortcutMigrationTests {
     private func state(_ overrides: [String: [String: Shortcut]]) -> RawState {
-        RawState(overrides: overrides)
+        RawState(overrides: overrides.mapValues { $0.mapValues { [$0] } })
+    }
+
+    private func expect(
+        _ state: RawState, equals scalarOverrides: [String: [String: Shortcut]]
+    ) -> Bool {
+        state.overrides == scalarOverrides.mapValues { $0.mapValues { [$0] } }
     }
 
     @Test("renameAction moves a key")
@@ -15,7 +21,7 @@ import Testing
             [.renameAction(context: "editor", from: "save", to: "saveFile")], to: &s
         )
         let expected: Shortcut = "cmd+s"
-        #expect(s.overrides == ["editor": ["saveFile": expected]])
+        #expect(expect(s, equals: ["editor": ["saveFile": expected]]))
     }
 
     @Test("renameAction is idempotent")
@@ -24,7 +30,7 @@ import Testing
         let migration: ShortcutMigration = .renameAction(context: "editor", from: "save", to: "saveFile")
         ShortcutMigrationApplier.apply([migration, migration], to: &s)
         let expected: Shortcut = "cmd+s"
-        #expect(s.overrides == ["editor": ["saveFile": expected]])
+        #expect(expect(s, equals: ["editor": ["saveFile": expected]]))
     }
 
     @Test("renameAction with absent source is a no-op")
@@ -34,7 +40,7 @@ import Testing
             [.renameAction(context: "editor", from: "save", to: "saveFile")], to: &s
         )
         let expected: Shortcut = "cmd+z"
-        #expect(s.overrides == ["editor": ["undo": expected]])
+        #expect(expect(s, equals: ["editor": ["undo": expected]]))
     }
 
     @Test("renameAction collision: source wins")
@@ -44,7 +50,7 @@ import Testing
             [.renameAction(context: "editor", from: "save", to: "saveFile")], to: &s
         )
         let expected: Shortcut = "cmd+s"
-        #expect(s.overrides == ["editor": ["saveFile": expected]])
+        #expect(expect(s, equals: ["editor": ["saveFile": expected]]))
     }
 
     @Test("moveAction relocates between contexts")
@@ -56,7 +62,7 @@ import Testing
             to: &s
         )
         let expected: Shortcut = "cmd+s"
-        #expect(s.overrides == ["files": ["save": expected]])
+        #expect(expect(s, equals: ["files": ["save": expected]]))
     }
 
     @Test("resetOverride clears one key")
@@ -66,7 +72,7 @@ import Testing
             [.resetOverride(context: "editor", action: "save")], to: &s
         )
         let expected: Shortcut = "cmd+z"
-        #expect(s.overrides == ["editor": ["undo": expected]])
+        #expect(expect(s, equals: ["editor": ["undo": expected]]))
     }
 
     @Test("renameContext merges with source-wins on collision")
@@ -80,17 +86,17 @@ import Testing
         )
         let save: Shortcut = "cmd+s"
         let undo: Shortcut = "cmd+z"
-        #expect(s.overrides == ["new": ["save": save, "undo": undo]])
+        #expect(expect(s, equals: ["new": ["save": save, "undo": undo]]))
     }
 
     @Test(".custom runs the closure")
     func customRuns() {
         var s = state([:])
         ShortcutMigrationApplier.apply(
-            [.custom { $0.overrides["editor"] = ["save": "cmd+s"] }], to: &s
+            [.custom { $0.overrides["editor"] = ["save": ["cmd+s"]] }], to: &s
         )
         let expected: Shortcut = "cmd+s"
-        #expect(s.overrides == ["editor": ["save": expected]])
+        #expect(expect(s, equals: ["editor": ["save": expected]]))
     }
 
     @Test(".custom errors are caught — state stays as it was")
@@ -101,6 +107,6 @@ import Testing
             [.custom { _ in throw DemoError() }], to: &s
         )
         let expected: Shortcut = "cmd+s"
-        #expect(s.overrides == ["editor": ["save": expected]])
+        #expect(expect(s, equals: ["editor": ["save": expected]]))
     }
 }

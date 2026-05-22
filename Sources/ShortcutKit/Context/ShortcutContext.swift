@@ -1,11 +1,18 @@
 import Combine
 import ShortcutField
 
+/// Activation scope for a context. `.local` contexts only fire while activated
+/// via `.activeShortcutContext`; `.global` contexts are always candidates for
+/// system-wide hotkey registration (Phase 3 consumes this).
+public enum ContextScope: Sendable { case local, global }
+
 /// Type-erased context so a registry can hold a heterogeneous list. Public for
 /// the registry's `contexts:` parameter; the package-internal surface drives
 /// activation and override notifications (see same-package extensions).
 @MainActor public protocol AnyShortcutContext: AnyObject {
     var id: String { get }
+    var scope: ContextScope { get }
+    var includeInSettings: Bool { get }
 }
 
 /// A named group of actions with a single dispatch closure.
@@ -18,6 +25,8 @@ import ShortcutField
 @MainActor
 public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     public let id: String
+    public let scope: ContextScope
+    public var includeInSettings: Bool
 
     private let dispatchClosure: @MainActor (Action, ShortcutDispatch) -> Void
     private var changeSubjects: [String: CurrentValueSubject<Shortcut?, Never>] = [:]
@@ -27,9 +36,13 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     public init(
         _ id: String,
+        scope: ContextScope = .local,
+        includeInSettings: Bool = true,
         dispatch: @escaping @MainActor (Action, ShortcutDispatch) -> Void
     ) {
         self.id = id
+        self.scope = scope
+        self.includeInSettings = includeInSettings
         dispatchClosure = dispatch
     }
 
@@ -53,9 +66,15 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     // MARK: - Lookup
 
+    public func shortcuts(for action: Action) -> [Shortcut] {
+        if let overrides = registry?.overrides(contextID: id, actionID: action.rawValue) {
+            return overrides
+        }
+        return action.definition.defaultShortcuts
+    }
+
     public func shortcut(for action: Action) -> Shortcut? {
-        registry?.override(contextID: id, actionID: action.rawValue)
-            ?? action.definition.defaultShortcut
+        shortcuts(for: action).first
     }
 
     public func displayString(for action: Action) -> String? {
@@ -63,7 +82,11 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     }
 
     public func isCustomized(_ action: Action) -> Bool {
-        registry?.override(contextID: id, actionID: action.rawValue) != nil
+        registry?.overrides(contextID: id, actionID: action.rawValue) != nil
+    }
+
+    public func resetAllToDefaults() {
+        registry?.clearAllOverrides(contextID: id)
     }
 
     public func shortcutChanges(for action: Action) -> AnyPublisher<Shortcut?, Never> {
@@ -102,7 +125,8 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 /// look up overrides without a concrete reference to `ShortcutRegistry`.
 /// Declared here so test doubles can stand in for the registry.
 @MainActor protocol RegistryOverrideSource: AnyObject {
-    func override(contextID: String, actionID: String) -> Shortcut?
+    func overrides(contextID: String, actionID: String) -> [Shortcut]?
+    func clearAllOverrides(contextID: String)
     func recordActionFired(_ event: ActionFiredEvent)
     func activateContext(id: String)
     func deactivateContext(id: String)
@@ -134,17 +158,19 @@ extension ShortcutContext: RegistryAttachable {
 
     // swiftlint:disable:next identifier_name
     func __currentOccurrences() -> [Occurrence] {
-        Action.allCases.compactMap { action in
-            guard let shortcut = self.shortcut(for: action) else { return nil }
-            return Occurrence(contextID: id, actionID: action.rawValue, shortcut: shortcut)
+        Action.allCases.flatMap { action -> [Occurrence] in
+            self.shortcuts(for: action).map {
+                Occurrence(contextID: id, actionID: action.rawValue, shortcut: $0)
+            }
         }
     }
 
     // swiftlint:disable:next identifier_name
     func __defaultOccurrences() -> [Occurrence] {
-        Action.allCases.compactMap { action in
-            guard let shortcut = action.definition.defaultShortcut else { return nil }
-            return Occurrence(contextID: id, actionID: action.rawValue, shortcut: shortcut)
+        Action.allCases.flatMap { action -> [Occurrence] in
+            action.definition.defaultShortcuts.map { shortcut in
+                Occurrence(contextID: id, actionID: action.rawValue, shortcut: shortcut)
+            }
         }
     }
 
@@ -158,7 +184,7 @@ extension ShortcutContext: RegistryAttachable {
                 actionID: action.rawValue,
                 displayName: action.definition.displayName,
                 kind: action.definition.kind,
-                effectiveShortcut: shortcut(for: action),
+                effectiveShortcuts: shortcuts(for: action),
                 isCustomized: isCustomized(action),
                 conflicts: conflictsForAction(action.rawValue)
             )

@@ -7,23 +7,26 @@ public struct KeyBindingsTable: Sendable, Hashable {
         public let actionID: String
         public let displayName: String
         public let kind: Shortcut.Kind
-        public let effectiveShortcut: Shortcut?
+        public let effectiveShortcuts: [Shortcut]
         public let isCustomized: Bool
         public let conflicts: [Conflict]
 
         public init(
             contextID: String, actionID: String, displayName: String,
-            kind: Shortcut.Kind, effectiveShortcut: Shortcut?,
+            kind: Shortcut.Kind, effectiveShortcuts: [Shortcut],
             isCustomized: Bool, conflicts: [Conflict]
         ) {
             self.contextID = contextID
             self.actionID = actionID
             self.displayName = displayName
             self.kind = kind
-            self.effectiveShortcut = effectiveShortcut
+            self.effectiveShortcuts = effectiveShortcuts
             self.isCustomized = isCustomized
             self.conflicts = conflicts
         }
+
+        /// Convenience matching Phase 1 single-binding ergonomics.
+        public var effectiveShortcut: Shortcut? { effectiveShortcuts.first }
     }
 
     public struct Section: Sendable, Hashable {
@@ -48,8 +51,9 @@ public struct KeyBindingsTable: Sendable, Hashable {
         for section in sections {
             let scored: [(Row, Int)] = section.rows.compactMap { row in
                 let nameScore = FuzzyFilter.match(query: trimmed, in: row.displayName)?.score
-                let asciiScore = row.effectiveShortcut
-                    .flatMap { FuzzyFilter.match(query: trimmed, in: $0.ascii)?.score }
+                let asciiScore = row.effectiveShortcuts
+                    .compactMap { FuzzyFilter.match(query: trimmed, in: $0.ascii)?.score }
+                    .max()
                 guard let best = [nameScore, asciiScore].compactMap({ $0 }).max()
                 else { return nil }
                 return (row, best)
