@@ -192,6 +192,18 @@ extension ShortcutContext: RegistryAttachable {
     }
 }
 
+public extension ShortcutContext {
+    // swiftlint:disable identifier_name
+    /// Typed back-reference to the registry this context was attached to, if any.
+    /// Used by `ShortcutKitUI` inline mode to invoke the type-erased override
+    /// helpers (`setShortcuts(_:contextID:actionID:)` etc.) without requiring
+    /// adopters to pass the registry alongside the context.
+    var __attachedRegistry: ShortcutRegistry? {
+        registry as? ShortcutRegistry
+    }
+    // swiftlint:enable identifier_name
+}
+
 extension ShortcutContext: ContextActivation {
     // swiftlint:disable identifier_name
     func __activate() { registry?.activateContext(id: id) }

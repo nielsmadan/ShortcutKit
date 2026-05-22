@@ -35,6 +35,28 @@ public enum Conflict: Sendable, Hashable {
     }
 }
 
+public extension Conflict {
+    /// Walks the `Occurrence`s referenced by this conflict, regardless of
+    /// associated-value shape. Used by callers (e.g. `KeyBindingsView`) that
+    /// need to map conflicts back to context IDs.
+    var occurrences: [Occurrence] {
+        switch self {
+        case let .duplicate(occurrences):
+            occurrences
+        case let .unreachablePrefix(blocker, blocked):
+            [blocker, blocked]
+        case let .systemShared(_, action):
+            [action]
+        case let .menuCollision(_, action, _):
+            [action]
+        case let .shadowedByGlobal(local, global):
+            [local, global]
+        case let .unsupportedInScope(occurrence, _):
+            [occurrence]
+        }
+    }
+}
+
 /// One occurrence in a conflict — a (context, action, shortcut) triple.
 public struct Occurrence: Sendable, Hashable {
     public let contextID: String

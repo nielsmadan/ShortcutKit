@@ -53,6 +53,68 @@ public extension ShortcutRegistry {
         scheduleSave()
     }
 
+    /// Type-erased override write — used by `KeyBindingsView` in `ShortcutKitUI`,
+    /// which can only see the registry through its string-keyed surface.
+    /// Mirrors the effects of the typed `setShortcuts(_:for:in:)`.
+    func setShortcuts(_ shortcuts: [Shortcut], contextID: String, actionID: String) {
+        overrides[contextID, default: [:]][actionID] = shortcuts
+        notifyChange(contextID: contextID, actionID: actionID)
+        scheduleSave()
+    }
+
+    /// Type-erased per-binding clear. If the cleared binding is the last one
+    /// remaining for this action, the action's override entry is removed
+    /// entirely (the action falls back to its declared defaults).
+    func removeShortcut(at index: Int, contextID: String, actionID: String) {
+        var current = overrides[contextID]?[actionID] ?? []
+        guard index >= 0, index < current.count else { return }
+        current.remove(at: index)
+        if current.isEmpty {
+            overrides[contextID]?.removeValue(forKey: actionID)
+            if overrides[contextID]?.isEmpty == true {
+                overrides.removeValue(forKey: contextID)
+            }
+        } else {
+            overrides[contextID, default: [:]][actionID] = current
+        }
+        notifyChange(contextID: contextID, actionID: actionID)
+        scheduleSave()
+    }
+
+    /// Type-erased single-action reset. Alias for `reset(contextID:actionID:)`
+    /// that takes string IDs without going through `setOverride`'s single-binding
+    /// semantics.
+    func resetAction(contextID: String, actionID: String) {
+        guard overrides[contextID]?[actionID] != nil else { return }
+        overrides[contextID]?.removeValue(forKey: actionID)
+        if overrides[contextID]?.isEmpty == true {
+            overrides.removeValue(forKey: contextID)
+        }
+        notifyChange(contextID: contextID, actionID: actionID)
+        scheduleSave()
+    }
+
+    /// Returns the set of context IDs that currently have any conflict.
+    func contextIDsWithConflicts() -> Set<String> {
+        var ids: Set<String> = []
+        for conflict in conflicts {
+            for occurrence in conflict.occurrences {
+                ids.insert(occurrence.contextID)
+            }
+        }
+        return ids
+    }
+
+    /// Looks up the `ContextScope` for a context by id, or `.local` if unknown.
+    func scope(forContextID contextID: String) -> ContextScope {
+        contexts.first(where: { $0.id == contextID })?.scope ?? .local
+    }
+
+    /// Public, type-erased view of registered contexts. Needed because
+    /// `KeyBindingsView` in `ShortcutKitUI` can't see the package-internal
+    /// stored `contexts` array.
+    var allContexts: [any AnyShortcutContext] { contexts }
+
     private func notifyChange(contextID: String, actionID: String) {
         guard let context = contexts.first(where: { $0.id == contextID }) else { return }
         (context as? RegistryAttachable)?.__notifyOverrideChange(actionID: actionID)
