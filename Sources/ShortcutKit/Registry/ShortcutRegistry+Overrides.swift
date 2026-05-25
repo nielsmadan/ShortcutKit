@@ -38,7 +38,7 @@ public extension ShortcutRegistry {
 
     /// Clear one override.
     func reset(contextID: String, actionID: String) {
-        setOverride(contextID: contextID, actionID: actionID, shortcut: nil)
+        resetAction(contextID: contextID, actionID: actionID)
     }
 
     /// Clear all overrides.
@@ -81,9 +81,9 @@ public extension ShortcutRegistry {
         scheduleSave()
     }
 
-    /// Type-erased single-action reset. Alias for `reset(contextID:actionID:)`
-    /// that takes string IDs without going through `setOverride`'s single-binding
-    /// semantics.
+    /// Type-erased single-action reset. The shared body that `reset(contextID:actionID:)`
+    /// delegates to. Early-returns when no override exists so subscribers and
+    /// the debounced save aren't triggered for a no-op.
     func resetAction(contextID: String, actionID: String) {
         guard overrides[contextID]?[actionID] != nil else { return }
         overrides[contextID]?.removeValue(forKey: actionID)

@@ -4,16 +4,11 @@ import Foundation
 import os.log
 import ShortcutField
 
-/// How many bindings a registry permits per action. Phase 1.5 schema knob;
-/// downstream UI (`KeyBindingsView`) and conflict analysis consume this.
-public enum BindingsPerAction: Sendable { case one, two, unlimited }
-
 /// The hub: owns contexts, persistence, conflicts, and routing. `@MainActor`
 /// throughout (meta-spec concurrency decision). Contexts always live inside a
 /// registry; single-context apps still construct one.
 @MainActor
 public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
-    public let bindingsPerAction: BindingsPerAction
     // Public outputs — empty here, populated by Tasks 12 (conflicts) and 15 (table).
     @Published public private(set) var conflicts: [Conflict] = []
     @Published public private(set) var keyBindingsTable: KeyBindingsTable = .init()
@@ -43,8 +38,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         mutuallyExclusiveContexts: [Set<String>] = [],
         migrations: [ShortcutMigration] = [],
         store: any ShortcutBindingsStore = UserDefaultsStore(),
-        systemShortcutsProvider: any SystemShortcutsProvider = CarbonSystemShortcuts(),
-        bindingsPerAction: BindingsPerAction = .one
+        systemShortcutsProvider: any SystemShortcutsProvider = CarbonSystemShortcuts()
     ) {
         self.contexts = contexts
         self.mutuallyExclusiveContexts = mutuallyExclusiveContexts
@@ -53,7 +47,6 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         self.migrations = [WrapSingleBindingsMigration.entry] + migrations
         self.store = store
         self.systemShortcutsProvider = systemShortcutsProvider
-        self.bindingsPerAction = bindingsPerAction
         actionFired = actionFiredSubject.eraseToAnyPublisher()
 
         for context in contexts {
@@ -151,6 +144,18 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             sections.append(.init(contextID: context.id, rows: rows))
         }
         keyBindingsTable = .init(sections: sections)
+    }
+
+    /// Convenience overload: returns the legend for every currently-active
+    /// local context (those pushed onto the router by `.activeShortcutContext`)
+    /// plus every `.global`-scoped context. Adopters who want a more specific
+    /// filter use `legend(for:)`.
+    public func legend() -> KeyBindingsLegend {
+        var ids = Set(router.__currentStackIDs)
+        for context in contexts where context.scope == .global {
+            ids.insert(context.id)
+        }
+        return legend(for: ids)
     }
 
     public func legend(for activeContextIDs: Set<String>) -> KeyBindingsLegend {
@@ -276,12 +281,20 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         }
     }
 
-    // swiftlint:disable identifier_name
-    /// Test seam — synchronously flushes the pending debounced save.
-    func __flushPendingSave() {
+    /// Synchronously persist any pending override changes, bypassing the 250 ms
+    /// debounce. Use when you need the on-disk state stable before a follow-up
+    /// step (an export-to-file flow, a profile switch, an explicit "Save" button).
+    /// A no-op if no save is pending.
+    public func flushPendingSave() {
         pendingSave?.cancel()
         pendingSave = nil
         flushSave()
+    }
+
+    // swiftlint:disable identifier_name
+    /// Test seam — back-compat alias for `flushPendingSave()`.
+    func __flushPendingSave() {
+        flushPendingSave()
     }
 
     /// Test hook: the active context IDs in router order (outer → innermost).

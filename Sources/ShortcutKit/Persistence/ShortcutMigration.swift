@@ -2,12 +2,23 @@ import Foundation
 import os.log
 import ShortcutField
 
+/// A (context, action) pair — the persistence-side identifier of one action.
+/// Used by `ShortcutMigration` cases that move bindings across contexts.
+public struct ActionRef: Sendable, Hashable {
+    public let contextID: String
+    public let actionID: String
+
+    public init(contextID: String, actionID: String) {
+        self.contextID = contextID
+        self.actionID = actionID
+    }
+}
+
 /// One migration step. Append to the registry's `migrations:` list; never
 /// reorder, modify, or delete a shipped entry (spec §5.3).
 public enum ShortcutMigration: Sendable {
     case renameAction(context: String, from: String, to: String)
-    case moveAction(from: (context: String, action: String),
-                    to: (context: String, action: String))
+    case moveAction(from: ActionRef, to: ActionRef)
     case resetOverride(context: String, action: String)
     case renameContext(from: String, to: String)
     case custom(@MainActor @Sendable (inout RawState) throws -> Void)
@@ -48,20 +59,20 @@ enum ShortcutMigrationApplier {
             state.overrides[context] = perAction.isEmpty ? nil : perAction
 
         case let .moveAction(from, to):
-            guard var fromPerAction = state.overrides[from.context],
-                  let value = fromPerAction[from.action] else { return }
-            fromPerAction.removeValue(forKey: from.action)
-            state.overrides[from.context] = fromPerAction.isEmpty ? nil : fromPerAction
+            guard var fromPerAction = state.overrides[from.contextID],
+                  let value = fromPerAction[from.actionID] else { return }
+            fromPerAction.removeValue(forKey: from.actionID)
+            state.overrides[from.contextID] = fromPerAction.isEmpty ? nil : fromPerAction
 
-            var toPerAction = state.overrides[to.context] ?? [:]
-            if toPerAction[to.action] != nil {
+            var toPerAction = state.overrides[to.contextID] ?? [:]
+            if toPerAction[to.actionID] != nil {
                 logger
                     .warning(
-                        "moveAction: target \(to.context, privacy: .public).\(to.action, privacy: .public) exists; source wins"
+                        "moveAction: target \(to.contextID, privacy: .public).\(to.actionID, privacy: .public) exists; source wins"
                     )
             }
-            toPerAction[to.action] = value
-            state.overrides[to.context] = toPerAction
+            toPerAction[to.actionID] = value
+            state.overrides[to.contextID] = toPerAction
 
         case let .resetOverride(context, action):
             guard var perAction = state.overrides[context] else { return }

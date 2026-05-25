@@ -18,7 +18,7 @@ import Testing
     func resolvesCurrentShortcut() {
         let ctx = ShortcutContext<MenuKitAct>("editor") { _, _ in }
         _ = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
-        #expect(ShortcutKit.resolveKeyboardEquivalent(for: .save, in: ctx) != nil)
-        #expect(ShortcutKit.resolveKeyboardEquivalent(for: .openProject, in: ctx) == nil)
+        #expect(ShortcutKitHelpers.resolveKeyboardEquivalent(for: .save, in: ctx) != nil)
+        #expect(ShortcutKitHelpers.resolveKeyboardEquivalent(for: .openProject, in: ctx) == nil)
     }
 }

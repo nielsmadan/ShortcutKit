@@ -29,7 +29,10 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     public var includeInSettings: Bool
 
     private let dispatchClosure: @MainActor (Action, ShortcutDispatch) -> Void
-    private var changeSubjects: [String: CurrentValueSubject<Shortcut?, Never>] = [:]
+    /// One subject per observed action, holding the full bindings array. The
+    /// singular `shortcutChanges(for:)` publisher derives from this via
+    /// `.map(\.first)` — single source of truth.
+    private var changeSubjects: [String: CurrentValueSubject<[Shortcut], Never>] = [:]
 
     // Set by the registry when this context is added. Not exposed publicly.
     weak var registry: (any RegistryOverrideSource)?
@@ -81,6 +84,12 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         shortcut(for: action)?.displayString
     }
 
+    /// Display strings for every binding, in slot order (primary first).
+    /// Empty if `action` has no effective bindings.
+    public func displayStrings(for action: Action) -> [String] {
+        shortcuts(for: action).map(\.displayString)
+    }
+
     public func isCustomized(_ action: Action) -> Bool {
         registry?.overrides(contextID: id, actionID: action.rawValue) != nil
     }
@@ -89,14 +98,29 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         registry?.clearAllOverrides(contextID: id)
     }
 
+    /// Publisher that emits the action's current bindings whenever they change
+    /// (defaults applied, override set/cleared/reset). Replays the current
+    /// value on subscribe. Use this when you need the full array; for
+    /// "just give me the primary," see `shortcutChanges(for:)`.
+    public func shortcutsChanges(for action: Action) -> AnyPublisher<[Shortcut], Never> {
+        subject(for: action).eraseToAnyPublisher()
+    }
+
+    /// Publisher that emits the action's primary binding (`shortcuts(for:).first`)
+    /// whenever it changes. Derived from `shortcutsChanges(for:)`. Adopters who
+    /// support multiple bindings per action should prefer the plural variant.
     public func shortcutChanges(for action: Action) -> AnyPublisher<Shortcut?, Never> {
+        subject(for: action).map(\.first).eraseToAnyPublisher()
+    }
+
+    private func subject(for action: Action) -> CurrentValueSubject<[Shortcut], Never> {
         let key = action.rawValue
         if let existing = changeSubjects[key] {
-            return existing.eraseToAnyPublisher()
+            return existing
         }
-        let subject = CurrentValueSubject<Shortcut?, Never>(shortcut(for: action))
-        changeSubjects[key] = subject
-        return subject.eraseToAnyPublisher()
+        let fresh = CurrentValueSubject<[Shortcut], Never>(shortcuts(for: action))
+        changeSubjects[key] = fresh
+        return fresh
     }
 
     // MARK: - Internal hooks (called by the registry)
@@ -112,12 +136,13 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     }
 
     /// Called by the registry when an override changes for this context.
-    /// Pushes the new effective shortcut through `shortcutChanges(for:)`.
+    /// Pushes the new effective bindings array through `shortcutsChanges(for:)`
+    /// (and via derivation, `shortcutChanges(for:)`).
     func notifyOverrideChange(actionID: String) {
         guard let subject = changeSubjects[actionID] else { return }
         guard let action = Action.allCases.first(where: { $0.rawValue == actionID })
         else { return }
-        subject.send(shortcut(for: action))
+        subject.send(shortcuts(for: action))
     }
 }
 

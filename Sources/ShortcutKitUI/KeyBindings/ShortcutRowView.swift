@@ -15,7 +15,6 @@ import SwiftUI
 public struct ShortcutRowView: View {
     public let row: KeyBindingsTable.Row
     public let policy: ScopePolicy
-    public let bindingsPerAction: BindingsPerAction
     public let onSet: ([Shortcut]) -> Void
     public let onClear: (Int) -> Void
     public let onReset: () -> Void
@@ -26,7 +25,6 @@ public struct ShortcutRowView: View {
     public init(
         row: KeyBindingsTable.Row,
         policy: ScopePolicy,
-        bindingsPerAction: BindingsPerAction,
         onSet: @escaping ([Shortcut]) -> Void,
         onClear: @escaping (Int) -> Void,
         onReset: @escaping () -> Void,
@@ -34,7 +32,6 @@ public struct ShortcutRowView: View {
     ) {
         self.row = row
         self.policy = policy
-        self.bindingsPerAction = bindingsPerAction
         self.onSet = onSet
         self.onClear = onClear
         self.onReset = onReset
@@ -59,21 +56,11 @@ public struct ShortcutRowView: View {
 
     var bindingCount: Int { row.effectiveShortcuts.count }
 
-    var canAddMore: Bool {
-        switch bindingsPerAction {
-        case .one: row.effectiveShortcuts.count < 1
-        case .two: row.effectiveShortcuts.count < 2
-        case .unlimited: true
-        }
-    }
-
     /// Test hook: appends a placeholder binding slot via `onSet`. The placeholder
     /// shortcut is arbitrary — production callers replace it via the recorder.
     /// `Shortcut("")` would trap (empty ascii throws), so `space` is used as a
-    /// parseable, harmless sentinel until T14 wires up the real "click + then
-    /// record" flow.
+    /// parseable, harmless sentinel.
     func appendEmptyBinding() {
-        guard canAddMore else { return }
         onSet(row.effectiveShortcuts + [Shortcut("space")])
     }
 

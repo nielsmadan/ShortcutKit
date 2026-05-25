@@ -2,6 +2,9 @@ import AppKit
 import Carbon.HIToolbox
 
 /// One enabled system symbolic hotkey — what `CopySymbolicHotKeys()` returns.
+///
+/// `Hashable` is written by hand because `NSEvent.ModifierFlags` conforms to
+/// `OptionSet` + `Equatable` but not `Hashable`, so synthesis can't derive it.
 public struct SystemHotKey: Hashable, Sendable {
     public let keyCode: UInt16
     public let modifiers: NSEvent.ModifierFlags

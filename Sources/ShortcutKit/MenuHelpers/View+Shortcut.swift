@@ -38,7 +38,7 @@ struct ShortcutKitKeyboardShortcutModifier<A: ShortcutAction>: ViewModifier {
 }
 
 /// Helpers for resolving SwiftUI keyboard equivalents from ShortcutKit bindings.
-public enum ShortcutKitHelpers {
+enum ShortcutKitHelpers {
     @MainActor
     static func resolveKeyboardEquivalent<A: ShortcutAction>(
         for action: A,
@@ -55,14 +55,6 @@ public enum ShortcutKitHelpers {
         return (KeyEquivalent(Character(scalar)), swiftUIModifiers(discrete.steps[0].modifiers))
     }
 
-    @MainActor
-    public static func resolveKeyboardEquivalent<A: ShortcutAction>(
-        for action: A,
-        in context: ShortcutContext<A>
-    ) -> (KeyEquivalent, EventModifiers)? {
-        resolveKeyboardEquivalent(for: action, in: context, given: nil)
-    }
-
     private static func swiftUIModifiers(_ ns: NSEvent.ModifierFlags) -> EventModifiers {
         var out: EventModifiers = []
         if ns.contains(.command) { out.insert(.command) }
@@ -72,8 +64,3 @@ public enum ShortcutKitHelpers {
         return out
     }
 }
-
-// MARK: - ShortcutKit namespace alias for test compatibility
-
-// Namespace alias so tests can use `ShortcutKit.resolveKeyboardEquivalent(...)`.
-public typealias ShortcutKit = ShortcutKitHelpers

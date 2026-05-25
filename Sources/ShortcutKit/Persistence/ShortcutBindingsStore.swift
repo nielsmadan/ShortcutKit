@@ -51,6 +51,47 @@ enum ShortcutOrArray: Decodable {
     }
 }
 
+// MARK: - Ergonomic accessors
+
+public extension RawState {
+    /// All context IDs with at least one persisted override, in unspecified order.
+    var contextIDs: [String] { Array(overrides.keys) }
+
+    /// All action IDs with persisted overrides in `contextID`, in unspecified order.
+    /// Empty if the context has no overrides.
+    func actionIDs(in contextID: String) -> [String] {
+        overrides[contextID].map { Array($0.keys) } ?? []
+    }
+
+    /// Read or write the bindings for one action. Setting `nil` (or an empty array)
+    /// removes the override; the surrounding context entry is pruned if it becomes
+    /// empty so `overrides` stays canonical (no zombie empty dictionaries).
+    ///
+    /// Designed for `.custom` migrations and custom `ShortcutBindingsStore`s — the
+    /// raw triple-nested `overrides` dictionary is still available, but this is
+    /// the supported path.
+    subscript(context contextID: String, action actionID: String) -> [Shortcut]? {
+        get { overrides[contextID]?[actionID] }
+        set {
+            if let newValue, !newValue.isEmpty {
+                overrides[contextID, default: [:]][actionID] = newValue
+            } else {
+                overrides[contextID]?.removeValue(forKey: actionID)
+                if overrides[contextID]?.isEmpty == true {
+                    overrides.removeValue(forKey: contextID)
+                }
+            }
+        }
+    }
+
+    /// Remove every override for one context.
+    mutating func removeContext(_ contextID: String) {
+        overrides.removeValue(forKey: contextID)
+    }
+}
+
+// MARK: - Store protocol
+
 /// Pluggable persistence for `RawState`.
 @MainActor public protocol ShortcutBindingsStore {
     func load() throws -> RawState

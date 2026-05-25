@@ -19,11 +19,6 @@ struct ContextScopeTests {
         #expect(ctx.scope == .global)
     }
 
-    @Test func registryBindingsPerActionDefaultIsOne() {
-        let registry = ShortcutRegistry(contexts: [])
-        #expect(registry.bindingsPerAction == .one)
-    }
-
     @Test func includeInSettingsIsMutableOnConcreteType() {
         let ctx = ShortcutContext<NoopAction>("ctx") { _, _ in }
         #expect(ctx.includeInSettings == true)

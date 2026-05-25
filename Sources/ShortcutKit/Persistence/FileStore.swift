@@ -8,7 +8,7 @@ public final class FileStore: ShortcutBindingsStore {
     public let url: URL
     public let format: Format
 
-    public init(url: URL, format: Format) {
+    public init(url: URL, format: Format = .toml) {
         self.url = url
         self.format = format
     }

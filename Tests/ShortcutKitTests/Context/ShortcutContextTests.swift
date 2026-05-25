@@ -63,4 +63,21 @@ enum EditorAction: String, ShortcutAction {
         #expect(received == .some(.some(expected)))
         _ = cancellable
     }
+
+    @Test("shortcutsChanges(for:) emits the full bindings array on subscribe")
+    func shortcutsChangesEmitsCurrent() {
+        let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
+        var received: [Shortcut]?
+        let cancellable = ctx.shortcutsChanges(for: .save).sink { received = $0 }
+        let expected: Shortcut = "cmd+s"
+        #expect(received == [expected])
+        _ = cancellable
+    }
+
+    @Test("displayStrings(for:) returns one entry per binding")
+    func displayStringsArray() {
+        let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
+        #expect(ctx.displayStrings(for: .save) == ["⌘s"])
+        #expect(ctx.displayStrings(for: .quit) == [])
+    }
 }

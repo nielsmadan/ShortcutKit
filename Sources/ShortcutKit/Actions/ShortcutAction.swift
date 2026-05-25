@@ -3,7 +3,7 @@ import ShortcutField
 /// One declared action in an adopter's app. The raw `String` value is the
 /// stable persistence ID — never change it; rename via `ShortcutMigration`.
 public protocol ShortcutAction:
-    CaseIterable, Hashable, Sendable,
+    CaseIterable, Sendable,
     RawRepresentable where RawValue == String
 {
     var definition: ShortcutActionDefinition { get }

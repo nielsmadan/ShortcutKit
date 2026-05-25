@@ -50,6 +50,6 @@ All 12 invariants in §7 of the package design spec are load-bearing. The high-i
 
 1. **Stable persistence IDs** — action raw values and context IDs persist forever; renames go through declared migrations.
 2. **Headless-first** — every UI affordance has a `Sendable` data type in Core, with the SwiftUI view layered in UI.
-3. **Append-only migrations** — adopter appends to the migration list; library tracks `migrationsApplied: N` in persistence.
+3. **Append-only migrations** — adopter appends to the migration list; migrations are idempotent / content-detecting (Zed-style) so no version counter is needed on `RawState`.
 4. **ShortcutField is canonical** — never redefine `Shortcut` / `Step` / `Kind`.
 5. **Public symbol minimalism** — default `internal`; promote to `public` only when adopters need it.

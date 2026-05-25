@@ -57,8 +57,10 @@ import Testing
     func moveActionBetweenContexts() {
         var s = state(["editor": ["save": "cmd+s"]])
         ShortcutMigrationApplier.apply(
-            [.moveAction(from: (context: "editor", action: "save"),
-                         to: (context: "files", action: "save"))],
+            [.moveAction(
+                from: ActionRef(contextID: "editor", actionID: "save"),
+                to: ActionRef(contextID: "files", actionID: "save")
+            )],
             to: &s
         )
         let expected: Shortcut = "cmd+s"

@@ -174,7 +174,6 @@ public struct KeyBindingsView: View {
                 ShortcutRowView(
                     row: row,
                     policy: ScopePolicy(registry.scope(forContextID: row.contextID)),
-                    bindingsPerAction: registry.bindingsPerAction,
                     onSet: { shortcuts in
                         registry.setShortcuts(
                             shortcuts,
@@ -228,7 +227,6 @@ public struct KeyBindingsView: View {
                 ShortcutRowView(
                     row: row,
                     policy: ScopePolicy(context.scope),
-                    bindingsPerAction: registry.bindingsPerAction,
                     onSet: { shortcuts in
                         registry.setShortcuts(
                             shortcuts,

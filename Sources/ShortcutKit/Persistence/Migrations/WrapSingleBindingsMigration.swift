@@ -5,9 +5,9 @@ import ShortcutField
 /// `RawState.init(from:)` in `ShortcutBindingsStore.swift`), so the migration
 /// closure here is a deliberate no-op. The named entry exists to keep the
 /// upgrade visible in the registered migrations list.
-public enum WrapSingleBindingsMigration {
-    /// The migration value to append to a `ShortcutRegistry`'s migration list.
-    public static let entry: ShortcutMigration = .custom { _ in
+enum WrapSingleBindingsMigration {
+    /// The migration value the registry prepends to every adopter's migration list.
+    static let entry: ShortcutMigration = .custom { _ in
         // No-op: shape upgrade happens at the decoder boundary.
     }
 }
