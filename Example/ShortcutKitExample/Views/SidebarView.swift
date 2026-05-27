@@ -43,6 +43,6 @@ struct SidebarView: View {
             )
             .frame(maxHeight: 200)
         }
-        .activeShortcutContext(model.context)
+        .activeShortcutContext(model.context, dispatch: model.handle)
     }
 }

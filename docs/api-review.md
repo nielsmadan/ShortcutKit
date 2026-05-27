@@ -169,10 +169,20 @@ punch-list bullet — tracked here so it isn't lost.
   doc-flag this clearly or promote to `@Published`.
 - [ ] **`ShortcutContext.scope` `public let` immutability undocumented.** Add a
   doc note (and same for `id`).
-- [ ] **Dispatch-closure-at-construction documentation.** The pattern is
-  conventional but surprising to adopters expecting data-only contexts. Add a
-  doc snippet showing the typical late-wiring pattern (composition module that
-  holds stores + builds contexts together).
+- [x] **Activation-bound handler refactor (2026-05-28).** The
+  "closure-at-construction" model was replaced with handler-binds-at-activation:
+  `ShortcutContext("id")` for local contexts (no closure), with the dispatch
+  closure supplied at `.activeShortcutContext(ctx, dispatch: handler)`.
+  `ShortcutContext(global: "id") { ... }` keeps the construction-time closure
+  for `.global` contexts (required, since the OS fires them whether or not a
+  view is mounted). Internal `__setActiveHandler` / `__clearActiveHandler`
+  test seams added for tests that drive matcher-routing without a SwiftUI host.
+  Dispatch routing falls back: `activeHandler` (local) → `globalDispatchClosure`
+  (global) → silent no-op. Example app migrated: `AppContextModel`,
+  `SidebarContextModel`, `InspectorContextModel`, `WizardContextModel`,
+  `CanvasModeContextModel` (8 sub-contexts), `GlobalContextModel`. Eliminated
+  the `ModelHolder` weak-back-reference workaround that the closure-at-init
+  pattern needed. 181/181 tests pass; example app updated.
 - [ ] **`ActionFiredEvent` carries bare `contextID`/`actionID`** — could carry
   the new `ActionRef` value type for consistency with `ShortcutMigration.moveAction`.
 - [ ] **No global `registry.dispatch(contextID:actionID:)` / `registry.notify(...)`

@@ -12,20 +12,20 @@ struct MultiBindingLookupTests {
     }
 
     @Test func shortcutsReturnsAllDefaults() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         #expect(ctx.shortcuts(for: .save) == [Shortcut("cmd+s"), Shortcut("ctrl+s")])
         #expect(ctx.shortcuts(for: .save).first == Shortcut("cmd+s"))
     }
 
     @Test func overrideArrayWins() throws {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         registry.setShortcuts([Shortcut("opt+s")], for: .save, in: ctx)
         #expect(ctx.shortcuts(for: .save) == [Shortcut("opt+s")])
     }
 
     @Test func resetAllToDefaults() throws {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         registry.setShortcuts([Shortcut("opt+s")], for: .save, in: ctx)
         ctx.resetAllToDefaults()
@@ -33,7 +33,7 @@ struct MultiBindingLookupTests {
     }
 
     @Test func currentOccurrencesIncludesAllBindings() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         // Two defaults -> two occurrences (no overrides set).
         #expect(ctx.__currentOccurrences().count == 2)
     }

@@ -19,6 +19,6 @@ struct InspectorWindowView: View {
         }
         .padding()
         .frame(minWidth: 240, minHeight: 160)
-        .activeShortcutContext(model.context)
+        .activeShortcutContext(model.context, dispatch: model.handle)
     }
 }

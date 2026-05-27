@@ -25,7 +25,7 @@ enum TableAct: String, ShortcutAction {
 
     @Test("table has one section per context with one row per action")
     func tableShape() {
-        let ctx = ShortcutContext<TableAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<TableAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let table = registry.keyBindingsTable
         #expect(table.sections.count == 1)
@@ -35,7 +35,7 @@ enum TableAct: String, ShortcutAction {
 
     @Test("rows carry displayName, kind, effectiveShortcuts, isCustomized")
     func rowFields() {
-        let ctx = ShortcutContext<TableAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<TableAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
         let table = registry.keyBindingsTable
@@ -49,7 +49,7 @@ enum TableAct: String, ShortcutAction {
 
     @Test("filter narrows rows; matches on displayName and ascii")
     func filterMatchesNameAndAscii() {
-        let ctx = ShortcutContext<TableAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<TableAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let filteredByName = registry.keyBindingsTable.filter(query: "save")
         #expect(filteredByName.sections[0].rows.map(\.actionID) == ["save"])
@@ -66,7 +66,7 @@ enum TableAct: String, ShortcutAction {
                 .init("Save", defaults: [Shortcut("cmd+s"), Shortcut("ctrl+s")])
             }
         }
-        let ctx = ShortcutContext<MultiAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<MultiAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let row = registry.keyBindingsTable.sections[0].rows.first!
         #expect(row.effectiveShortcuts.count == 2)
@@ -76,8 +76,8 @@ enum TableAct: String, ShortcutAction {
 
     @Test("legend(for:) returns only active contexts and only bound rows")
     func legendActiveOnly() {
-        let editor = ShortcutContext<TableAct>("editor") { _, _ in }
-        let viewer = ShortcutContext<TableAct>("viewer") { _, _ in }
+        let editor = ShortcutContext<TableAct>("editor")
+        let viewer = ShortcutContext<TableAct>("viewer")
         let registry = ShortcutRegistry(contexts: [editor, viewer], store: isolatedStore())
         let legend = registry.legend(for: ["editor"])
         #expect(legend.groups.map(\.contextID) == ["editor"])

@@ -13,7 +13,10 @@ struct ContextPickerViewTests {
     private func ctx(_ id: String, scope: ContextScope = .local,
                      includeInSettings: Bool = true) -> ShortcutContext<Act>
     {
-        let c = ShortcutContext<Act>(id, scope: scope) { _, _ in }
+        let c = switch scope {
+        case .local: ShortcutContext<Act>(id)
+        case .global: ShortcutContext<Act>(global: id) { _, _ in }
+        }
         c.includeInSettings = includeInSettings
         return c
     }

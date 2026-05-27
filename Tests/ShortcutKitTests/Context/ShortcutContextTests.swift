@@ -15,10 +15,11 @@ enum EditorAction: String, ShortcutAction {
 
 @MainActor
 @Suite("ShortcutContext") struct ShortcutContextTests {
-    @Test("dispatch invokes the closure with .discrete for discrete actions")
+    @Test("dispatch invokes the handler with .discrete for discrete actions")
     func dispatchCallsClosureDiscrete() {
         var captured: (EditorAction, ShortcutDispatch)?
-        let ctx = ShortcutContext<EditorAction>("editor") { action, kind in
+        let ctx = ShortcutContext<EditorAction>("editor")
+        ctx.__setActiveHandler { action, kind in
             captured = (action, kind)
         }
         ctx.dispatch(.save)
@@ -26,27 +27,29 @@ enum EditorAction: String, ShortcutAction {
         #expect(captured?.1 == .discrete)
     }
 
-    @Test("dispatch invokes the closure with .continuous for continuous actions")
+    @Test("dispatch invokes the handler with .continuous for continuous actions")
     func dispatchCallsClosureContinuous() {
         var captured: ShortcutDispatch?
-        let ctx = ShortcutContext<EditorAction>("editor") { _, kind in
+        let ctx = ShortcutContext<EditorAction>("editor")
+        ctx.__setActiveHandler { _, kind in
             captured = kind
         }
         ctx.dispatch(.pan)
         #expect(captured == .continuous(magnitude: 1.0))
     }
 
-    @Test("notify does not invoke the closure")
+    @Test("notify does not invoke the handler")
     func notifyDoesNotCallClosure() {
         var called = false
-        let ctx = ShortcutContext<EditorAction>("editor") { _, _ in called = true }
+        let ctx = ShortcutContext<EditorAction>("editor")
+        ctx.__setActiveHandler { _, _ in called = true }
         ctx.notify(.save)
         #expect(called == false)
     }
 
     @Test("shortcuts(for:).first falls back to definition default")
     func shortcutFallsBackToDefault() {
-        let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<EditorAction>("editor")
         let saveExpected: Shortcut = "cmd+s"
         #expect(ctx.shortcuts(for: .save).first == saveExpected)
         #expect(ctx.shortcuts(for: .quit).first == nil)
@@ -54,20 +57,20 @@ enum EditorAction: String, ShortcutAction {
 
     @Test("displayStrings(for:).first reflects the effective shortcut")
     func displayStringFromShortcut() {
-        let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<EditorAction>("editor")
         #expect(ctx.displayStrings(for: .save).first == "⌘s")
         #expect(ctx.displayStrings(for: .quit).first == nil)
     }
 
     @Test("isCustomized is false with no registry attached")
     func isCustomizedFalseStandalone() {
-        let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<EditorAction>("editor")
         #expect(ctx.isCustomized(.save) == false)
     }
 
     @Test("shortcutsChanges(for:) emits the full bindings array on subscribe")
     func shortcutsChangesEmitsCurrent() {
-        let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<EditorAction>("editor")
         var received: [Shortcut]?
         let cancellable = ctx.shortcutsChanges(for: .save).sink { received = $0 }
         let expected: Shortcut = "cmd+s"
@@ -77,7 +80,7 @@ enum EditorAction: String, ShortcutAction {
 
     @Test("displayStrings(for:) returns one entry per binding")
     func displayStringsArray() {
-        let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<EditorAction>("editor")
         #expect(ctx.displayStrings(for: .save) == ["⌘s"])
         #expect(ctx.displayStrings(for: .quit) == [])
     }

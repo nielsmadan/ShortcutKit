@@ -24,29 +24,24 @@ final class SidebarContextModel: ObservableObject {
     let context: ShortcutContext<SidebarAction>
 
     init() {
-        let holder = ModelHolder()
-        context = ShortcutContext<SidebarAction>("sidebar") { action, _ in
-            guard let target = holder.target else { return }
-            switch action {
-            case .addItem:
-                target.items.append(.init(title: "Layer \(target.items.count + 1)"))
-            case .removeItem:
-                if let id = target.selectedID {
-                    target.items.removeAll { $0.id == id }
-                    target.selectedID = target.items.first?.id
-                }
-            case .focusItem1: target.selectedID = target.items[safe: 0]?.id
-            case .focusItem2: target.selectedID = target.items[safe: 1]?.id
-            case .focusItem3: target.selectedID = target.items[safe: 2]?.id
-            case .selectNext: target.moveSelection(by: 1)
-            case .selectPrevious: target.moveSelection(by: -1)
-            }
-        }
-        holder.target = self
+        context = ShortcutContext<SidebarAction>("sidebar")
     }
 
-    private final class ModelHolder {
-        weak var target: SidebarContextModel?
+    func handle(_ action: SidebarAction, _: ShortcutDispatch) {
+        switch action {
+        case .addItem:
+            items.append(.init(title: "Layer \(items.count + 1)"))
+        case .removeItem:
+            if let id = selectedID {
+                items.removeAll { $0.id == id }
+                selectedID = items.first?.id
+            }
+        case .focusItem1: selectedID = items[safe: 0]?.id
+        case .focusItem2: selectedID = items[safe: 1]?.id
+        case .focusItem3: selectedID = items[safe: 2]?.id
+        case .selectNext: moveSelection(by: 1)
+        case .selectPrevious: moveSelection(by: -1)
+        }
     }
 
     /// Move the selection by `delta` positions, clamped to the items' bounds.

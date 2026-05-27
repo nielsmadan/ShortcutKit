@@ -16,7 +16,7 @@ import Testing
 
     @Test("the modifier exists and resolves the action's current shortcut")
     func resolvesCurrentShortcut() {
-        let ctx = ShortcutContext<MenuKitAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<MenuKitAct>("editor")
         _ = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         #expect(ShortcutKitHelpers.resolveKeyboardEquivalent(for: .save, in: ctx) != nil)
         #expect(ShortcutKitHelpers.resolveKeyboardEquivalent(for: .openProject, in: ctx) == nil)

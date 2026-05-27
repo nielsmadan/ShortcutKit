@@ -27,7 +27,7 @@ enum MenuKitAct: String, ShortcutAction {
 
     @Test("single-step keyboard binding sets keyEquivalent and modifier mask")
     func singleStepKeyboardSetsKeyEquivalent() {
-        let ctx = ShortcutContext<MenuKitAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<MenuKitAct>("editor")
         _ = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let item = NSMenuItem.shortcutKitItem(.save, in: ctx)
         #expect(item.title == "Save")
@@ -37,7 +37,7 @@ enum MenuKitAct: String, ShortcutAction {
 
     @Test("multi-step binding leaves keyEquivalent empty")
     func multiStepNoKeyEquivalent() {
-        let ctx = ShortcutContext<MenuKitAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<MenuKitAct>("editor")
         _ = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let item = NSMenuItem.shortcutKitItem(.openProject, in: ctx)
         #expect(item.keyEquivalent.isEmpty)
@@ -46,7 +46,8 @@ enum MenuKitAct: String, ShortcutAction {
     @Test("clicking the item dispatches the action")
     func clickDispatchesAction() {
         var fired = false
-        let ctx = ShortcutContext<MenuKitAct>("editor") { action, _ in
+        let ctx = ShortcutContext<MenuKitAct>("editor")
+        ctx.__setActiveHandler { action, _ in
             if action == .save { fired = true }
         }
         _ = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
@@ -57,7 +58,7 @@ enum MenuKitAct: String, ShortcutAction {
 
     @Test("setOverride re-reads keyEquivalent")
     func reReadsOnOverride() {
-        let ctx = ShortcutContext<MenuKitAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<MenuKitAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let item = NSMenuItem.shortcutKitItem(.save, in: ctx)
         #expect(item.keyEquivalent == "s")
@@ -68,7 +69,7 @@ enum MenuKitAct: String, ShortcutAction {
 
     @Test("custom title overrides the action's displayName")
     func customTitle() {
-        let ctx = ShortcutContext<MenuKitAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<MenuKitAct>("editor")
         _ = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let item = NSMenuItem.shortcutKitItem(.save, in: ctx, title: "Save File…")
         #expect(item.title == "Save File…")

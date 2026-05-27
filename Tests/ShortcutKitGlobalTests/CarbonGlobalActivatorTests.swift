@@ -21,7 +21,7 @@ import Testing
 
     @Test("start registers a global binding and reports .registered")
     func startRegisters() throws {
-        let ctx = ShortcutContext<GlobalAct>("global", scope: .global) { _, _ in }
+        let ctx = ShortcutContext<GlobalAct>(global: "global") { _, _ in }
         let registry = ShortcutRegistry(contexts: [ctx])
         let activator = CarbonGlobalActivator()
         try activator.start(registry)
@@ -44,7 +44,7 @@ import Testing
         ShortcutRegistry.assertionFunction = { _ in }
         defer { ShortcutRegistry.assertionFunction = prior }
 
-        let ctx = ShortcutContext<ChordAct>("global", scope: .global) { _, _ in }
+        let ctx = ShortcutContext<ChordAct>(global: "global") { _, _ in }
         let registry = ShortcutRegistry(contexts: [ctx])
         let activator = CarbonGlobalActivator()
         try activator.start(registry)
@@ -104,7 +104,7 @@ import Testing
 
     @Test("editing a global binding re-registers via auto-sync")
     func autoSyncOnBindingChange() throws {
-        let ctx = ShortcutContext<GlobalAct>("global", scope: .global) { _, _ in }
+        let ctx = ShortcutContext<GlobalAct>(global: "global") { _, _ in }
         let registry = ShortcutRegistry(contexts: [ctx])
         let activator = CarbonGlobalActivator()
         try activator.start(registry)

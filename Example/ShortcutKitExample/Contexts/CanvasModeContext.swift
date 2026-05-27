@@ -100,143 +100,96 @@ final class CanvasModeContextModel: ObservableObject {
     let textSelectedContext: ShortcutContext<TextSelectedAction>
 
     init() {
-        let holder = ModelHolder()
-        sharedContext = Self.makeSharedContext(holder)
-        selectContext = Self.makeSelectContext(holder)
-        fillContext = Self.makeFillContext(holder)
-        strokeContext = Self.makeStrokeContext(holder)
-        textContext = Self.makeTextContext(holder)
-        shapeContext = Self.makeShapeContext(holder)
-        shapeSelectedContext = Self.makeShapeSelectedContext(holder)
-        textSelectedContext = Self.makeTextSelectedContext(holder)
-        holder.target = self
+        sharedContext = ShortcutContext<CanvasSharedAction>("canvas.shared")
+        selectContext = ShortcutContext<SelectModeAction>("canvas.select")
+        fillContext = ShortcutContext<FillModeAction>("canvas.fill")
+        strokeContext = ShortcutContext<StrokeModeAction>("canvas.stroke")
+        textContext = ShortcutContext<TextModeAction>("canvas.text")
+        shapeContext = ShortcutContext<ShapeModeAction>("canvas.shape")
+        shapeSelectedContext = ShortcutContext<ShapeSelectedAction>("canvas.selection.shape")
+        textSelectedContext = ShortcutContext<TextSelectedAction>("canvas.selection.text")
     }
 
-    // MARK: - Context factories
+    // MARK: - Handlers
 
-    private static func makeSharedContext(_ holder: ModelHolder)
-        -> ShortcutContext<CanvasSharedAction>
-    {
-        ShortcutContext<CanvasSharedAction>("canvas.shared") { action, dispatch in
-            guard let t = holder.target else { return }
-            switch action {
-            case .rotateRight, .rotateLeft:
-                if case let .continuous(magnitude) = dispatch {
-                    // NSEvent's rotation is CCW-positive; SwiftUI rotationEffect
-                    // is CW-positive. Negate, then scale for visible feedback.
-                    t.rotation -= magnitude * 10
-                }
-            case .addRectangle:
-                t.addObject(.rectangle(size: 60, fillIndex: t.currentFillIndex))
-            case .addEllipse:
-                t.addObject(.ellipse(size: 60, fillIndex: t.currentFillIndex))
-            case .addText:
-                t.addObject(.text(content: "Text", fontSize: 18, bold: false))
-            case .deleteSelected:
-                t.deleteSelected()
-            case .selectNextObject:
-                t.walkSelection(by: 1)
-            case .selectPreviousObject:
-                t.walkSelection(by: -1)
+    func handleShared(_ action: CanvasSharedAction, _ dispatch: ShortcutDispatch) {
+        switch action {
+        case .rotateRight, .rotateLeft:
+            if case let .continuous(magnitude) = dispatch {
+                rotation -= magnitude * 10
             }
+        case .addRectangle:
+            addObject(.rectangle(size: 60, fillIndex: currentFillIndex))
+        case .addEllipse:
+            addObject(.ellipse(size: 60, fillIndex: currentFillIndex))
+        case .addText:
+            addObject(.text(content: "Text", fontSize: 18, bold: false))
+        case .deleteSelected: deleteSelected()
+        case .selectNextObject: walkSelection(by: 1)
+        case .selectPreviousObject: walkSelection(by: -1)
         }
     }
 
-    private static func makeSelectContext(_ holder: ModelHolder)
-        -> ShortcutContext<SelectModeAction>
-    {
-        ShortcutContext<SelectModeAction>("canvas.select") { action, _ in
-            guard let t = holder.target else { return }
-            t.lastSelectTool = action
-            t.statusLEDPulse += 1
-        }
+    func handleSelect(_ action: SelectModeAction, _: ShortcutDispatch) {
+        lastSelectTool = action
+        statusLEDPulse += 1
     }
 
-    private static func makeFillContext(_ holder: ModelHolder)
-        -> ShortcutContext<FillModeAction>
-    {
-        ShortcutContext<FillModeAction>("canvas.fill") { action, _ in
-            guard let t = holder.target else { return }
-            switch action {
-            case .applyRed: t.currentFillIndex = 0
-            case .applyBlue: t.currentFillIndex = 1
-            case .applyGreen: t.currentFillIndex = 2
-            }
-            t.applyFillToSelection(t.currentFillIndex)
-            t.statusLEDPulse += 1
+    func handleFill(_ action: FillModeAction, _: ShortcutDispatch) {
+        switch action {
+        case .applyRed: currentFillIndex = 0
+        case .applyBlue: currentFillIndex = 1
+        case .applyGreen: currentFillIndex = 2
         }
+        applyFillToSelection(currentFillIndex)
+        statusLEDPulse += 1
     }
 
-    private static func makeStrokeContext(_ holder: ModelHolder)
-        -> ShortcutContext<StrokeModeAction>
-    {
-        ShortcutContext<StrokeModeAction>("canvas.stroke") { action, _ in
-            guard let t = holder.target else { return }
-            switch action {
-            case .thin: t.currentStrokeIndex = 0
-            case .medium: t.currentStrokeIndex = 1
-            case .thick: t.currentStrokeIndex = 2
-            }
-            t.statusLEDPulse += 1
+    func handleStroke(_ action: StrokeModeAction, _: ShortcutDispatch) {
+        switch action {
+        case .thin: currentStrokeIndex = 0
+        case .medium: currentStrokeIndex = 1
+        case .thick: currentStrokeIndex = 2
         }
+        statusLEDPulse += 1
     }
 
-    private static func makeTextContext(_ holder: ModelHolder)
-        -> ShortcutContext<TextModeAction>
-    {
-        ShortcutContext<TextModeAction>("canvas.text") { action, _ in
-            guard let t = holder.target else { return }
-            switch action {
-            case .serif: t.currentTextFontIndex = 0
-            case .sans: t.currentTextFontIndex = 1
-            case .mono: t.currentTextFontIndex = 2
-            }
-            t.statusLEDPulse += 1
+    func handleText(_ action: TextModeAction, _: ShortcutDispatch) {
+        switch action {
+        case .serif: currentTextFontIndex = 0
+        case .sans: currentTextFontIndex = 1
+        case .mono: currentTextFontIndex = 2
         }
+        statusLEDPulse += 1
     }
 
-    private static func makeShapeContext(_ holder: ModelHolder)
-        -> ShortcutContext<ShapeModeAction>
-    {
-        ShortcutContext<ShapeModeAction>("canvas.shape") { action, _ in
-            guard let t = holder.target else { return }
-            t.lastShapeStamp = action
-            switch action {
-            case .square, .triangle:
-                t.addObject(.rectangle(size: 60, fillIndex: t.currentFillIndex))
-            case .circle:
-                t.addObject(.ellipse(size: 60, fillIndex: t.currentFillIndex))
-            }
-            t.statusLEDPulse += 1
+    func handleShape(_ action: ShapeModeAction, _: ShortcutDispatch) {
+        lastShapeStamp = action
+        switch action {
+        case .square, .triangle:
+            addObject(.rectangle(size: 60, fillIndex: currentFillIndex))
+        case .circle:
+            addObject(.ellipse(size: 60, fillIndex: currentFillIndex))
         }
+        statusLEDPulse += 1
     }
 
-    private static func makeShapeSelectedContext(_ holder: ModelHolder)
-        -> ShortcutContext<ShapeSelectedAction>
-    {
-        ShortcutContext<ShapeSelectedAction>("canvas.selection.shape") { action, _ in
-            guard let t = holder.target else { return }
-            switch action {
-            case .sizeUp: t.resizeSelectedShape(by: 10)
-            case .sizeDown: t.resizeSelectedShape(by: -10)
-            case .cycleFill: t.cycleFillOnSelection()
-            }
-            t.statusLEDPulse += 1
+    func handleShapeSelected(_ action: ShapeSelectedAction, _: ShortcutDispatch) {
+        switch action {
+        case .sizeUp: resizeSelectedShape(by: 10)
+        case .sizeDown: resizeSelectedShape(by: -10)
+        case .cycleFill: cycleFillOnSelection()
         }
+        statusLEDPulse += 1
     }
 
-    private static func makeTextSelectedContext(_ holder: ModelHolder)
-        -> ShortcutContext<TextSelectedAction>
-    {
-        ShortcutContext<TextSelectedAction>("canvas.selection.text") { action, _ in
-            guard let t = holder.target else { return }
-            switch action {
-            case .fontSizeUp: t.resizeSelectedText(by: 2)
-            case .fontSizeDown: t.resizeSelectedText(by: -2)
-            case .toggleBold: t.toggleBoldOnSelection()
-            }
-            t.statusLEDPulse += 1
+    func handleTextSelected(_ action: TextSelectedAction, _: ShortcutDispatch) {
+        switch action {
+        case .fontSizeUp: resizeSelectedText(by: 2)
+        case .fontSizeDown: resizeSelectedText(by: -2)
+        case .toggleBold: toggleBoldOnSelection()
         }
+        statusLEDPulse += 1
     }
 
     // MARK: - Mode → context routing
@@ -373,6 +326,4 @@ final class CanvasModeContextModel: ObservableObject {
             objects[idx].kind = .text(content: content, fontSize: fontSize, bold: !bold)
         }
     }
-
-    private final class ModelHolder { weak var target: CanvasModeContextModel? }
 }

@@ -22,7 +22,7 @@ enum PlumbAction: String, ShortcutAction {
 
     @Test("activating a context pushes its matcher onto the router")
     func activatePushesMatcher() {
-        let ctx = ShortcutContext<PlumbAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<PlumbAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         #expect(registry.__activeContextIDs == [])
         ctx.__activate()
@@ -31,7 +31,7 @@ enum PlumbAction: String, ShortcutAction {
 
     @Test("deactivating removes the matcher")
     func deactivateRemovesMatcher() {
-        let ctx = ShortcutContext<PlumbAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<PlumbAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         ctx.__activate()
         ctx.__deactivate()
@@ -40,8 +40,8 @@ enum PlumbAction: String, ShortcutAction {
 
     @Test("activating two contexts orders them by activation (innermost = last)")
     func activationOrdering() {
-        let outer = ShortcutContext<PlumbAction>("outer") { _, _ in }
-        let inner = ShortcutContext<PlumbAction>("inner") { _, _ in }
+        let outer = ShortcutContext<PlumbAction>("outer")
+        let inner = ShortcutContext<PlumbAction>("inner")
         let registry = ShortcutRegistry(contexts: [outer, inner], store: isolatedStore())
         outer.__activate()
         inner.__activate()
@@ -51,7 +51,8 @@ enum PlumbAction: String, ShortcutAction {
     @Test("matcher-driven dispatch fires the action via the router")
     func endToEndMatcherDispatch() {
         var fired: (PlumbAction, ShortcutDispatch)?
-        let ctx = ShortcutContext<PlumbAction>("editor") { action, kind in
+        let ctx = ShortcutContext<PlumbAction>("editor")
+        ctx.__setActiveHandler { action, kind in
             fired = (action, kind)
         }
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())

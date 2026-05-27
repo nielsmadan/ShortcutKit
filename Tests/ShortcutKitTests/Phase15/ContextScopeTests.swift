@@ -9,18 +9,18 @@ struct ContextScopeTests {
     }
 
     @Test func defaultScopeIsLocal() {
-        let ctx = ShortcutContext<NoopAction>("ctx") { _, _ in }
+        let ctx = ShortcutContext<NoopAction>("ctx")
         #expect(ctx.scope == .local)
         #expect(ctx.includeInSettings == true)
     }
 
     @Test func globalScopeOptIn() {
-        let ctx = ShortcutContext<NoopAction>("ctx", scope: .global) { _, _ in }
+        let ctx = ShortcutContext<NoopAction>(global: "ctx") { _, _ in }
         #expect(ctx.scope == .global)
     }
 
     @Test func includeInSettingsIsMutableOnConcreteType() {
-        let ctx = ShortcutContext<NoopAction>("ctx") { _, _ in }
+        let ctx = ShortcutContext<NoopAction>("ctx")
         #expect(ctx.includeInSettings == true)
         ctx.includeInSettings = false
         #expect(ctx.includeInSettings == false)

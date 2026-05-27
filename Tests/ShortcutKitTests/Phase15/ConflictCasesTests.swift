@@ -18,8 +18,8 @@ struct ConflictCasesTests {
         let prior = ShortcutRegistry.assertionFunction
         ShortcutRegistry.assertionFunction = { _ in }
         defer { ShortcutRegistry.assertionFunction = prior }
-        let local = ShortcutContext<LocalA>("editor") { _, _ in }
-        let global = ShortcutContext<GlobalA>("launcher", scope: .global) { _, _ in }
+        let local = ShortcutContext<LocalA>("editor")
+        let global = ShortcutContext<GlobalA>(global: "launcher") { _, _ in }
         let reg = ShortcutRegistry(contexts: [local, global])
         let conflicts = reg.conflicts
         #expect(conflicts.contains { if case .shadowedByGlobal = $0 { true } else { false } })
@@ -35,7 +35,7 @@ struct ConflictCasesTests {
         let prior = ShortcutRegistry.assertionFunction
         ShortcutRegistry.assertionFunction = { _ in }
         defer { ShortcutRegistry.assertionFunction = prior }
-        let ctx = ShortcutContext<Chord>("g", scope: .global) { _, _ in }
+        let ctx = ShortcutContext<Chord>(global: "g") { _, _ in }
         let reg = ShortcutRegistry(contexts: [ctx])
         #expect(reg.conflicts.contains { if case .unsupportedInScope = $0 { true } else { false } })
     }
@@ -53,7 +53,7 @@ struct ConflictCasesTests {
         let prior = ShortcutRegistry.assertionFunction
         ShortcutRegistry.assertionFunction = { _ in }
         defer { ShortcutRegistry.assertionFunction = prior }
-        let ctx = ShortcutContext<Dup>("x") { _, _ in }
+        let ctx = ShortcutContext<Dup>("x")
         let reg = ShortcutRegistry(contexts: [ctx])
         let dups = reg.conflicts.compactMap { c -> [Occurrence]? in
             if case let .duplicate(o) = c { return o } else { return nil }

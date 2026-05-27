@@ -18,7 +18,7 @@ struct KeyBindingsViewTests {
 
     private func makeRegistry(contextCount: Int) -> ShortcutRegistry {
         let contexts = (0 ..< contextCount).map { i in
-            ShortcutContext<Act>("ctx\(i)") { _, _ in }
+            ShortcutContext<Act>("ctx\(i)")
         }
         return ShortcutRegistry(contexts: contexts)
     }
@@ -39,21 +39,21 @@ struct KeyBindingsViewTests {
     }
 
     @Test func inlineModeHidesPicker() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         _ = ShortcutRegistry(contexts: [ctx])
         let view = KeyBindingsView(context: ctx)
         #expect(view.__modeIsFull == false)
     }
 
     @Test func inlineModeDefaultsSearchOff() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         _ = ShortcutRegistry(contexts: [ctx])
         let view = KeyBindingsView(context: ctx)
         #expect(view.__searchEnabledForTest == false)
     }
 
     @Test func inlineModeSearchOptIn() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         _ = ShortcutRegistry(contexts: [ctx])
         let view = KeyBindingsView(context: ctx, searchEnabled: true)
         #expect(view.__searchEnabledForTest == true)

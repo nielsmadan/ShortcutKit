@@ -15,14 +15,14 @@ struct RegistryTypeErasedOverridesTests {
     }
 
     @Test func setShortcutsWritesOverride() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         registry.setShortcuts([Shortcut("opt+s")], contextID: "editor", actionID: "save")
         #expect(ctx.shortcuts(for: .save) == [Shortcut("opt+s")])
     }
 
     @Test func removeShortcutAtIndexRemovesOne() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         registry.setShortcuts(
             [Shortcut("opt+s"), Shortcut("ctrl+s")],
@@ -34,7 +34,7 @@ struct RegistryTypeErasedOverridesTests {
     }
 
     @Test func removeShortcutClearsActionWhenEmpty() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         registry.setShortcuts([Shortcut("opt+s")], contextID: "editor", actionID: "save")
         registry.removeShortcut(at: 0, contextID: "editor", actionID: "save")
@@ -43,7 +43,7 @@ struct RegistryTypeErasedOverridesTests {
     }
 
     @Test func removeShortcutOutOfRangeIsNoop() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         registry.setShortcuts([Shortcut("opt+s")], contextID: "editor", actionID: "save")
         registry.removeShortcut(at: 99, contextID: "editor", actionID: "save")
@@ -51,7 +51,7 @@ struct RegistryTypeErasedOverridesTests {
     }
 
     @Test func resetActionRestoresDefault() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         registry.setShortcuts([Shortcut("opt+s")], contextID: "editor", actionID: "save")
         registry.resetAction(contextID: "editor", actionID: "save")
@@ -59,8 +59,8 @@ struct RegistryTypeErasedOverridesTests {
     }
 
     @Test func resetAllRestoresAllContexts() {
-        let ctx1 = ShortcutContext<Act>("editor") { _, _ in }
-        let ctx2 = ShortcutContext<Act>("browser") { _, _ in }
+        let ctx1 = ShortcutContext<Act>("editor")
+        let ctx2 = ShortcutContext<Act>("browser")
         let registry = ShortcutRegistry(contexts: [ctx1, ctx2])
         registry.setShortcuts([Shortcut("opt+s")], contextID: "editor", actionID: "save")
         registry.setShortcuts([Shortcut("opt+n")], contextID: "browser", actionID: "new")
@@ -75,8 +75,8 @@ struct RegistryTypeErasedOverridesTests {
     }
 
     @Test func scopeForContextIDFindsContext() {
-        let local = ShortcutContext<Act>("editor", scope: .local) { _, _ in }
-        let global = ShortcutContext<NoDefaultAct>("global", scope: .global) { _, _ in }
+        let local = ShortcutContext<Act>("editor")
+        let global = ShortcutContext<NoDefaultAct>(global: "global") { _, _ in }
         let registry = ShortcutRegistry(contexts: [local, global])
         #expect(registry.scope(forContextID: "editor") == .local)
         #expect(registry.scope(forContextID: "global") == .global)
@@ -84,7 +84,7 @@ struct RegistryTypeErasedOverridesTests {
     }
 
     @Test func allContextsExposesRegisteredContexts() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         #expect(registry.allContexts.map(\.id) == ["editor"])
     }

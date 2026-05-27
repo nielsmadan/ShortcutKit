@@ -29,7 +29,7 @@ enum MenuAct: String, ShortcutAction {
 
     @Test("a single-step keyboard binding colliding with a menu item is reported")
     func detectsMenuCollision() {
-        let ctx = ShortcutContext<MenuAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<MenuAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let menu = buildMenu(title: "File…", keyEquivalent: "s", modifiers: .command)
         let collisions = registry.menuCollisions(in: menu)
@@ -42,7 +42,7 @@ enum MenuAct: String, ShortcutAction {
 
     @Test("a non-colliding menu item is not reported")
     func nonCollidingIgnored() {
-        let ctx = ShortcutContext<MenuAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<MenuAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let menu = buildMenu(title: "Quit", keyEquivalent: "q", modifiers: .command)
         #expect(registry.menuCollisions(in: menu).isEmpty)
@@ -50,7 +50,7 @@ enum MenuAct: String, ShortcutAction {
 
     @Test("nested submenus are walked")
     func walksSubmenus() {
-        let ctx = ShortcutContext<MenuAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<MenuAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let parent = NSMenu(title: "Main")
         let parentItem = NSMenuItem(title: "File", action: nil, keyEquivalent: "")

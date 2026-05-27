@@ -32,29 +32,17 @@ final class AppContextModel: ObservableObject {
     let context: ShortcutContext<AppAction>
 
     init() {
-        // Use a holder so the closure can reference `self` after `context` is set.
-        let holder = ModelHolder()
-        context = ShortcutContext<AppAction>("app") { action, _ in
-            guard let target = holder.target else { return }
-            switch action {
-            case .toggleLegend:
-                target.legendVisible.toggle()
-            case .closeWindow:
-                NSApp.keyWindow?.close()
-            case .openSettings:
-                target.openSettingsSignal += 1
-            case .fireConfetti:
-                target.confettiTriggerCount += 1
-            case .openInspector:
-                target.inspectorOpenSignal += 1
-            case .newProject:
-                target.newProjectSignal += 1
-            }
-        }
-        holder.target = self
+        context = ShortcutContext<AppAction>("app")
     }
 
-    private final class ModelHolder {
-        weak var target: AppContextModel?
+    func handle(_ action: AppAction, _: ShortcutDispatch) {
+        switch action {
+        case .toggleLegend: legendVisible.toggle()
+        case .closeWindow: NSApp.keyWindow?.close()
+        case .openSettings: openSettingsSignal += 1
+        case .fireConfetti: confettiTriggerCount += 1
+        case .openInspector: inspectorOpenSignal += 1
+        case .newProject: newProjectSignal += 1
+        }
     }
 }

@@ -19,18 +19,13 @@ final class InspectorContextModel: ObservableObject {
     let context: ShortcutContext<InspectorAction>
 
     init() {
-        let holder = ModelHolder()
-        context = ShortcutContext<InspectorAction>("inspector") { action, _ in
-            guard let target = holder.target else { return }
-            switch action {
-            case .toggleLock:
-                target.locked.toggle()
-            case .resetTransform:
-                ContextWiring.canvas.rotation = 0
-            }
-        }
-        holder.target = self
+        context = ShortcutContext<InspectorAction>("inspector")
     }
 
-    private final class ModelHolder { weak var target: InspectorContextModel? }
+    func handle(_ action: InspectorAction, _: ShortcutDispatch) {
+        switch action {
+        case .toggleLock: locked.toggle()
+        case .resetTransform: ContextWiring.canvas.rotation = 0
+        }
+    }
 }

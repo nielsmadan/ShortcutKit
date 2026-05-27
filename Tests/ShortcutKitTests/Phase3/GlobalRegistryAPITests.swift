@@ -12,7 +12,7 @@ import Testing
     @Test("fireGlobalAction invokes the dispatch closure with viaShortcut true")
     func fireGlobalActionDispatches() {
         var fired = 0
-        let ctx = ShortcutContext<GlobalAct>("global", scope: .global) { action, kind in
+        let ctx = ShortcutContext<GlobalAct>(global: "global") { action, kind in
             if action == .ping, kind == .discrete { fired += 1 }
         }
         let registry = ShortcutRegistry(contexts: [ctx])
@@ -28,7 +28,7 @@ import Testing
 
     @Test("fireGlobalAction is a no-op for an unknown context or action")
     func fireGlobalActionUnknown() {
-        let ctx = ShortcutContext<GlobalAct>("global", scope: .global) { _, _ in }
+        let ctx = ShortcutContext<GlobalAct>(global: "global") { _, _ in }
         let registry = ShortcutRegistry(contexts: [ctx])
         registry.fireGlobalAction(contextID: "nope", actionID: "ping")
         registry.fireGlobalAction(contextID: "global", actionID: "nope")
@@ -42,8 +42,8 @@ import Testing
 
     @Test("globalBindings returns only global-scoped contexts' effective bindings")
     func globalBindingsEnumerates() {
-        let global = ShortcutContext<GlobalAct>("global", scope: .global) { _, _ in }
-        let local = ShortcutContext<LocalAct>("editor") { _, _ in }
+        let global = ShortcutContext<GlobalAct>(global: "global") { _, _ in }
+        let local = ShortcutContext<LocalAct>("editor")
         let registry = ShortcutRegistry(contexts: [global, local])
 
         let bindings = registry.globalBindings()
@@ -55,7 +55,7 @@ import Testing
 
     @Test("globalBindings reflects overrides and multiple bindings")
     func globalBindingsOverrides() {
-        let global = ShortcutContext<GlobalAct>("global", scope: .global) { _, _ in }
+        let global = ShortcutContext<GlobalAct>(global: "global") { _, _ in }
         let registry = ShortcutRegistry(contexts: [global])
         registry.setShortcuts(
             [Shortcut("ctrl+opt+cmd+j"), Shortcut("ctrl+opt+cmd+l")],

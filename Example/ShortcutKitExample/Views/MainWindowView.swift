@@ -31,8 +31,8 @@ struct MainWindowView: View {
             }
         }
         .frame(minWidth: 800, minHeight: 600)
-        .activeShortcutContext(appModel.context)
-        .activeShortcutContext(canvasModel.sharedContext)
+        .activeShortcutContext(appModel.context, dispatch: appModel.handle)
+        .activeShortcutContext(canvasModel.sharedContext, dispatch: canvasModel.handleShared)
         .overlay {
             ActionToast(registry: ContextWiring.shared)
         }
@@ -70,11 +70,11 @@ struct MainWindowView: View {
     @ViewBuilder
     private func modeActivated(_ content: some View) -> some View {
         switch canvasModel.activeMode {
-        case .select: content.activeShortcutContext(canvasModel.selectContext)
-        case .fill: content.activeShortcutContext(canvasModel.fillContext)
-        case .stroke: content.activeShortcutContext(canvasModel.strokeContext)
-        case .text: content.activeShortcutContext(canvasModel.textContext)
-        case .shape: content.activeShortcutContext(canvasModel.shapeContext)
+        case .select: content.activeShortcutContext(canvasModel.selectContext, dispatch: canvasModel.handleSelect)
+        case .fill: content.activeShortcutContext(canvasModel.fillContext, dispatch: canvasModel.handleFill)
+        case .stroke: content.activeShortcutContext(canvasModel.strokeContext, dispatch: canvasModel.handleStroke)
+        case .text: content.activeShortcutContext(canvasModel.textContext, dispatch: canvasModel.handleText)
+        case .shape: content.activeShortcutContext(canvasModel.shapeContext, dispatch: canvasModel.handleShape)
         }
     }
 
@@ -105,9 +105,12 @@ private struct SelectionContextModifier: ViewModifier {
     func body(content: Content) -> some View {
         if let selected = canvasModel.selectedObject {
             if selected.isShape {
-                content.activeShortcutContext(canvasModel.shapeSelectedContext)
+                content.activeShortcutContext(
+                    canvasModel.shapeSelectedContext,
+                    dispatch: canvasModel.handleShapeSelected
+                )
             } else {
-                content.activeShortcutContext(canvasModel.textSelectedContext)
+                content.activeShortcutContext(canvasModel.textSelectedContext, dispatch: canvasModel.handleTextSelected)
             }
         } else {
             content

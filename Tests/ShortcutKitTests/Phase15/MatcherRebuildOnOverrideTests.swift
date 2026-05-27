@@ -26,7 +26,8 @@ import Testing
     @Test("override change rebuilds matcher")
     func overrideRebuildsMatcher() throws {
         var fired = 0
-        let ctx = ShortcutContext<Act>("editor") { action, _ in
+        let ctx = ShortcutContext<Act>("editor")
+        ctx.__setActiveHandler { action, _ in
             if action == .save { fired += 1 }
         }
         let registry = ShortcutRegistry(contexts: [ctx])

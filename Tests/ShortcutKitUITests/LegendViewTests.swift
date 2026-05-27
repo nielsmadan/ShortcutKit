@@ -17,7 +17,7 @@ struct LegendViewTests {
     }
 
     private func sampleLegend() -> KeyBindingsLegend {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let reg = ShortcutRegistry(contexts: [ctx])
         return reg.legend(for: ["editor"])
     }

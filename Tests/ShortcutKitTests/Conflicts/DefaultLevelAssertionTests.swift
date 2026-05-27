@@ -30,7 +30,7 @@ enum BuggyAct: String, ShortcutAction {
         ShortcutRegistry.assertionFunction = { captured = $0 }
         defer { ShortcutRegistry.assertionFunction = prior }
 
-        let ctx = ShortcutContext<BuggyAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<BuggyAct>("editor")
         _ = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
 
         #expect(captured?.contains("default-level") == true)

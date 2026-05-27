@@ -19,20 +19,15 @@ final class GlobalContextModel: ObservableObject {
     let context: ShortcutContext<GlobalAction>
 
     init() {
-        // Use a holder so the closure can reference `self` after `context` is set.
-        let holder = ModelHolder()
-        context = ShortcutContext<GlobalAction>("global", scope: .global) { action, _ in
-            guard holder.target != nil else { return }
+        // Global contexts require their dispatch handler at construction —
+        // they fire system-wide via Carbon whether or not any view is mounted,
+        // so there's no activation hook to bind the handler later.
+        context = ShortcutContext<GlobalAction>(global: "global") { action, _ in
             switch action {
             case .activateAndConfetti:
                 NSApp.activate(ignoringOtherApps: true)
                 ContextWiring.app.confettiTriggerCount += 1
             }
         }
-        holder.target = self
-    }
-
-    private final class ModelHolder {
-        weak var target: GlobalContextModel?
     }
 }

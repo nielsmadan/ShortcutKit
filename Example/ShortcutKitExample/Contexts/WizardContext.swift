@@ -23,39 +23,31 @@ final class WizardContextModel: ObservableObject {
     var pageCount: Int { 3 }
 
     init() {
-        let holder = ModelHolder()
         // includeInSettings: false — wizard context is hidden from the Settings picker.
-        context = ShortcutContext<WizardAction>(
-            "wizard",
-            includeInSettings: false
-        ) { action, _ in
-            guard let target = holder.target else { return }
-            switch action {
-            case .next:
-                target.pageIndex = min(target.pageIndex + 1, target.pageCount - 1)
-            case .previous:
-                target.pageIndex = max(target.pageIndex - 1, 0)
-            case .cancel:
-                target.visible = false
-                target.pageIndex = 0
-            case .finish:
-                if target.pageIndex == target.pageCount - 1 {
-                    target.visible = false
-                    target.pageIndex = 0
-                } else {
-                    target.pageIndex += 1
-                }
+        context = ShortcutContext<WizardAction>("wizard", includeInSettings: false)
+    }
+
+    func handle(_ action: WizardAction, _: ShortcutDispatch) {
+        switch action {
+        case .next:
+            pageIndex = min(pageIndex + 1, pageCount - 1)
+        case .previous:
+            pageIndex = max(pageIndex - 1, 0)
+        case .cancel:
+            visible = false
+            pageIndex = 0
+        case .finish:
+            if pageIndex == pageCount - 1 {
+                visible = false
+                pageIndex = 0
+            } else {
+                pageIndex += 1
             }
         }
-        holder.target = self
     }
 
     func start() {
         pageIndex = 0
         visible = true
-    }
-
-    private final class ModelHolder {
-        weak var target: WizardContextModel?
     }
 }

@@ -37,7 +37,7 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
         let stub = StubSystemShortcuts([
             .init(keyCode: UInt16(kVK_ANSI_S), modifiers: .command),
         ])
-        let ctx = ShortcutContext<SysAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<SysAct>("editor")
         let registry = ShortcutRegistry(
             contexts: [ctx],
             store: isolatedStore(),
@@ -56,7 +56,7 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
         let stub = StubSystemShortcuts([
             .init(keyCode: UInt16(kVK_ANSI_S), modifiers: .command),
         ])
-        let ctx = ShortcutContext<SysAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<SysAct>("editor")
         let registry = ShortcutRegistry(
             contexts: [ctx],
             store: isolatedStore(),
@@ -73,7 +73,7 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
         let stub = StubSystemShortcuts([
             .init(keyCode: UInt16(kVK_ANSI_S), modifiers: .command),
         ])
-        let ctx = ShortcutContext<SysAct>("editor") { _, _ in }
+        let ctx = ShortcutContext<SysAct>("editor")
         let registry = ShortcutRegistry(
             contexts: [ctx],
             store: isolatedStore(),

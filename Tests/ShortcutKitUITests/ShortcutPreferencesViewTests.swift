@@ -11,7 +11,7 @@ struct ShortcutPreferencesViewTests {
     }
 
     @Test func preferencesViewExposesRegistry() {
-        let ctx = ShortcutContext<Act>("editor") { _, _ in }
+        let ctx = ShortcutContext<Act>("editor")
         let reg = ShortcutRegistry(contexts: [ctx])
         let view = ShortcutPreferencesView(registry: reg)
         #expect(view.registryForTest === reg)

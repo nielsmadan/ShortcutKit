@@ -26,7 +26,8 @@ enum SeqAction: String, ShortcutAction {
     @Test("a discrete match dispatches the action with .discrete")
     func discreteMatchDispatches() {
         var fired: (SeqAction, ShortcutDispatch)?
-        let ctx = ShortcutContext<SeqAction>("editor") { action, kind in
+        let ctx = ShortcutContext<SeqAction>("editor")
+        ctx.__setActiveHandler { action, kind in
             fired = (action, kind)
         }
         let matcher = ContextMatcher(context: ctx)
@@ -39,7 +40,8 @@ enum SeqAction: String, ShortcutAction {
     @Test("a non-matching event returns .ignored and does not dispatch")
     func nonMatchingIgnored() {
         var fired = false
-        let ctx = ShortcutContext<SeqAction>("editor") { _, _ in fired = true }
+        let ctx = ShortcutContext<SeqAction>("editor")
+        ctx.__setActiveHandler { _, _ in fired = true }
         let matcher = ContextMatcher(context: ctx)
         let result = matcher.handle(keyDown(kVK_ANSI_X, .command))
         #expect(result == .ignored)
@@ -49,7 +51,8 @@ enum SeqAction: String, ShortcutAction {
     @Test("prefix-sharing sequences advance in parallel then one fires")
     func prefixSharingAdvancesThenFires() {
         var fired: SeqAction?
-        let ctx = ShortcutContext<SeqAction>("editor") { action, _ in fired = action }
+        let ctx = ShortcutContext<SeqAction>("editor")
+        ctx.__setActiveHandler { action, _ in fired = action }
         let matcher = ContextMatcher(context: ctx)
 
         let advance = matcher.handle(keyDown(kVK_ANSI_K, .command))
@@ -64,7 +67,8 @@ enum SeqAction: String, ShortcutAction {
     @Test("after one sibling fires, the other resets so its prefix advance is gone")
     func siblingResetAfterFire() {
         var firedSequence: [SeqAction] = []
-        let ctx = ShortcutContext<SeqAction>("editor") { action, _ in
+        let ctx = ShortcutContext<SeqAction>("editor")
+        ctx.__setActiveHandler { action, _ in
             firedSequence.append(action)
         }
         let matcher = ContextMatcher(context: ctx)
@@ -79,7 +83,7 @@ enum SeqAction: String, ShortcutAction {
 
     @Test("reset() returns all matchers to step 0")
     func resetReturnsToStartingState() {
-        let ctx = ShortcutContext<SeqAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<SeqAction>("editor")
         let matcher = ContextMatcher(context: ctx)
         _ = matcher.handle(keyDown(kVK_ANSI_K, .command))
         matcher.reset()

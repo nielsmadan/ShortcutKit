@@ -36,7 +36,7 @@ struct NewProjectWizard: View {
         }
         .padding(20)
         .frame(width: 420, height: 280)
-        .activeShortcutContext(model.context)
+        .activeShortcutContext(model.context, dispatch: model.handle)
     }
 
     private var pageProjectName: some View {

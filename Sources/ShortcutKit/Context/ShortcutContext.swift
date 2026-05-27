@@ -28,49 +28,83 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     public let scope: ContextScope
     public var includeInSettings: Bool
 
-    private let dispatchClosure: @MainActor (Action, ShortcutDispatch) -> Void
-    /// One subject per observed action, holding the full bindings array. The
-    /// singular `shortcutChanges(for:)` publisher derives from this via
-    /// `.map(\.first)` — single source of truth.
+    /// `.global` contexts set this at init (required — system-wide hotkeys
+    /// must work whether or not any view is mounted). `.local` contexts leave
+    /// it `nil` and supply their handler at `.activeShortcutContext(_:dispatch:)`
+    /// time.
+    private let globalDispatchClosure: (@MainActor (Action, ShortcutDispatch) -> Void)?
+
+    /// The currently-active handler set by `.activeShortcutContext(_:dispatch:)`.
+    /// Set on view appear, cleared on view disappear. Only meaningful for `.local`
+    /// contexts; `.global` contexts ignore this and use `globalDispatchClosure`.
+    private var activeHandler: (@MainActor (Action, ShortcutDispatch) -> Void)?
+
+    /// One subject per observed action, holding the full bindings array.
     private var changeSubjects: [String: CurrentValueSubject<[Shortcut], Never>] = [:]
 
     // Set by the registry when this context is added. Not exposed publicly.
     weak var registry: (any RegistryOverrideSource)?
 
+    /// Local context. Handler is supplied at `.activeShortcutContext(_:dispatch:)`;
+    /// firing a shortcut while no view has activated the context is a no-op.
+    public init(_ id: String, includeInSettings: Bool = true) {
+        self.id = id
+        scope = .local
+        self.includeInSettings = includeInSettings
+        globalDispatchClosure = nil
+    }
+
+    /// Global context — registered system-wide via Carbon. Handler runs whenever
+    /// the OS routes the shortcut to this app, regardless of view state, so it
+    /// must be provided at construction. Use `ShortcutKitGlobal`'s
+    /// `CarbonGlobalActivator` to activate.
     public init(
-        _ id: String,
-        scope: ContextScope = .local,
+        global id: String,
         includeInSettings: Bool = true,
         dispatch: @escaping @MainActor (Action, ShortcutDispatch) -> Void
     ) {
         self.id = id
-        self.scope = scope
+        scope = .global
         self.includeInSettings = includeInSettings
-        dispatchClosure = dispatch
+        globalDispatchClosure = dispatch
     }
 
     // MARK: - Invocation
 
-    /// Adopter-driven dispatch. Invokes the closure with the kind that matches
+    /// Adopter-driven dispatch. Invokes the handler with the kind that matches
     /// the action's declared kind (`.discrete` for discrete actions,
     /// `.continuous(magnitude: 1.0)` for continuous ones — "fire once"
     /// programmatic semantics), then emits `actionFired` with `viaShortcut: false`.
+    /// No-op if no handler is currently bound (local context not activated; global
+    /// context without dispatch — though the latter is unreachable by construction).
     public func dispatch(_ action: Action) {
         let dispatchKind: ShortcutDispatch = switch action.definition.kind {
         case .discrete: .discrete
         case .continuous: .continuous(magnitude: 1.0)
         }
-        dispatchClosure(action, dispatchKind)
+        invokeHandler(action, kind: dispatchKind)
         registry?.recordActionFired(.init(
             contextID: id, actionID: action.rawValue, viaShortcut: false
         ))
     }
 
-    /// Adopter-driven notify. Emits `actionFired` only; closure is not called.
+    /// Adopter-driven notify. Emits `actionFired` only; handler is not called.
     public func notify(_ action: Action) {
         registry?.recordActionFired(.init(
             contextID: id, actionID: action.rawValue, viaShortcut: false
         ))
+    }
+
+    /// Route to whichever handler is currently in scope: a view-bound
+    /// `activeHandler` for `.local` contexts, or the construction-time
+    /// `globalDispatchClosure` for `.global`. No-op if neither is set.
+    private func invokeHandler(_ action: Action, kind: ShortcutDispatch) {
+        if let handler = activeHandler {
+            handler(action, kind)
+        } else if let handler = globalDispatchClosure {
+            handler(action, kind)
+        }
+        // else: shortcut fired but no handler bound — silent no-op.
     }
 
     // MARK: - Lookup
@@ -116,14 +150,31 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     // MARK: - Internal hooks (called by the registry)
 
     /// Called by `ContextMatcher` after a matcher-driven match. Invokes the
-    /// closure with the supplied `kind` and emits `actionFired` with
-    /// `viaShortcut: true`.
+    /// currently-bound handler with the supplied `kind` and emits `actionFired`
+    /// with `viaShortcut: true`. The matcher is only on the stack when the
+    /// context is activated, so for `.local` contexts a handler is guaranteed
+    /// present here. `.global` contexts always have one.
     func dispatchFromMatcher(_ action: Action, kind: ShortcutDispatch) {
-        dispatchClosure(action, kind)
+        invokeHandler(action, kind: kind)
         registry?.recordActionFired(.init(
             contextID: id, actionID: action.rawValue, viaShortcut: true
         ))
     }
+
+    // swiftlint:disable identifier_name
+
+    /// Test seam + internal modifier hook — set the view-bound handler that
+    /// `.activeShortcutContext(_:dispatch:)` provides.
+    func __setActiveHandler(_ handler: @escaping @MainActor (Action, ShortcutDispatch) -> Void) {
+        activeHandler = handler
+    }
+
+    /// Test seam + internal modifier hook — clear the view-bound handler.
+    func __clearActiveHandler() {
+        activeHandler = nil
+    }
+
+    // swiftlint:enable identifier_name
 
     /// Called by the registry when an override changes for this context.
     /// Pushes the new effective bindings array through `shortcutsChanges(for:)`

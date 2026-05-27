@@ -24,7 +24,7 @@ enum DemoAction: String, ShortcutAction {
 
     @Test("contexts get attached and see no override initially")
     func contextsAttachedNoOverrides() {
-        let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         _ = registry
         let expected: Shortcut = "cmd+s"
@@ -34,7 +34,7 @@ enum DemoAction: String, ShortcutAction {
 
     @Test("setOverride replaces the effective shortcut for that action")
     func setOverrideReplacesShortcut() {
-        let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
         let expected: Shortcut = "cmd+shift+s"
@@ -44,7 +44,7 @@ enum DemoAction: String, ShortcutAction {
 
     @Test("setOverride nil clears the override")
     func setOverrideNilClears() {
-        let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: nil)
@@ -55,7 +55,7 @@ enum DemoAction: String, ShortcutAction {
 
     @Test("reset clears one override; resetAll clears them all")
     func resetMethods() {
-        let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
         registry.setOverride(contextID: "editor", actionID: "quit", shortcut: "cmd+shift+q")
@@ -70,7 +70,7 @@ enum DemoAction: String, ShortcutAction {
 
     @Test("setOverride emits via shortcutsChanges(for:)")
     func shortcutChangesEmits() {
-        let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
 
         var values: [[Shortcut]] = []
@@ -84,7 +84,7 @@ enum DemoAction: String, ShortcutAction {
 
     @Test("dispatch on a context emits actionFired with viaShortcut: false")
     func dispatchEmitsActionFired() {
-        let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         var events: [ActionFiredEvent] = []
         let cancellable = registry.actionFired.sink { events.append($0) }
@@ -100,7 +100,7 @@ enum DemoAction: String, ShortcutAction {
         initial.overrides["editor"] = ["save": ["cmd+shift+s"]]
         try store.save(initial)
 
-        let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: store)
         _ = registry
         let expected: Shortcut = "cmd+shift+s"
@@ -110,7 +110,7 @@ enum DemoAction: String, ShortcutAction {
     @Test("debounced save can be flushed deterministically via the test seam")
     func debouncedSaveFlushTestSeam() throws {
         let store = isolatedStore()
-        let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
+        let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: store)
 
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
