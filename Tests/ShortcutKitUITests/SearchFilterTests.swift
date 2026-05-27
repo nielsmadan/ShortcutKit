@@ -1,3 +1,4 @@
+import Foundation
 import ShortcutField
 @testable import ShortcutKit
 @testable import ShortcutKitUI
@@ -5,7 +6,11 @@ import Testing
 
 @MainActor
 struct SearchFilterTests {
-    private func row(_ actionID: String, _ name: String, shortcuts: [Shortcut] = []) -> KeyBindingsTable.Row {
+    private func row(
+        _ actionID: String,
+        _ name: LocalizedStringResource,
+        shortcuts: [Shortcut] = []
+    ) -> KeyBindingsTable.Row {
         KeyBindingsTable.Row(
             contextID: "ctx", actionID: actionID, displayName: name,
             kind: .discrete, effectiveShortcuts: shortcuts,

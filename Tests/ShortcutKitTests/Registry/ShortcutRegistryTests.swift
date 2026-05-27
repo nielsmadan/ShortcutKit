@@ -28,7 +28,7 @@ enum DemoAction: String, ShortcutAction {
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         _ = registry
         let expected: Shortcut = "cmd+s"
-        #expect(ctx.shortcut(for: .save) == expected)
+        #expect(ctx.shortcuts(for: .save).first == expected)
         #expect(ctx.isCustomized(.save) == false)
     }
 
@@ -38,7 +38,7 @@ enum DemoAction: String, ShortcutAction {
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
         let expected: Shortcut = "cmd+shift+s"
-        #expect(ctx.shortcut(for: .save) == expected)
+        #expect(ctx.shortcuts(for: .save).first == expected)
         #expect(ctx.isCustomized(.save))
     }
 
@@ -49,7 +49,7 @@ enum DemoAction: String, ShortcutAction {
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: nil)
         let expected: Shortcut = "cmd+s"
-        #expect(ctx.shortcut(for: .save) == expected)
+        #expect(ctx.shortcuts(for: .save).first == expected)
         #expect(ctx.isCustomized(.save) == false)
     }
 
@@ -68,17 +68,17 @@ enum DemoAction: String, ShortcutAction {
         #expect(ctx.isCustomized(.quit) == false)
     }
 
-    @Test("setOverride emits via shortcutChanges(for:)")
+    @Test("setOverride emits via shortcutsChanges(for:)")
     func shortcutChangesEmits() {
         let ctx = ShortcutContext<DemoAction>("editor") { _, _ in }
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
 
-        var values: [Shortcut?] = []
-        let cancellable = ctx.shortcutChanges(for: .save).sink { values.append($0) }
+        var values: [[Shortcut]] = []
+        let cancellable = ctx.shortcutsChanges(for: .save).sink { values.append($0) }
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
         #expect(values.count == 2)
         let expected: Shortcut = "cmd+shift+s"
-        #expect(values.last == .some(expected))
+        #expect(values.last == [expected])
         _ = cancellable
     }
 
@@ -104,7 +104,7 @@ enum DemoAction: String, ShortcutAction {
         let registry = ShortcutRegistry(contexts: [ctx], store: store)
         _ = registry
         let expected: Shortcut = "cmd+shift+s"
-        #expect(ctx.shortcut(for: .save) == expected)
+        #expect(ctx.shortcuts(for: .save).first == expected)
     }
 
     @Test("debounced save can be flushed deterministically via the test seam")

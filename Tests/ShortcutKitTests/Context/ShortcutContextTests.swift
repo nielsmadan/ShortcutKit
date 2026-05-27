@@ -3,18 +3,19 @@ import Combine
 import Testing
 
 enum EditorAction: String, ShortcutAction {
-    case save, quit
+    case save, quit, pan
     var definition: ShortcutActionDefinition {
         switch self {
         case .save: .init("Save", "cmd+s")
         case .quit: .init("Quit")
+        case .pan: .init("Pan", kind: .continuous)
         }
     }
 }
 
 @MainActor
 @Suite("ShortcutContext") struct ShortcutContextTests {
-    @Test("dispatch invokes the closure with .discrete")
+    @Test("dispatch invokes the closure with .discrete for discrete actions")
     func dispatchCallsClosureDiscrete() {
         var captured: (EditorAction, ShortcutDispatch)?
         let ctx = ShortcutContext<EditorAction>("editor") { action, kind in
@@ -25,6 +26,16 @@ enum EditorAction: String, ShortcutAction {
         #expect(captured?.1 == .discrete)
     }
 
+    @Test("dispatch invokes the closure with .continuous for continuous actions")
+    func dispatchCallsClosureContinuous() {
+        var captured: ShortcutDispatch?
+        let ctx = ShortcutContext<EditorAction>("editor") { _, kind in
+            captured = kind
+        }
+        ctx.dispatch(.pan)
+        #expect(captured == .continuous(magnitude: 1.0))
+    }
+
     @Test("notify does not invoke the closure")
     func notifyDoesNotCallClosure() {
         var called = false
@@ -33,35 +44,25 @@ enum EditorAction: String, ShortcutAction {
         #expect(called == false)
     }
 
-    @Test("shortcut(for:) falls back to definition default")
+    @Test("shortcuts(for:).first falls back to definition default")
     func shortcutFallsBackToDefault() {
         let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
         let saveExpected: Shortcut = "cmd+s"
-        #expect(ctx.shortcut(for: .save) == saveExpected)
-        #expect(ctx.shortcut(for: .quit) == nil)
+        #expect(ctx.shortcuts(for: .save).first == saveExpected)
+        #expect(ctx.shortcuts(for: .quit).first == nil)
     }
 
-    @Test("displayString(for:) reflects the effective shortcut")
+    @Test("displayStrings(for:).first reflects the effective shortcut")
     func displayStringFromShortcut() {
         let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
-        #expect(ctx.displayString(for: .save) == "⌘s")
-        #expect(ctx.displayString(for: .quit) == nil)
+        #expect(ctx.displayStrings(for: .save).first == "⌘s")
+        #expect(ctx.displayStrings(for: .quit).first == nil)
     }
 
     @Test("isCustomized is false with no registry attached")
     func isCustomizedFalseStandalone() {
         let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
         #expect(ctx.isCustomized(.save) == false)
-    }
-
-    @Test("shortcutChanges(for:) emits the current effective value on subscribe")
-    func shortcutChangesEmitsCurrent() {
-        let ctx = ShortcutContext<EditorAction>("editor") { _, _ in }
-        var received: Shortcut??
-        let cancellable = ctx.shortcutChanges(for: .save).sink { received = $0 }
-        let expected: Shortcut = "cmd+s"
-        #expect(received == .some(.some(expected)))
-        _ = cancellable
     }
 
     @Test("shortcutsChanges(for:) emits the full bindings array on subscribe")

@@ -4,7 +4,7 @@ import ShortcutField
 /// Activation scope for a context. `.local` contexts only fire while activated
 /// via `.activeShortcutContext`; `.global` contexts are always candidates for
 /// system-wide hotkey registration (Phase 3 consumes this).
-public enum ContextScope: Sendable { case local, global }
+public enum ContextScope: Sendable, Hashable { case local, global }
 
 /// Type-erased context so a registry can hold a heterogeneous list. Public for
 /// the registry's `contexts:` parameter; the package-internal surface drives
@@ -51,10 +51,16 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     // MARK: - Invocation
 
-    /// Adopter-driven dispatch. Invokes the closure with `.discrete`, then
-    /// emits `actionFired` with `viaShortcut: false`.
+    /// Adopter-driven dispatch. Invokes the closure with the kind that matches
+    /// the action's declared kind (`.discrete` for discrete actions,
+    /// `.continuous(magnitude: 1.0)` for continuous ones — "fire once"
+    /// programmatic semantics), then emits `actionFired` with `viaShortcut: false`.
     public func dispatch(_ action: Action) {
-        dispatchClosure(action, .discrete)
+        let dispatchKind: ShortcutDispatch = switch action.definition.kind {
+        case .discrete: .discrete
+        case .continuous: .continuous(magnitude: 1.0)
+        }
+        dispatchClosure(action, dispatchKind)
         registry?.recordActionFired(.init(
             contextID: id, actionID: action.rawValue, viaShortcut: false
         ))
@@ -76,14 +82,6 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         return action.definition.defaultShortcuts
     }
 
-    public func shortcut(for action: Action) -> Shortcut? {
-        shortcuts(for: action).first
-    }
-
-    public func displayString(for action: Action) -> String? {
-        shortcut(for: action)?.displayString
-    }
-
     /// Display strings for every binding, in slot order (primary first).
     /// Empty if `action` has no effective bindings.
     public func displayStrings(for action: Action) -> [String] {
@@ -100,17 +98,9 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     /// Publisher that emits the action's current bindings whenever they change
     /// (defaults applied, override set/cleared/reset). Replays the current
-    /// value on subscribe. Use this when you need the full array; for
-    /// "just give me the primary," see `shortcutChanges(for:)`.
+    /// value on subscribe. For primary-only consumers, chain `.map(\.first)`.
     public func shortcutsChanges(for action: Action) -> AnyPublisher<[Shortcut], Never> {
         subject(for: action).eraseToAnyPublisher()
-    }
-
-    /// Publisher that emits the action's primary binding (`shortcuts(for:).first`)
-    /// whenever it changes. Derived from `shortcutsChanges(for:)`. Adopters who
-    /// support multiple bindings per action should prefer the plural variant.
-    public func shortcutChanges(for action: Action) -> AnyPublisher<Shortcut?, Never> {
-        subject(for: action).map(\.first).eraseToAnyPublisher()
     }
 
     private func subject(for action: Action) -> CurrentValueSubject<[Shortcut], Never> {

@@ -32,8 +32,8 @@ struct ShortcutKitKeyboardShortcutModifier<A: ShortcutAction>: ViewModifier {
                 content
             }
         }
-        .onAppear { current = context.shortcut(for: action) }
-        .onReceive(context.shortcutChanges(for: action)) { current = $0 }
+        .onAppear { current = context.shortcuts(for: action).first }
+        .onReceive(context.shortcutsChanges(for: action).map(\.first)) { current = $0 }
     }
 }
 
@@ -45,7 +45,7 @@ enum ShortcutKitHelpers {
         in context: ShortcutContext<A>,
         given current: Shortcut? = nil
     ) -> (KeyEquivalent, EventModifiers)? {
-        let shortcut = current ?? context.shortcut(for: action)
+        let shortcut = current ?? context.shortcuts(for: action).first
         guard case let .discrete(discrete) = shortcut,
               discrete.steps.count == 1,
               case let .key(keyCode) = discrete.steps[0].kind,

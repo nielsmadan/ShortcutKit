@@ -15,13 +15,13 @@ final class ShortcutKitMenuItem<A: ShortcutAction>: NSMenuItem {
         actionValue = action
         self.context = context
         super.init(
-            title: title ?? action.definition.displayName,
+            title: title ?? String(localized: action.definition.displayName),
             action: #selector(performShortcut),
             keyEquivalent: ""
         )
         target = self
-        apply(context.shortcut(for: action))
-        cancellable = context.shortcutChanges(for: action).sink { [weak self] shortcut in
+        apply(context.shortcuts(for: action).first)
+        cancellable = context.shortcutsChanges(for: action).map(\.first).sink { [weak self] shortcut in
             self?.apply(shortcut)
         }
     }

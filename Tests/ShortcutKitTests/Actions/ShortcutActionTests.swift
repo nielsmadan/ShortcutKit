@@ -32,4 +32,13 @@ import Testing
     func rawValueIsID() {
         #expect(SampleAction.save.rawValue == "save")
     }
+
+    @Test("multi-default same-kind action keeps defaults and kind")
+    func multipleDefaultsSameKindAreAccepted() {
+        let def = ShortcutActionDefinition(
+            "Undo", defaults: [Shortcut("cmd+z"), Shortcut("ctrl+z")]
+        )
+        #expect(def.kind == .discrete)
+        #expect(def.defaultShortcuts.count == 2)
+    }
 }

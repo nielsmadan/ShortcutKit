@@ -36,7 +36,10 @@ struct ActionToast: View {
     }
 
     private func labelFor(event: ActionFiredEvent) -> String {
-        rowFor(event)?.displayName ?? event.actionID
+        if let displayName = rowFor(event)?.displayName {
+            return String(localized: displayName)
+        }
+        return event.actionID
     }
 
     private func rowFor(_ event: ActionFiredEvent) -> KeyBindingsTable.Row? {

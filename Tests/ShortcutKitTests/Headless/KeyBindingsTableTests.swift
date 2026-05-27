@@ -33,7 +33,7 @@ enum TableAct: String, ShortcutAction {
         #expect(table.sections[0].rows.map(\.actionID).sorted() == ["save", "undo", "zoom"])
     }
 
-    @Test("rows carry displayName, kind, effectiveShortcut, isCustomized")
+    @Test("rows carry displayName, kind, effectiveShortcuts, isCustomized")
     func rowFields() {
         let ctx = ShortcutContext<TableAct>("editor") { _, _ in }
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
@@ -42,7 +42,7 @@ enum TableAct: String, ShortcutAction {
         let save = table.sections[0].rows.first { $0.actionID == "save" }!
         #expect(save.displayName == "Save File")
         let expected: Shortcut = "cmd+shift+s"
-        #expect(save.effectiveShortcut == expected)
+        #expect(save.effectiveShortcuts.first == expected)
         #expect(save.isCustomized == true)
         #expect(save.kind == .discrete)
     }
@@ -71,7 +71,7 @@ enum TableAct: String, ShortcutAction {
         let row = registry.keyBindingsTable.sections[0].rows.first!
         #expect(row.effectiveShortcuts.count == 2)
         #expect(row.effectiveShortcuts == [Shortcut("cmd+s"), Shortcut("ctrl+s")])
-        #expect(row.effectiveShortcut == Shortcut("cmd+s"))
+        #expect(row.effectiveShortcuts.first == Shortcut("cmd+s"))
     }
 
     @Test("legend(for:) returns only active contexts and only bound rows")

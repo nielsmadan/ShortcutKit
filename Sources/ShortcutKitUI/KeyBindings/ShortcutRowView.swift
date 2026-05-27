@@ -12,17 +12,17 @@ import SwiftUI
 /// severity on this row. T11 replaces this placeholder with the real
 /// `ConflictStripeView` (popover-on-tap behavior).
 @MainActor
-public struct ShortcutRowView: View {
-    public let row: KeyBindingsTable.Row
-    public let policy: ScopePolicy
-    public let onSet: ([Shortcut]) -> Void
-    public let onClear: (Int) -> Void
-    public let onReset: () -> Void
-    public let onJump: ((Occurrence) -> Void)?
+struct ShortcutRowView: View {
+    let row: KeyBindingsTable.Row
+    let policy: ScopePolicy
+    let onSet: ([Shortcut]) -> Void
+    let onClear: (Int) -> Void
+    let onReset: () -> Void
+    let onJump: ((Occurrence) -> Void)?
 
     @Environment(\.shortcutStyle) private var style
 
-    public init(
+    init(
         row: KeyBindingsTable.Row,
         policy: ScopePolicy,
         onSet: @escaping ([Shortcut]) -> Void,
@@ -38,7 +38,7 @@ public struct ShortcutRowView: View {
         self.onJump = onJump
     }
 
-    public var body: some View {
+    var body: some View {
         HStack(spacing: style == .dense ? 8 : 10) {
             ConflictStripeView(conflicts: row.conflicts, onJump: onJump)
                 .frame(width: 3)

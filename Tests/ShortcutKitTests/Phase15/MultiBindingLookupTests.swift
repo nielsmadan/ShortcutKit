@@ -14,7 +14,7 @@ struct MultiBindingLookupTests {
     @Test func shortcutsReturnsAllDefaults() {
         let ctx = ShortcutContext<Act>("editor") { _, _ in }
         #expect(ctx.shortcuts(for: .save) == [Shortcut("cmd+s"), Shortcut("ctrl+s")])
-        #expect(ctx.shortcut(for: .save) == Shortcut("cmd+s"))
+        #expect(ctx.shortcuts(for: .save).first == Shortcut("cmd+s"))
     }
 
     @Test func overrideArrayWins() throws {

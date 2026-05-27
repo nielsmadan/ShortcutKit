@@ -30,6 +30,9 @@ public struct KeyBindingsView: View {
     @State private var query: String = ""
     @State private var resetAlertShown: Bool = false
 
+    /// Full mode — renders every `includeInSettings` context in the registry.
+    /// `searchEnabled` defaults to `true` because the standalone settings
+    /// pattern almost always wants the toolbar search field.
     public init(registry: ShortcutRegistry, searchEnabled: Bool = true) {
         self.registry = registry
         mode = .full(searchEnabled: searchEnabled)
@@ -39,6 +42,10 @@ public struct KeyBindingsView: View {
     /// `ShortcutRegistry` (i.e. constructed and passed via
     /// `ShortcutRegistry(contexts:)`) before instantiating this view, so the
     /// view can route writes through that registry.
+    ///
+    /// `searchEnabled` defaults to `false` here — opposite of the full-mode
+    /// initializer — because inline views embed inside an adopter tab whose
+    /// chrome typically already handles its own search/filtering.
     public init(
         context: ShortcutContext<some ShortcutAction>,
         searchEnabled: Bool = false

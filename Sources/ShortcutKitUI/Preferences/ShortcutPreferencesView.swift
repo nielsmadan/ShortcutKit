@@ -15,8 +15,8 @@ public struct ShortcutPreferencesView: View {
     /// Stable AppStorage key for the dense-style toggle.
     public static let denseStyleStorageKey = "shortcutkit.style.dense"
 
-    @AppStorage("shortcutkit.hintsEnabled") private var hintsEnabled = true
-    @AppStorage("shortcutkit.style.dense") private var denseStyle = false
+    @AppStorage(Self.hintsEnabledStorageKey) private var hintsEnabled = true
+    @AppStorage(Self.denseStyleStorageKey) private var denseStyle = false
 
     public init(registry: ShortcutRegistry) {
         self.registry = registry

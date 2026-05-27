@@ -2,14 +2,14 @@ import ShortcutKit
 import SwiftUI
 
 @MainActor
-public struct ContextPickerView: View {
+struct ContextPickerView: View {
     enum Style: Sendable { case segmented, dropdown }
 
     let contexts: [any AnyShortcutContext]
     @Binding var selection: String
     let conflictedIDs: Set<String>
 
-    public init(
+    init(
         contexts: [any AnyShortcutContext],
         selection: Binding<String>,
         conflictedIDs: Set<String>
@@ -46,7 +46,7 @@ public struct ContextPickerView: View {
             .joined(separator: " / ")
     }
 
-    public var body: some View {
+    var body: some View {
         Group {
             switch pickerStyle {
             case .segmented:

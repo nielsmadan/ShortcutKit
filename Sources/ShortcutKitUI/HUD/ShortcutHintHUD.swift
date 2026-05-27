@@ -14,7 +14,7 @@ public struct ShortcutHintHUD: ViewModifier {
     public let registry: ShortcutRegistry
     public let policy: HintPolicy
 
-    @AppStorage("shortcutkit.hintsEnabled") private var hintsEnabled = true
+    @AppStorage(ShortcutPreferencesView.hintsEnabledStorageKey) private var hintsEnabled = true
     @State private var gate: HintPolicyGate
     @State private var current: String?
 
@@ -45,7 +45,8 @@ public struct ShortcutHintHUD: ViewModifier {
         else { return }
         guard gate.shouldShow(actionID: event.actionID) else { return }
         gate.markShown(actionID: event.actionID)
-        let text = "Tip: \(row.displayName) is bound to \(firstBinding.displayString)"
+        let name = String(localized: row.displayName)
+        let text = "Tip: \(name) is bound to \(firstBinding.displayString)"
         current = text
         Task {
             try? await Task.sleep(for: .seconds(2))

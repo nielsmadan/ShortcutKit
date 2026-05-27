@@ -129,12 +129,50 @@ punch-list bullet — tracked here so it isn't lost.
 - [x] **`displayString(for:)` was first-only.** Added
   `displayStrings(for: Action) -> [String]` plural sibling.
 
+## Core — action / context (in-layer fixes, 2026-05-26 cont.)
+
+- [x] **`ContextScope` now `Hashable`.** Was `Sendable` only — `ctx.scope == .global`
+  worked via Swift's implicit equality synthesis for plain-case enums, but
+  `Set<ContextScope>` / dictionary-key usage failed. One-character fix.
+- [x] **`ShortcutContext.dispatch(_:)` matches the action's declared kind.**
+  Was always sending `.discrete` to the closure even for continuous actions —
+  closure with `switch kind { case .continuous(...): }` would silently never
+  fire for adopter-driven dispatch. Fixed by dispatching with `.discrete` for
+  discrete actions and `.continuous(magnitude: 1.0)` for continuous ones
+  ("fire once programmatically" semantics). Added a regression test;
+  `ShortcutDispatch.discrete` doc no longer claims adopter-driven dispatch always
+  uses it.
+- [x] **Mixed-kind defaults trap at definition time.** `ShortcutActionDefinition.init(_:defaults:)`
+  now `precondition`s that all `defaults` share the same `Shortcut.Kind`. Adopters who
+  mix `Shortcut("cmd+s")` with a continuous default see a clear failure during development.
+- [x] **`displayName` localizable + `description` added.** `displayName` is now
+  `LocalizedStringResource` (still adopts string literals through
+  `ExpressibleByStringLiteral` — adopters who don't localize change nothing).
+  New optional `description: LocalizedStringResource?` for help text/tooltips.
+  Cascade: `KeyBindingsTable.Row` and `KeyBindingsLegend.Entry` now hold
+  `LocalizedStringResource`; their `Hashable` conformances downgraded to
+  `Equatable` since `LocalizedStringResource` is `Equatable` but not `Hashable`
+  (no real callers needed `Hashable`). Menu helpers + HUD + search-filter sites
+  resolve via `String(localized:)`.
+
 ## Core — action / context (deferred)
 
-- [ ] **`displayName: String` is unlocalizable.** No `LocalizedStringResource`
-  affordance; localized apps must do `NSLocalizedString` at every definition
-  site and lose language-switch reactivity at render time. Cross-cuts Core +
-  UI; decide in the design pass.
+- [x] **Singular / plural API redundancy removed (2026-05-26).** Deleted
+  `ShortcutContext.shortcut(for:)`, `displayString(for:)`,
+  `shortcutChanges(for:)`, and `KeyBindingsTable.Row.effectiveShortcut`.
+  Callers use `.shortcuts(for:).first` / `.displayStrings(for:).first` /
+  `.shortcutsChanges(for:).map(\.first)` / `.effectiveShortcuts.first`. The
+  plural API is the canonical Phase 1.5 shape; singular convenience kept for
+  back-compat from Phase 1 was clutter. 181/181 tests pass.
+- [ ] **`ShortcutContext.includeInSettings` is a non-`@Published` `var`.**
+  Mutating it at runtime doesn't refresh `KeyBindingsView`'s picker. Either
+  doc-flag this clearly or promote to `@Published`.
+- [ ] **`ShortcutContext.scope` `public let` immutability undocumented.** Add a
+  doc note (and same for `id`).
+- [ ] **Dispatch-closure-at-construction documentation.** The pattern is
+  conventional but surprising to adopters expecting data-only contexts. Add a
+  doc snippet showing the typical late-wiring pattern (composition module that
+  holds stores + builds contexts together).
 - [ ] **`ActionFiredEvent` carries bare `contextID`/`actionID`** — could carry
   the new `ActionRef` value type for consistency with `ShortcutMigration.moveAction`.
 - [ ] **No global `registry.dispatch(contextID:actionID:)` / `registry.notify(...)`
@@ -223,31 +261,35 @@ punch-list bullet — tracked here so it isn't lost.
   symbols. The `.shortcut(_:in:)` view modifier remains the only adopter-facing
   API in this layer.
 
-## ShortcutKitUI
+## ShortcutKitUI — in-layer fixes (2026-05-26)
 
-- [ ] **Over-exposed sub-views (Critical/High).** `ShortcutRowView`,
-  `ContextPickerView`, `ConflictStripeView`, `ConflictPopover`, `SearchField` are
-  `public` but are internal composition details of `KeyBindingsView` — no adopter
-  wires them. `ShortcutRowView` has a `public` 7-param initializer (six closures +
-  `KeyBindingsTable.Row`) that's unsatisfiable from outside, with doc comments
-  still referencing internal task numbers. Demote all five (structs + properties +
-  inits + static helpers) to `internal`. Tests already use `@testable import`.
-- [ ] **`ConflictStripeView.color(for:)` is `public` "for testability"** — the doc
-  literally says so. `@testable import` covers tests. Demote to `internal`
-  (subsumed by demoting the whole view).
-- [ ] **`KeyBindingsView` `searchEnabled: Bool` default asymmetry** —
-  `init(registry:searchEnabled: = true)` vs `init(context:searchEnabled: = false)`:
-  the same param silently flips default by initializer. Make the search affordance
-  an explicit non-defaulted option, or give both inits the same default.
+- [x] **Over-exposed sub-views demoted (Critical/High).** `ShortcutRowView`,
+  `ContextPickerView`, `ConflictStripeView`, `ConflictPopover`, `SearchField`
+  (struct decls, init params, `let` properties, `body`, and the static helpers
+  `ConflictStripeView.color(for:)` / `SearchField.filter(_:query:)`) demoted to
+  `internal`. Confirmed no adopter usage by grepping the example app and
+  Sources; only `KeyBindingsView` (their composition parent) and tests reference
+  them, and tests already use `@testable import`. 26/26 UI tests pass.
+- [x] **`searchEnabled` default asymmetry kept, doc tightened.** The differing
+  defaults (`registry`-init: `true`; `context`-init: `false`) mirror real
+  adopter usage patterns and were already documented at the type level — but
+  the asymmetry was discoverable only by reading the type-level doc. Added an
+  explicit paragraph on each `init` explaining its default and why it differs
+  from the other initializer. No API break.
+- [x] **`@AppStorage` literal drift fixed.** `ShortcutPreferencesView` now
+  references `Self.hintsEnabledStorageKey` / `Self.denseStyleStorageKey` instead
+  of duplicating the strings. `ShortcutHintHUD` now references
+  `ShortcutPreferencesView.hintsEnabledStorageKey` instead of the literal. The
+  example app was already using the constants; now the library's own
+  consumption is too.
+
+## ShortcutKitUI — deferred
+
 - [ ] **`ScopedShortcutRecorder.discreteWidth`/`continuousWidth`** are bare
   `(native:dense:)` tuples read cross-file; `continuousWidth` may be unused.
   Consider a small struct or fold the width logic in. Low priority.
 - [ ] **`ScopePolicy` mirrors Core's `ContextScope`** — defensible (UI module wants
   its own type + `validate`), but confirm the duplication earns its keep.
-- [ ] **`@AppStorage` string literals** (`"shortcutkit.hintsEnabled"`,
-  `"shortcutkit.style.dense"`) are hard-coded in `ShortcutPreferencesView` and
-  `ShortcutHintHUD` rather than referencing the public `…StorageKey` constants —
-  drift risk. Have the literals reference the constants.
 
 ## ShortcutKitGlobal
 

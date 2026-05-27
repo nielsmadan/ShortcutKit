@@ -3,16 +3,16 @@ import ShortcutKit
 import SwiftUI
 
 @MainActor
-public struct ConflictPopover: View {
-    public let conflicts: [Conflict]
-    public var onJump: ((Occurrence) -> Void)?
+struct ConflictPopover: View {
+    let conflicts: [Conflict]
+    var onJump: ((Occurrence) -> Void)?
 
-    public init(conflicts: [Conflict], onJump: ((Occurrence) -> Void)? = nil) {
+    init(conflicts: [Conflict], onJump: ((Occurrence) -> Void)? = nil) {
         self.conflicts = conflicts
         self.onJump = onJump
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(conflicts.enumerated()), id: \.offset) { _, conflict in
                 ConflictRow(conflict: conflict, onJump: onJump)

@@ -1,9 +1,10 @@
 /// The dispatch flavour passed to a context's closure.
 public enum ShortcutDispatch: Sendable, Equatable {
-    /// A discrete action fired once. Adopter-driven `dispatch(_:)` always uses this.
+    /// A discrete action fired once.
     case discrete
-    /// A continuous action coalesced to one tick; `magnitude` is the gesture
-    /// delta accumulated since the previous tick.
+    /// A continuous action; `magnitude` is the gesture delta accumulated since
+    /// the previous tick (matcher-driven), or `1.0` for adopter-driven
+    /// `dispatch(_:)` of a continuous action.
     case continuous(magnitude: Double)
 }
 

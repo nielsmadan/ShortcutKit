@@ -164,7 +164,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             guard let p = context as? RegistryAttachable else { continue }
             let rows = p.__currentRows { _ in [] }
             let entries = rows.compactMap { row -> KeyBindingsLegend.Entry? in
-                guard let shortcut = row.effectiveShortcut else { return nil }
+                guard let shortcut = row.effectiveShortcuts.first else { return nil }
                 return .init(displayName: row.displayName, shortcut: shortcut)
             }
             if !entries.isEmpty {

@@ -1,35 +1,36 @@
 import Foundation
 import ShortcutField
 
-public struct KeyBindingsTable: Sendable, Hashable {
-    public struct Row: Sendable, Hashable {
+public struct KeyBindingsTable: Sendable, Equatable {
+    public struct Row: Sendable, Equatable {
         public let contextID: String
         public let actionID: String
-        public let displayName: String
+        public let displayName: LocalizedStringResource
+        public let description: LocalizedStringResource?
         public let kind: Shortcut.Kind
         public let effectiveShortcuts: [Shortcut]
         public let isCustomized: Bool
         public let conflicts: [Conflict]
 
         public init(
-            contextID: String, actionID: String, displayName: String,
+            contextID: String, actionID: String,
+            displayName: LocalizedStringResource,
+            description: LocalizedStringResource? = nil,
             kind: Shortcut.Kind, effectiveShortcuts: [Shortcut],
             isCustomized: Bool, conflicts: [Conflict]
         ) {
             self.contextID = contextID
             self.actionID = actionID
             self.displayName = displayName
+            self.description = description
             self.kind = kind
             self.effectiveShortcuts = effectiveShortcuts
             self.isCustomized = isCustomized
             self.conflicts = conflicts
         }
-
-        /// Convenience matching Phase 1 single-binding ergonomics.
-        public var effectiveShortcut: Shortcut? { effectiveShortcuts.first }
     }
 
-    public struct Section: Sendable, Hashable {
+    public struct Section: Sendable, Equatable {
         public let contextID: String
         public let rows: [Row]
         public init(contextID: String, rows: [Row]) {
@@ -50,7 +51,9 @@ public struct KeyBindingsTable: Sendable, Hashable {
         var filtered: [Section] = []
         for section in sections {
             let scored: [(Row, Int)] = section.rows.compactMap { row in
-                let nameScore = FuzzyFilter.match(query: trimmed, in: row.displayName)?.score
+                let nameScore = FuzzyFilter.match(
+                    query: trimmed, in: String(localized: row.displayName)
+                )?.score
                 let asciiScore = row.effectiveShortcuts
                     .compactMap { FuzzyFilter.match(query: trimmed, in: $0.ascii)?.score }
                     .max()
