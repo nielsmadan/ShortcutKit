@@ -7,9 +7,79 @@ enum TOMLCoding {
         case malformedContinuous(actionID: String)
         case continuousKindRequired(gesture: String)
         case invalidShortcutString(actionID: String, value: String)
+        case rootNotATable
     }
 
+    // MARK: - Whole-file encode/decode
+
     static func encode(_ state: RawState) throws -> String {
+        let root = makeTable(from: state)
+        return serialize(root)
+    }
+
+    static func decode(_ source: String) throws -> RawState {
+        let root = try TOMLTable(string: source)
+        return try decodeTable(root)
+    }
+
+    // MARK: - Namespaced (sub-tree) encode/decode
+
+    /// Decode the subtree at `keyPath`. Returns an empty `RawState` if any
+    /// segment of the path is missing — adopters who haven't customized any
+    /// shortcuts yet see an empty state, same as a missing file.
+    static func decode(_ source: String, atKey keyPath: [String]) throws -> RawState {
+        let root = try TOMLTable(string: source)
+        guard let subtable = navigate(root, path: keyPath) else {
+            return RawState()
+        }
+        return try decodeTable(subtable)
+    }
+
+    /// Read-modify-write: parse `existing` (or start fresh), replace the
+    /// subtree at `keyPath` with `state`'s encoding, return the full file
+    /// text. Sibling tables outside `keyPath` are preserved.
+    static func encode(
+        _ state: RawState,
+        intoExisting existing: String?,
+        atKey keyPath: [String]
+    ) throws -> String {
+        let root: TOMLTable = if let existing, !existing.isEmpty {
+            try TOMLTable(string: existing)
+        } else {
+            TOMLTable()
+        }
+        let newSubtree = makeTable(from: state)
+        setSubtable(in: root, path: keyPath, to: newSubtree)
+        return serialize(root)
+    }
+
+    // MARK: - Helpers
+
+    private static func navigate(_ root: TOMLTable, path: [String]) -> TOMLTable? {
+        var current: TOMLTable = root
+        for component in path {
+            guard let next = current[component]?.table else { return nil }
+            current = next
+        }
+        return current
+    }
+
+    /// Set `value` at `path` inside `root`. Recurses so the assignment happens
+    /// after mutation at each level — `TOMLKit.TOMLTable`'s subscript copies
+    /// on assign, so the parent must be re-assigned after its child is built.
+    private static func setSubtable(in root: TOMLTable, path: [String], to value: TOMLTable) {
+        precondition(!path.isEmpty, "TOMLCoding.setSubtable: path must not be empty")
+        if path.count == 1 {
+            root[path[0]] = value
+            return
+        }
+        let head = path[0]
+        let headTable: TOMLTable = root[head]?.table ?? TOMLTable()
+        setSubtable(in: headTable, path: Array(path.dropFirst()), to: value)
+        root[head] = headTable
+    }
+
+    private static func makeTable(from state: RawState) -> TOMLTable {
         let root = TOMLTable()
         for (contextID, perAction) in state.overrides {
             let table = TOMLTable()
@@ -26,39 +96,10 @@ enum TOMLCoding {
             }
             root[contextID] = table
         }
-        // Omit .allowLiteralStrings so strings are emitted with double quotes,
-        // not single-quoted TOML literal strings. This keeps output hand-editable
-        // with standard double-quote conventions and lets test assertions match.
-        return root.convert(to: .toml, options: [
-            .allowMultilineStrings,
-            .allowUnicodeStrings,
-            .allowBinaryIntegers,
-            .allowOctalIntegers,
-            .allowHexadecimalIntegers,
-            .indentations,
-        ])
+        return root
     }
 
-    private static func encodeShortcut(_ shortcut: Shortcut) -> TOMLValueConvertible {
-        switch shortcut {
-        case let .discrete(discrete):
-            return discrete.ascii
-        case let .continuous(continuous):
-            // Represent the gesture as a single-step DiscreteShortcut ascii string
-            // (e.g. "cmd+pinch-out") without the "@sensitivity" suffix.
-            let gestureAscii = DiscreteShortcut(
-                kind: continuous.kind.asDiscreteKind,
-                modifiers: continuous.modifiers
-            ).ascii
-            let inline = TOMLTable(inline: true)
-            inline["gesture"] = gestureAscii
-            inline["sensitivity"] = continuous.sensitivity
-            return inline
-        }
-    }
-
-    static func decode(_ source: String) throws -> RawState {
-        let root = try TOMLTable(string: source)
+    private static func decodeTable(_ root: TOMLTable) throws -> RawState {
         var state = RawState()
         for contextID in root.keys {
             guard let contextTable = root[contextID]?.table else { continue }
@@ -78,6 +119,22 @@ enum TOMLCoding {
             state.overrides[contextID] = perAction
         }
         return state
+    }
+
+    private static func encodeShortcut(_ shortcut: Shortcut) -> TOMLValueConvertible {
+        switch shortcut {
+        case let .discrete(discrete):
+            return discrete.ascii
+        case let .continuous(continuous):
+            let gestureAscii = DiscreteShortcut(
+                kind: continuous.kind.asDiscreteKind,
+                modifiers: continuous.modifiers
+            ).ascii
+            let inline = TOMLTable(inline: true)
+            inline["gesture"] = gestureAscii
+            inline["sensitivity"] = continuous.sensitivity
+            return inline
+        }
     }
 
     private static func decodeShortcut(
@@ -114,5 +171,19 @@ enum TOMLCoding {
         } else {
             throw Error.malformedContinuous(actionID: actionID)
         }
+    }
+
+    private static func serialize(_ root: TOMLTable) -> String {
+        // Omit .allowLiteralStrings so strings are emitted with double quotes,
+        // not single-quoted TOML literal strings. This keeps output hand-editable
+        // with standard double-quote conventions and lets test assertions match.
+        root.convert(to: .toml, options: [
+            .allowMultilineStrings,
+            .allowUnicodeStrings,
+            .allowBinaryIntegers,
+            .allowOctalIntegers,
+            .allowHexadecimalIntegers,
+            .indentations,
+        ])
     }
 }

@@ -83,6 +83,17 @@ punch-list bullet — tracked here so it isn't lost.
 - No live-reload on `FileStore` despite "human-editable" framing.
 - No `removeContext` migration case (use `.custom` + `removeContext(_:)` accessor).
 
+**Persistence — in-layer fixes (2026-05-28 cont.)**
+
+- [x] **`FileStore` now takes prioritized URLs, namespace key, bootstrap flag.**
+  `init(urls: [URL], format:, key: String?, createIfMissing: Bool)` plus a
+  single-URL convenience. Adopters can search a fallback chain at the file
+  level, embed ShortcutKit's data under `key` (dotted paths supported:
+  `"config.shortcuts"`), and have the store touch the file at init so it's
+  discoverable. Saves preserve sibling tables via read-modify-write; missing
+  subtree on load returns empty state silently. Adopter-managed concurrent
+  writes outside the library are explicitly the adopter's responsibility.
+
 **Open (raised during persistence walkthrough — fix when revisiting this layer):**
 
 - [ ] **Library-owned UI preferences are persisted out-of-band.** The hint toggle
@@ -154,6 +165,40 @@ punch-list bullet — tracked here so it isn't lost.
   `Equatable` since `LocalizedStringResource` is `Equatable` but not `Hashable`
   (no real callers needed `Hashable`). Menu helpers + HUD + search-filter sites
   resolve via `String(localized:)`.
+
+## Registry init (in-layer fixes, 2026-05-28)
+
+- [x] **Duplicate context-ID precondition.** `ShortcutRegistry.init` now traps
+  at construction if `contexts` contains two contexts with the same `id`. Catches
+  the silent overwrite of `matchers` / `overrides` that would otherwise corrupt
+  routing.
+- [x] **Unknown-ID precondition on `mutuallyExclusiveContexts`.** Every ID in
+  every mutex set must exist in `contexts`; otherwise traps. Catches typos and
+  stale ID references that would silently no-op.
+
+## Registry / activation (deferred)
+
+- [ ] **Late context registration (`registry.register(_:)` / `unregister(_:)`).**
+  Currently `contexts` is fixed at init. Adopters with plugin scenarios can't
+  add or remove contexts at runtime. Feature spec — internal `attach(context:)`
+  exists, would need register/unregister entry points, conflict re-analysis, table
+  rebuild, persistence shape handling for plugin contexts (orphan-override
+  semantics on uninstall), and a `contextsChanged` publisher so settings UI
+  re-renders. Roughly 200–400 lines + design discussion. Pre-1.0 candidate if
+  plugin scenarios matter.
+- [ ] **Hierarchical mutex via context tree.** Today `mutuallyExclusiveContexts:
+  [Set<String>]` is flat; encoding "onboarding XOR (editor AND document)"
+  requires N×M pairwise sets. A `ShortcutContextTree.or/and/leaf` API would let
+  the tree itself imply activation and mutex semantics. Substantial design
+  change (cascading activation), worth dedicated brainstorming for v2.
+- [ ] **`systemShortcutsProvider` → `@_spi(Testing)`.** Useful for tests, almost
+  no real adopter need. Move behind the SPI strategy once that lands.
+- [ ] **Silent corruption recovery on store load.** `load` failure logs and
+  resets to empty `RawState`; adopter has no hook to surface a "your bindings
+  were lost" message. Configurable `corruptionPolicy` option deferred for v1.
+- [ ] **Silent migration-save failure.** Post-migration save errors are logged
+  but init continues with in-memory state. Idempotent migrations are self-healing
+  but the contract isn't enforced.
 
 ## Core — action / context (deferred)
 
