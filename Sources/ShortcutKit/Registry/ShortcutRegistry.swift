@@ -40,6 +40,19 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         store: any ShortcutBindingsStore = UserDefaultsStore(),
         systemShortcutsProvider: any SystemShortcutsProvider = CarbonSystemShortcuts()
     ) {
+        let contextIDs = contexts.map(\.id)
+        precondition(
+            Set(contextIDs).count == contextIDs.count,
+            "ShortcutRegistry: duplicate context IDs in `contexts`: \(contextIDs)."
+        )
+        let knownIDs = Set(contextIDs)
+        for set in mutuallyExclusiveContexts {
+            let unknown = set.subtracting(knownIDs)
+            precondition(
+                unknown.isEmpty,
+                "ShortcutRegistry: `mutuallyExclusiveContexts` references unknown context IDs: \(unknown)."
+            )
+        }
         self.contexts = contexts
         self.mutuallyExclusiveContexts = mutuallyExclusiveContexts
         // Always prepend the Phase 1.5 wrap-single-bindings breadcrumb; the
