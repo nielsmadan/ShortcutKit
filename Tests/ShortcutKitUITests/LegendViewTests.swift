@@ -16,15 +16,15 @@ struct LegendViewTests {
         }
     }
 
-    private func sampleLegend() -> KeyBindingsLegend {
+    private func sampleLegend() -> KeyBindings {
         let ctx = ShortcutContext<Act>("editor")
         let reg = ShortcutRegistry(contexts: [ctx])
-        return reg.legend(for: ["editor"])
+        return reg.bindings(for: ["editor"]).boundOnly()
     }
 
     @Test func modalRendersAtLeastOneEntry() throws {
         let legend = sampleLegend()
-        let view = KeyBindingsLegendView(legend: legend, style: .modal)
+        let view = KeyBindingsLegendView(bindings: legend, style: .modal)
         #expect(view.styleForTest == .modal)
         #expect(legend.groups.isEmpty == false)
         #expect(legend.groups.first?.entries.isEmpty == false)
@@ -32,13 +32,13 @@ struct LegendViewTests {
 
     @Test func sidebarBuilds() {
         let legend = sampleLegend()
-        let view = KeyBindingsLegendView(legend: legend, style: .sidebar)
+        let view = KeyBindingsLegendView(bindings: legend, style: .sidebar)
         #expect(view.styleForTest == .sidebar)
     }
 
     @Test func compactStripBuilds() {
         let legend = sampleLegend()
-        let view = KeyBindingsLegendView(legend: legend, style: .compactStrip)
+        let view = KeyBindingsLegendView(bindings: legend, style: .compactStrip)
         #expect(view.styleForTest == .compactStrip)
     }
 }

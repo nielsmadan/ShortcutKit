@@ -1,4 +1,5 @@
 import Combine
+import Foundation
 import ShortcutField
 
 /// Activation scope for a context. `.local` contexts only fire while activated
@@ -13,6 +14,25 @@ public enum ContextScope: Sendable, Hashable { case local, global }
     var id: String { get }
     var scope: ContextScope { get }
     var includeInSettings: Bool { get }
+
+    /// Human-facing context name shown in settings pickers and legends.
+    /// Resolves to an explicit value if the adopter set one, otherwise a
+    /// title-cased rendering of `id` (e.g. `"canvas.shared"` → `"Canvas / Shared"`).
+    var displayName: LocalizedStringResource { get }
+}
+
+/// Title-cases a context `id` for display when no explicit `displayName` is
+/// set. Splits on `.` so a dotted id like `canvas.shared` becomes
+/// `Canvas / Shared`; the id is the stable persistence key, so adopters
+/// shouldn't bake display strings into it.
+func deriveContextDisplayName(fromID id: String) -> String {
+    id.split(separator: ".")
+        .map { segment -> String in
+            let s = String(segment)
+            guard let first = s.first else { return s }
+            return first.uppercased() + s.dropFirst()
+        }
+        .joined(separator: " / ")
 }
 
 /// A named group of actions with a single dispatch closure.
@@ -27,6 +47,13 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     public let id: String
     public let scope: ContextScope
     public var includeInSettings: Bool
+
+    /// Explicit adopter-set name, or `nil` to fall back to a title-cased `id`.
+    private let displayNameOverride: LocalizedStringResource?
+
+    public var displayName: LocalizedStringResource {
+        displayNameOverride ?? LocalizedStringResource(stringLiteral: deriveContextDisplayName(fromID: id))
+    }
 
     /// `.global` contexts set this at init (required — system-wide hotkeys
     /// must work whether or not any view is mounted). `.local` contexts leave
@@ -47,9 +74,15 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     /// Local context. Handler is supplied at `.activeShortcutContext(_:dispatch:)`;
     /// firing a shortcut while no view has activated the context is a no-op.
-    public init(_ id: String, includeInSettings: Bool = true) {
+    /// `displayName` defaults to a title-cased rendering of `id`.
+    public init(
+        _ id: String,
+        displayName: LocalizedStringResource? = nil,
+        includeInSettings: Bool = true
+    ) {
         self.id = id
         scope = .local
+        displayNameOverride = displayName
         self.includeInSettings = includeInSettings
         globalDispatchClosure = nil
     }
@@ -60,11 +93,13 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     /// `CarbonGlobalActivator` to activate.
     public init(
         global id: String,
+        displayName: LocalizedStringResource? = nil,
         includeInSettings: Bool = true,
         dispatch: @escaping @MainActor (Action, ShortcutDispatch) -> Void
     ) {
         self.id = id
         scope = .global
+        displayNameOverride = displayName
         self.includeInSettings = includeInSettings
         globalDispatchClosure = dispatch
     }
@@ -248,14 +283,15 @@ extension ShortcutContext: RegistryAttachable {
     }
 
     // swiftlint:disable:next identifier_name
-    func __currentRows(
+    func __currentEntries(
         conflictsForAction: (String) -> [Conflict]
-    ) -> [KeyBindingsTable.Row] {
+    ) -> [KeyBindings.Entry] {
         Action.allCases.map { action in
-            KeyBindingsTable.Row(
+            KeyBindings.Entry(
                 contextID: id,
                 actionID: action.rawValue,
                 displayName: action.definition.displayName,
+                description: action.definition.description,
                 kind: action.definition.kind,
                 effectiveShortcuts: shortcuts(for: action),
                 isCustomized: isCustomized(action),

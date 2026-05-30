@@ -29,21 +29,7 @@ struct ContextPickerView: View {
 
     func label(for ctx: any AnyShortcutContext) -> String {
         let prefix = ctx.scope == .global ? "🌐 " : ""
-        return prefix + Self.displayName(forID: ctx.id)
-    }
-
-    /// Title-cases the context id for picker display. Splits on `.` so a
-    /// dotted id like `canvas.shared` becomes `Canvas / Shared`. Adopters
-    /// shouldn't have to embed display strings into the id since the id is
-    /// the persistence key (stable forever).
-    static func displayName(forID id: String) -> String {
-        id.split(separator: ".")
-            .map { segment -> String in
-                let s = String(segment)
-                guard let first = s.first else { return s }
-                return first.uppercased() + s.dropFirst()
-            }
-            .joined(separator: " / ")
+        return prefix + String(localized: ctx.displayName)
     }
 
     var body: some View {

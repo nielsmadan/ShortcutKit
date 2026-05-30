@@ -93,8 +93,8 @@ public struct KeyBindingsView: View {
                             .controlSize(.small)
                     }
                 }
-                ForEach(visibleSections(registry), id: \.contextID) { section in
-                    contextSection(section, registry: registry)
+                ForEach(visibleGroups(registry), id: \.id) { group in
+                    contextSection(group, registry: registry)
                 }
             }
             .padding(.horizontal, style == .dense ? 14 : 24)
@@ -147,29 +147,29 @@ public struct KeyBindingsView: View {
         )
     }
 
-    /// Sections to render in full mode, filtered to `includeInSettings`.
-    private func visibleSections(_ registry: ShortcutRegistry) -> [KeyBindingsTable.Section] {
+    /// Groups to render in full mode, filtered to `includeInSettings`.
+    private func visibleGroups(_ registry: ShortcutRegistry) -> [KeyBindings.Group] {
         let allowed = Set(registry.allContexts.filter(\.includeInSettings).map(\.id))
-        return registry.keyBindingsTable.sections.filter { allowed.contains($0.contextID) }
+        return registry.keyBindings.groups.filter { allowed.contains($0.contextID) }
     }
 
     @ViewBuilder
     private func contextSection(
-        _ section: KeyBindingsTable.Section,
+        _ group: KeyBindings.Group,
         registry: ShortcutRegistry
     ) -> some View {
-        let filtered = SearchField.filter(section.rows, query: query)
+        let filtered = SearchField.filter(group.entries, query: query)
         if !filtered.isEmpty {
             VStack(alignment: .leading, spacing: style == .dense ? 4 : 8) {
-                Text(ContextPickerView.displayName(forID: section.contextID))
+                Text(group.displayName)
                     .font(.system(size: style == .dense ? 12 : 14, weight: .semibold))
-                rowsCard(rows: filtered, registry: registry)
+                rowsCard(entries: filtered, registry: registry)
             }
         }
     }
 
     private func rowsCard(
-        rows: [KeyBindingsTable.Row],
+        entries: [KeyBindings.Entry],
         registry: ShortcutRegistry
     ) -> some View {
         VStack(spacing: 0) {
@@ -177,7 +177,7 @@ public struct KeyBindingsView: View {
                 denseColumnHeader
                 Divider().padding(.leading, 10)
             }
-            ForEach(Array(rows.enumerated()), id: \.element.actionID) { idx, row in
+            ForEach(Array(entries.enumerated()), id: \.element.id) { idx, row in
                 ShortcutRowView(
                     row: row,
                     policy: ScopePolicy(registry.scope(forContextID: row.contextID)),
@@ -203,7 +203,7 @@ public struct KeyBindingsView: View {
                     }
                 )
                 .padding(.horizontal, style == .dense ? 10 : 14)
-                if idx < rows.count - 1 {
+                if idx < entries.count - 1 {
                     Divider().padding(.leading, style == .dense ? 10 : 14)
                 }
             }
@@ -226,11 +226,11 @@ public struct KeyBindingsView: View {
     ) -> some View {
         VStack(alignment: .leading) {
             if searchEnabled { SearchField(query: $query) }
-            let scoped = registry.keyBindingsTable.sections
+            let scoped = registry.keyBindings.groups
                 .first(where: { $0.contextID == context.id })?
-                .rows ?? []
+                .entries ?? []
             let filtered = SearchField.filter(scoped, query: query)
-            ForEach(filtered, id: \.actionID) { row in
+            ForEach(filtered, id: \.id) { row in
                 ShortcutRowView(
                     row: row,
                     policy: ScopePolicy(context.scope),

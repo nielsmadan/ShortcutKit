@@ -3,11 +3,13 @@ import SwiftUI
 
 @MainActor
 public struct KeyBindingsLegendView: View {
-    public let legend: KeyBindingsLegend
+    public let bindings: KeyBindings
     public let style: LegendStyle
 
-    public init(legend: KeyBindingsLegend, style: LegendStyle) {
-        self.legend = legend
+    /// Renders a legend / cheat-sheet. Only bound actions are shown — unbound
+    /// entries are dropped via `KeyBindings.boundOnly()`.
+    public init(bindings: KeyBindings, style: LegendStyle) {
+        self.bindings = bindings.boundOnly()
         self.style = style
     }
 
@@ -15,35 +17,33 @@ public struct KeyBindingsLegendView: View {
 
     public var body: some View {
         switch style {
-        case .modal: ModalLegend(legend: legend)
-        case .sidebar: SidebarLegend(legend: legend)
-        case .compactStrip: CompactStripLegend(legend: legend)
+        case .modal: ModalLegend(bindings: bindings)
+        case .sidebar: SidebarLegend(bindings: bindings)
+        case .compactStrip: CompactStripLegend(bindings: bindings)
         }
     }
 }
 
 private struct SidebarLegend: View {
-    let legend: KeyBindingsLegend
+    let bindings: KeyBindings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(legend.groups.enumerated()), id: \.offset) { _, group in
-                if !group.entries.isEmpty {
-                    Text(group.contextID)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.secondary)
-                    ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in
-                        HStack {
-                            Text(entry.displayName)
-                                .font(.system(size: 13))
-                            Spacer()
-                            Text(entry.shortcut.displayString)
-                                .font(.system(size: 13, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                        }
+            ForEach(bindings.groups) { group in
+                Text(group.displayName)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.secondary)
+                ForEach(group.entries) { entry in
+                    HStack {
+                        Text(entry.displayName)
+                            .font(.system(size: 13))
+                        Spacer()
+                        Text(entry.effectiveShortcuts.first?.displayString ?? "")
+                            .font(.system(size: 13, design: .monospaced))
+                            .foregroundStyle(.secondary)
                     }
-                    Divider().padding(.vertical, 2)
                 }
+                Divider().padding(.vertical, 2)
             }
         }
         .padding(8)
@@ -53,15 +53,15 @@ private struct SidebarLegend: View {
 }
 
 private struct CompactStripLegend: View {
-    let legend: KeyBindingsLegend
+    let bindings: KeyBindings
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                ForEach(Array(legend.groups.enumerated()), id: \.offset) { groupIdx, group in
-                    ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in
+                ForEach(Array(bindings.groups.enumerated()), id: \.element.id) { groupIdx, group in
+                    ForEach(group.entries) { entry in
                         HStack(spacing: 4) {
-                            Text(entry.shortcut.displayString)
+                            Text(entry.effectiveShortcuts.first?.displayString ?? "")
                                 .font(.system(size: 13, design: .monospaced))
                             Text(entry.displayName)
                                 .font(.system(size: 13))
@@ -69,7 +69,7 @@ private struct CompactStripLegend: View {
                         }
                         .padding(.horizontal, 6)
                     }
-                    if groupIdx < legend.groups.count - 1 {
+                    if groupIdx < bindings.groups.count - 1 {
                         Divider().frame(height: 14)
                     }
                 }
@@ -82,22 +82,22 @@ private struct CompactStripLegend: View {
 }
 
 private struct ModalLegend: View {
-    let legend: KeyBindingsLegend
+    let bindings: KeyBindings
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                ForEach(legend.groups, id: \.contextID) { group in
+                ForEach(bindings.groups) { group in
                     Section {
-                        ForEach(Array(group.entries.enumerated()), id: \.offset) { _, entry in
+                        ForEach(group.entries) { entry in
                             HStack {
                                 Text(entry.displayName)
                                 Spacer()
-                                Text(entry.shortcut.displayString).monospaced()
+                                Text(entry.effectiveShortcuts.first?.displayString ?? "").monospaced()
                             }
                         }
                     } header: {
-                        Text(group.contextID).font(.headline)
+                        Text(group.displayName).font(.headline)
                     }
                 }
             }

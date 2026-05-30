@@ -339,6 +339,46 @@ punch-list bullet — tracked here so it isn't lost.
   `unreachablePrefix` accurately. Punch-list entry was stale (likely written
   against an older revision). No change needed.
 
+## Headless types ✅ (2026-05-30)
+
+- [x] **Collapsed `KeyBindingsTable` + `KeyBindingsLegend` into one `KeyBindings`.**
+  The two types described the same context-grouped shape with forked vocabulary
+  (`sections`/`Section`/`Row` vs `groups`/`Group`/`Entry`) and the legend was a
+  strict projection of the table. Now one `KeyBindings { groups: [Group], Group {
+  contextID, entries: [Entry] }, Entry {...full metadata...} }`. The legend is a
+  derived view: `bindings(for:).boundOnly()`. Dropped the UI-flavored
+  "Table"/"Row" vocabulary for neutral data names.
+- [x] **`Entry`, `Group` are `Identifiable`** (`Entry.id = "ctx.action"`,
+  `Group.id = contextID`) — removes the manual-`id:` footgun for adopters
+  rendering these in `ForEach` (and the `actionID`-not-unique-across-contexts
+  collision).
+- [x] **`KeyBindings.Entry` carries `contextID` + `actionID`** (the old legend
+  `Entry` had neither) — enables mapping a legend row back to its action, e.g.
+  a clickable cheat-sheet or the proposed command launcher.
+- [x] **`Entry.description` added** (was on the table row, now carried through
+  uniformly).
+- [x] **Registry surface:** `keyBindingsTable` → `keyBindings`; `legend()` →
+  `activeBindings()`; `legend(for:)` → `bindings(for:)`. `KeyBindings.filter(query:)`
+  (fuzzy) and `.boundOnly()` (drop unbound + empty groups, for legends) added.
+  `KeyBindingsLegendView(legend:)` → `init(bindings:)`, applies `.boundOnly()`
+  internally. Full cascade through UI, Global, tests, example; 191/191 pass.
+
+**Headless — deferred:**
+
+- [x] **Context display name added (2026-05-30).** `AnyShortcutContext` now has
+  `displayName: LocalizedStringResource`; `ShortcutContext` takes an optional
+  `displayName:` on both inits, falling back to a title-cased rendering of `id`
+  (`"canvas.shared"` → `"Canvas / Shared"`) via a Core helper. `KeyBindings.Group`
+  carries the resolved `displayName`; settings picker, section headers, and the
+  legend all render it instead of title-casing the raw id in the UI layer (that
+  duplicated helper was deleted). Closes the `AnyShortcutContext`-displayName and
+  headless-`Group`-displayName items together.
+- [ ] **`Entry.conflicts` double-counts across entries** — a duplicate conflict
+  appears in both entries' arrays. Correct per-entry (badge), but aggregate
+  counts need dedup. Doc note.
+- [ ] **`KeyBindings`/`Entry`/`Group` are `Equatable` not `Hashable`**
+  (`LocalizedStringResource` blocks it). Document.
+
 ## Menu helpers ✅ (2026-05-25)
 
 - [x] **`public typealias ShortcutKit = ShortcutKitHelpers` deleted.** The

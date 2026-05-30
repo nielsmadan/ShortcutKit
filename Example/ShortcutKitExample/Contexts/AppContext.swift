@@ -32,7 +32,7 @@ final class AppContextModel: ObservableObject {
     let context: ShortcutContext<AppAction>
 
     init() {
-        context = ShortcutContext<AppAction>("app")
+        context = ShortcutContext<AppAction>("app", displayName: "Application")
     }
 
     func handle(_ action: AppAction, _: ShortcutDispatch) {

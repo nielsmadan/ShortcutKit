@@ -10,8 +10,8 @@ struct SearchFilterTests {
         _ actionID: String,
         _ name: LocalizedStringResource,
         shortcuts: [Shortcut] = []
-    ) -> KeyBindingsTable.Row {
-        KeyBindingsTable.Row(
+    ) -> KeyBindings.Entry {
+        KeyBindings.Entry(
             contextID: "ctx", actionID: actionID, displayName: name,
             kind: .discrete, effectiveShortcuts: shortcuts,
             isCustomized: false, conflicts: []

@@ -15,7 +15,7 @@ enum TableAct: String, ShortcutAction {
 }
 
 @MainActor
-@Suite("KeyBindingsTable") struct KeyBindingsTableTests {
+@Suite("KeyBindings") struct KeyBindingsTests {
     private func isolatedStore() -> UserDefaultsStore {
         let suite = "ShortcutKitTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -27,10 +27,10 @@ enum TableAct: String, ShortcutAction {
     func tableShape() {
         let ctx = ShortcutContext<TableAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
-        let table = registry.keyBindingsTable
-        #expect(table.sections.count == 1)
-        #expect(table.sections[0].contextID == "editor")
-        #expect(table.sections[0].rows.map(\.actionID).sorted() == ["save", "undo", "zoom"])
+        let table = registry.keyBindings
+        #expect(table.groups.count == 1)
+        #expect(table.groups[0].contextID == "editor")
+        #expect(table.groups[0].entries.map(\.actionID).sorted() == ["save", "undo", "zoom"])
     }
 
     @Test("rows carry displayName, kind, effectiveShortcuts, isCustomized")
@@ -38,8 +38,8 @@ enum TableAct: String, ShortcutAction {
         let ctx = ShortcutContext<TableAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
-        let table = registry.keyBindingsTable
-        let save = table.sections[0].rows.first { $0.actionID == "save" }!
+        let table = registry.keyBindings
+        let save = table.groups[0].entries.first { $0.actionID == "save" }!
         #expect(save.displayName == "Save File")
         let expected: Shortcut = "cmd+shift+s"
         #expect(save.effectiveShortcuts.first == expected)
@@ -51,11 +51,11 @@ enum TableAct: String, ShortcutAction {
     func filterMatchesNameAndAscii() {
         let ctx = ShortcutContext<TableAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
-        let filteredByName = registry.keyBindingsTable.filter(query: "save")
-        #expect(filteredByName.sections[0].rows.map(\.actionID) == ["save"])
+        let filteredByName = registry.keyBindings.filter(query: "save")
+        #expect(filteredByName.groups[0].entries.map(\.actionID) == ["save"])
 
-        let filteredByAscii = registry.keyBindingsTable.filter(query: "cmd+z")
-        #expect(filteredByAscii.sections[0].rows.map(\.actionID) == ["undo"])
+        let filteredByAscii = registry.keyBindings.filter(query: "cmd+z")
+        #expect(filteredByAscii.groups[0].entries.map(\.actionID) == ["undo"])
     }
 
     @Test("rows expose all default bindings via effectiveShortcuts")
@@ -68,7 +68,7 @@ enum TableAct: String, ShortcutAction {
         }
         let ctx = ShortcutContext<MultiAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
-        let row = registry.keyBindingsTable.sections[0].rows.first!
+        let row = registry.keyBindings.groups[0].entries.first!
         #expect(row.effectiveShortcuts.count == 2)
         #expect(row.effectiveShortcuts == [Shortcut("cmd+s"), Shortcut("ctrl+s")])
         #expect(row.effectiveShortcuts.first == Shortcut("cmd+s"))
@@ -79,7 +79,7 @@ enum TableAct: String, ShortcutAction {
         let editor = ShortcutContext<TableAct>("editor")
         let viewer = ShortcutContext<TableAct>("viewer")
         let registry = ShortcutRegistry(contexts: [editor, viewer], store: isolatedStore())
-        let legend = registry.legend(for: ["editor"])
+        let legend = registry.bindings(for: ["editor"]).boundOnly()
         #expect(legend.groups.map(\.contextID) == ["editor"])
         #expect(legend.groups[0].entries.count == 3)
     }

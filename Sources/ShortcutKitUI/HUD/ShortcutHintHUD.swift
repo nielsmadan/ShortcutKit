@@ -40,12 +40,12 @@ public struct ShortcutHintHUD: ViewModifier {
 
     private func handle(event: ActionFiredEvent) {
         guard hintsEnabled, event.source == .programmatic else { return }
-        guard let row = rowFor(event: event),
-              let firstBinding = row.effectiveShortcuts.first
+        guard let entry = entryFor(event: event),
+              let firstBinding = entry.effectiveShortcuts.first
         else { return }
         guard gate.shouldShow(actionID: event.actionID) else { return }
         gate.markShown(actionID: event.actionID)
-        let name = String(localized: row.displayName)
+        let name = String(localized: entry.displayName)
         let text = "Tip: \(name) is bound to \(firstBinding.displayString)"
         current = text
         Task {
@@ -58,10 +58,9 @@ public struct ShortcutHintHUD: ViewModifier {
         }
     }
 
-    private func rowFor(event: ActionFiredEvent) -> KeyBindingsTable.Row? {
-        let table = registry.keyBindingsTable
-        for section in table.sections where section.contextID == event.contextID {
-            return section.rows.first(where: { $0.actionID == event.actionID })
+    private func entryFor(event: ActionFiredEvent) -> KeyBindings.Entry? {
+        for group in registry.keyBindings.groups where group.contextID == event.contextID {
+            return group.entries.first(where: { $0.actionID == event.actionID })
         }
         return nil
     }

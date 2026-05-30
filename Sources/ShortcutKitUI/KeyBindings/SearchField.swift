@@ -13,10 +13,10 @@ struct SearchField: View {
     }
 
     /// Headless filter: match on action label OR any binding's display string. Case-insensitive.
-    static func filter(_ rows: [KeyBindingsTable.Row], query: String) -> [KeyBindingsTable.Row] {
+    static func filter(_ entries: [KeyBindings.Entry], query: String) -> [KeyBindings.Entry] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !q.isEmpty else { return rows }
-        return rows.filter { row in
+        guard !q.isEmpty else { return entries }
+        return entries.filter { row in
             if String(localized: row.displayName).lowercased().contains(q) { return true }
             return row.effectiveShortcuts.contains { $0.displayString.lowercased().contains(q) }
         }

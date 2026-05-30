@@ -11,7 +11,7 @@ import ShortcutField
 public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     // Public outputs — empty here, populated by Tasks 12 (conflicts) and 15 (table).
     @Published public private(set) var conflicts: [Conflict] = []
-    @Published public private(set) var keyBindingsTable: KeyBindingsTable = .init()
+    @Published public private(set) var keyBindings: KeyBindings = .init()
     public let actionFired: AnyPublisher<ActionFiredEvent, Never>
 
     // Stored for Tasks 7/8/12/15 to consume.
@@ -84,7 +84,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         overrides = loaded.overrides
         reanalyzeConflicts()
         checkDefaultLevelConflicts()
-        rebuildKeyBindingsTable()
+        rebuildKeyBindings()
     }
 
     private func attach(context: any AnyShortcutContext) {
@@ -135,7 +135,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             systemShortcuts: systemShortcutsProvider.currentSystemShortcuts(),
             contextScopes: contextScopes()
         )
-        rebuildKeyBindingsTable()
+        rebuildKeyBindings()
     }
 
     private func contextScopes() -> [String: ContextScope] {
@@ -146,45 +146,48 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         return result
     }
 
-    func rebuildKeyBindingsTable() {
+    func rebuildKeyBindings() {
         let byAction = conflictsByActionFQN()
-        var sections: [KeyBindingsTable.Section] = []
+        var groups: [KeyBindings.Group] = []
         for context in contexts {
             guard let p = context as? RegistryAttachable else { continue }
-            let rows = p.__currentRows { actionID in
+            let entries = p.__currentEntries { actionID in
                 byAction["\(context.id).\(actionID)"] ?? []
             }
-            sections.append(.init(contextID: context.id, rows: rows))
+            groups.append(.init(
+                contextID: context.id, displayName: context.displayName, entries: entries
+            ))
         }
-        keyBindingsTable = .init(sections: sections)
+        keyBindings = .init(groups: groups)
     }
 
-    /// Convenience overload: returns the legend for every currently-active
-    /// local context (those pushed onto the router by `.activeShortcutContext`)
-    /// plus every `.global`-scoped context. Adopters who want a more specific
-    /// filter use `legend(for:)`.
-    public func legend() -> KeyBindingsLegend {
+    /// Bindings for every currently-active local context (those pushed onto the
+    /// router by `.activeShortcutContext`) plus every `.global`-scoped context.
+    /// Adopters who want a specific set use `bindings(for:)`. For a legend /
+    /// cheat-sheet, chain `.boundOnly()`.
+    public func activeBindings() -> KeyBindings {
         var ids = Set(router.__currentStackIDs)
         for context in contexts where context.scope == .global {
             ids.insert(context.id)
         }
-        return legend(for: ids)
+        return bindings(for: ids)
     }
 
-    public func legend(for activeContextIDs: Set<String>) -> KeyBindingsLegend {
-        var groups: [KeyBindingsLegend.Group] = []
-        for context in contexts where activeContextIDs.contains(context.id) {
+    /// Bindings for the given context IDs, in registration order. Includes
+    /// unbound actions; chain `.boundOnly()` for a legend.
+    public func bindings(for contextIDs: Set<String>) -> KeyBindings {
+        var groups: [KeyBindings.Group] = []
+        let byAction = conflictsByActionFQN()
+        for context in contexts where contextIDs.contains(context.id) {
             guard let p = context as? RegistryAttachable else { continue }
-            let rows = p.__currentRows { _ in [] }
-            let entries = rows.compactMap { row -> KeyBindingsLegend.Entry? in
-                guard let shortcut = row.effectiveShortcuts.first else { return nil }
-                return .init(displayName: row.displayName, shortcut: shortcut)
+            let entries = p.__currentEntries { actionID in
+                byAction["\(context.id).\(actionID)"] ?? []
             }
-            if !entries.isEmpty {
-                groups.append(.init(contextID: context.id, entries: entries))
-            }
+            groups.append(.init(
+                contextID: context.id, displayName: context.displayName, entries: entries
+            ))
         }
-        return KeyBindingsLegend(groups: groups)
+        return KeyBindings(groups: groups)
     }
 
     private func conflictsByActionFQN() -> [String: [Conflict]] {
@@ -327,7 +330,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     func __buildMatcher(coalescer: ContinuousCoalescer) -> any ContextMatching
     func __currentOccurrences() -> [Occurrence]
     func __defaultOccurrences() -> [Occurrence]
-    func __currentRows(conflictsForAction: (String) -> [Conflict]) -> [KeyBindingsTable.Row]
+    func __currentEntries(conflictsForAction: (String) -> [Conflict]) -> [KeyBindings.Entry]
     func __dispatchFromMatcher(actionID: String)
 }
 

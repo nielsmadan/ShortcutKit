@@ -13,7 +13,7 @@ import SwiftUI
 /// `ConflictStripeView` (popover-on-tap behavior).
 @MainActor
 struct ShortcutRowView: View {
-    let row: KeyBindingsTable.Row
+    let row: KeyBindings.Entry
     let policy: ScopePolicy
     let onSet: ([Shortcut]) -> Void
     let onClear: (Int) -> Void
@@ -23,7 +23,7 @@ struct ShortcutRowView: View {
     @Environment(\.shortcutStyle) private var style
 
     init(
-        row: KeyBindingsTable.Row,
+        row: KeyBindings.Entry,
         policy: ScopePolicy,
         onSet: @escaping ([Shortcut]) -> Void,
         onClear: @escaping (Int) -> Void,

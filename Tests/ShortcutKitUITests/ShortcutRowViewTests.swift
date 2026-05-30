@@ -6,7 +6,7 @@ import Testing
 @MainActor
 struct ShortcutRowViewTests {
     @Test func bindingCountReflectsRow() {
-        let row = KeyBindingsTable.Row(
+        let row = KeyBindings.Entry(
             contextID: "editor",
             actionID: "save",
             displayName: "Save",
@@ -24,7 +24,7 @@ struct ShortcutRowViewTests {
     }
 
     @Test func onSetReceivesUpdatedArray() {
-        let row = KeyBindingsTable.Row(
+        let row = KeyBindings.Entry(
             contextID: "editor", actionID: "save", displayName: "Save",
             kind: .discrete, effectiveShortcuts: [Shortcut("cmd+s")],
             isCustomized: true, conflicts: []

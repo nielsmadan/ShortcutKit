@@ -26,7 +26,7 @@ public final class CarbonGlobalActivator: GlobalActivator {
     /// Snapshot of the shortcut currently registered for each BindingID —
     /// the diff baseline.
     private var currentShortcuts: [BindingID: Shortcut] = [:]
-    private var tableSubscription: AnyCancellable?
+    private var bindingsSubscription: AnyCancellable?
 
     public init() {}
 
@@ -45,7 +45,7 @@ public final class CarbonGlobalActivator: GlobalActivator {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.verifyRegistrations() }
         }
-        tableSubscription = registry.$keyBindingsTable
+        bindingsSubscription = registry.$keyBindings
             .dropFirst()
             .sink { [weak self] _ in
                 MainActor.assumeIsolated { self?.syncRegistrations() }
@@ -64,8 +64,8 @@ public final class CarbonGlobalActivator: GlobalActivator {
             NotificationCenter.default.removeObserver(menuEndObserver)
         }
         menuEndObserver = nil
-        tableSubscription?.cancel()
-        tableSubscription = nil
+        bindingsSubscription?.cancel()
+        bindingsSubscription = nil
         registered.removeAll()
         currentShortcuts.removeAll()
         status.removeAll()

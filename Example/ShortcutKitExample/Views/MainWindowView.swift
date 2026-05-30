@@ -25,7 +25,7 @@ struct MainWindowView: View {
             if appModel.legendVisible {
                 Divider()
                 KeyBindingsLegendView(
-                    legend: ContextWiring.shared.legend(for: visibleContextIDs),
+                    bindings: ContextWiring.shared.bindings(for: visibleContextIDs),
                     style: .sidebar
                 )
             }

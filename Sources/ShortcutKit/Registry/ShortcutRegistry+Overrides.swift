@@ -123,6 +123,6 @@ public extension ShortcutRegistry {
         // take effect immediately instead of waiting for a registry rebuild.
         matchers[contextID]?.rebuild()
         reanalyzeConflicts()
-        rebuildKeyBindingsTable()
+        rebuildKeyBindings()
     }
 }

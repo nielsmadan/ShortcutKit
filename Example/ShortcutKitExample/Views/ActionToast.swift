@@ -42,10 +42,9 @@ struct ActionToast: View {
         return event.actionID
     }
 
-    private func rowFor(_ event: ActionFiredEvent) -> KeyBindingsTable.Row? {
-        let table = registry.keyBindingsTable
-        for section in table.sections where section.contextID == event.contextID {
-            return section.rows.first(where: { $0.actionID == event.actionID })
+    private func rowFor(_ event: ActionFiredEvent) -> KeyBindings.Entry? {
+        for group in registry.keyBindings.groups where group.contextID == event.contextID {
+            return group.entries.first(where: { $0.actionID == event.actionID })
         }
         return nil
     }
