@@ -21,7 +21,9 @@ public final class UserDefaultsStore: ShortcutBindingsStore {
     }
 
     public func save(_ state: RawState) throws {
-        let data = try JSONEncoder().encode(state)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let data = try encoder.encode(state)
         defaults.set(data, forKey: key)
     }
 }

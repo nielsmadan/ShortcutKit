@@ -74,7 +74,7 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     /// Adopter-driven dispatch. Invokes the handler with the kind that matches
     /// the action's declared kind (`.discrete` for discrete actions,
     /// `.continuous(magnitude: 1.0)` for continuous ones — "fire once"
-    /// programmatic semantics), then emits `actionFired` with `viaShortcut: false`.
+    /// programmatic semantics), then emits `actionFired` with `source: .programmatic`.
     /// No-op if no handler is currently bound (local context not activated; global
     /// context without dispatch — though the latter is unreachable by construction).
     public func dispatch(_ action: Action) {
@@ -84,14 +84,14 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         }
         invokeHandler(action, kind: dispatchKind)
         registry?.recordActionFired(.init(
-            contextID: id, actionID: action.rawValue, viaShortcut: false
+            contextID: id, actionID: action.rawValue, source: .programmatic
         ))
     }
 
     /// Adopter-driven notify. Emits `actionFired` only; handler is not called.
     public func notify(_ action: Action) {
         registry?.recordActionFired(.init(
-            contextID: id, actionID: action.rawValue, viaShortcut: false
+            contextID: id, actionID: action.rawValue, source: .programmatic
         ))
     }
 
@@ -151,13 +151,13 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     /// Called by `ContextMatcher` after a matcher-driven match. Invokes the
     /// currently-bound handler with the supplied `kind` and emits `actionFired`
-    /// with `viaShortcut: true`. The matcher is only on the stack when the
+    /// with `source: .shortcut`. The matcher is only on the stack when the
     /// context is activated, so for `.local` contexts a handler is guaranteed
     /// present here. `.global` contexts always have one.
     func dispatchFromMatcher(_ action: Action, kind: ShortcutDispatch) {
         invokeHandler(action, kind: kind)
         registry?.recordActionFired(.init(
-            contextID: id, actionID: action.rawValue, viaShortcut: true
+            contextID: id, actionID: action.rawValue, source: .shortcut
         ))
     }
 

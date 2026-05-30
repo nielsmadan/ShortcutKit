@@ -22,7 +22,7 @@ struct ActionToast: View {
         .allowsHitTesting(false)
         .onReceive(registry.actionFired) { event in
             let label = labelFor(event: event)
-            let via = event.viaShortcut
+            let via = event.source == .shortcut
                 ? rowFor(event)?.effectiveShortcuts.first?.displayString ?? "shortcut"
                 : "(button)"
             let text = "\(label) — via \(via)"

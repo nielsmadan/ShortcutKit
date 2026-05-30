@@ -9,20 +9,20 @@ import Testing
         var definition: ShortcutActionDefinition { .init("Ping", Shortcut("ctrl+opt+cmd+k")) }
     }
 
-    @Test("fireGlobalAction invokes the dispatch closure with viaShortcut true")
+    @Test("fireGlobalAction invokes the dispatch closure with source: .shortcut")
     func fireGlobalActionDispatches() {
         var fired = 0
         let ctx = ShortcutContext<GlobalAct>(global: "global") { action, kind in
             if action == .ping, kind == .discrete { fired += 1 }
         }
         let registry = ShortcutRegistry(contexts: [ctx])
-        var viaShortcut: Bool?
-        let token = registry.actionFired.sink { viaShortcut = $0.viaShortcut }
+        var source: ActionFiredEvent.Source?
+        let token = registry.actionFired.sink { source = $0.source }
 
         registry.fireGlobalAction(contextID: "global", actionID: "ping")
 
         #expect(fired == 1)
-        #expect(viaShortcut == true)
+        #expect(source == .shortcut)
         _ = token
     }
 

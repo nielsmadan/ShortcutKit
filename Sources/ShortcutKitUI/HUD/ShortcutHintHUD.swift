@@ -39,7 +39,7 @@ public struct ShortcutHintHUD: ViewModifier {
     }
 
     private func handle(event: ActionFiredEvent) {
-        guard hintsEnabled, !event.viaShortcut else { return }
+        guard hintsEnabled, event.source == .programmatic else { return }
         guard let row = rowFor(event: event),
               let firstBinding = row.effectiveShortcuts.first
         else { return }

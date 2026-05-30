@@ -82,14 +82,14 @@ enum DemoAction: String, ShortcutAction {
         _ = cancellable
     }
 
-    @Test("dispatch on a context emits actionFired with viaShortcut: false")
+    @Test("dispatch on a context emits actionFired with source: .programmatic")
     func dispatchEmitsActionFired() {
         let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         var events: [ActionFiredEvent] = []
         let cancellable = registry.actionFired.sink { events.append($0) }
         ctx.dispatch(.save)
-        #expect(events == [.init(contextID: "editor", actionID: "save", viaShortcut: false)])
+        #expect(events == [.init(contextID: "editor", actionID: "save", source: .programmatic)])
         _ = cancellable
     }
 

@@ -1,7 +1,7 @@
 import ShortcutField
 
 public extension ShortcutRegistry {
-    /// Fires an action's dispatch closure with `viaShortcut: true`, emitting
+    /// Fires an action's dispatch closure with `source: .shortcut`, emitting
     /// the same `actionFired` event a local matcher-driven fire would. The
     /// type-erased entry point used by `GlobalActivator` implementations
     /// (which work in the `String`-ID world). No-op for an unknown
