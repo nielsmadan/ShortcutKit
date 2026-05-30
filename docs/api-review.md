@@ -228,8 +228,21 @@ punch-list bullet — tracked here so it isn't lost.
   `CanvasModeContextModel` (8 sub-contexts), `GlobalContextModel`. Eliminated
   the `ModelHolder` weak-back-reference workaround that the closure-at-init
   pattern needed. 181/181 tests pass; example app updated.
+- [x] **`ActionFiredEvent.viaShortcut: Bool` → `source: ActionFiredEvent.Source`
+  enum (2026-05-29).** Nested enum with cases `.shortcut`, `.programmatic`.
+  Reads better at call sites (`event.source == .shortcut`) and extends if a
+  third source emerges. HUD, example app, tests migrated; 191/191 pass.
 - [ ] **`ActionFiredEvent` carries bare `contextID`/`actionID`** — could carry
   the new `ActionRef` value type for consistency with `ShortcutMigration.moveAction`.
+- [ ] **`ActionFiredEvent` lacks `timestamp` / `Hashable` / kind+magnitude.**
+  Possibly useful adds: `timestamp: Date` for adopters doing fire-rate analytics,
+  `Hashable` for dedup. Continuous magnitude not carried by design (events are
+  per-tick, not per-gesture). All optional polish.
+- [ ] **`UserDefaultsStore.clear()` convenience.** Adopters currently call
+  `defaults.removeObject(forKey:)` from outside. Small ergonomic gap.
+- [ ] **Continuous `dispatch(_:)` semantics doc.** `ctx.dispatch(.someContinuousAction)`
+  sends `.continuous(magnitude: 1.0)` ("fire once"); not realistic in production
+  but supports tests and macro replay. Worth a short doc note on `dispatch(_:)`.
 - [ ] **No global `registry.dispatch(contextID:actionID:)` / `registry.notify(...)`
   for adopters.** Today the only registry-level dispatch hook is the
   `@_spi`-candidate `fireGlobalAction`. A documented adopter-facing pair would
@@ -288,7 +301,32 @@ punch-list bullet — tracked here so it isn't lost.
   `enum Trigger { case shortcut, programmatic }` reads better and extends if a
   third source appears. Low priority.
 
-## Conflicts ✅ (2026-05-25)
+## Conflicts — value types (in-layer fixes, 2026-05-29)
+
+- [x] **Dropped redundant `shortcut:` from `.systemShared` / `.menuCollision`.**
+  Both cases carried a standalone `shortcut:` associated value that was always
+  `==` the `Occurrence.shortcut` they also carried (verified at both construction
+  sites). Now `.systemShared(action:)` and `.menuCollision(action:menuItemTitle:)`.
+  Consumers read `action.shortcut`. Analyzer, registry, ConflictPopover, tests
+  updated.
+- [x] **`Conflict.Severity` is now `Comparable`** (`.warning < .error`). Adopters
+  can `conflicts.map(\.severity).max()` to find the worst severity. Declaration
+  order gives the ordering via Swift's synthesized `Comparable`.
+
+**Conflicts — deferred:**
+
+- [ ] **`Occurrence` could fold into `ActionRef` + `shortcut`.** It's
+  effectively `ActionRef(contextID:actionID:)` plus a `Shortcut`. Cross-cutting
+  with the other ActionRef-propagation items.
+- [ ] **`SystemHotKey` has no `Shortcut`-based convenience init.** Custom
+  `SystemShortcutsProvider` authors work in raw `keyCode`/`modifiers`; a
+  `SystemHotKey(_ shortcut: Shortcut)` convenience would let them suppress a
+  conflict by shortcut rather than raw keycode.
+- [ ] **`.menuCollision.menuItemTitle: String`** is fine (AppKit titles are
+  already resolved at runtime), but worth a doc note that it's the displayed
+  string, not a localization key.
+
+## Conflicts — analysis surface ✅ (2026-05-25)
 
 - [x] **`SystemHotKey` manual `Hashable`** — punch-list claim was wrong:
   `NSEvent.ModifierFlags` conforms to `OptionSet` + `Equatable` but **not**

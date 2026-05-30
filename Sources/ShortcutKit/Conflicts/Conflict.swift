@@ -4,8 +4,8 @@ import ShortcutField
 public enum Conflict: Sendable, Hashable {
     case duplicate(occurrences: [Occurrence])
     case unreachablePrefix(blocker: Occurrence, blocked: Occurrence)
-    case systemShared(shortcut: Shortcut, action: Occurrence)
-    case menuCollision(shortcut: Shortcut, action: Occurrence, menuItemTitle: String)
+    case systemShared(action: Occurrence)
+    case menuCollision(action: Occurrence, menuItemTitle: String)
     case shadowedByGlobal(local: Occurrence, global: Occurrence)
     case unsupportedInScope(occurrence: Occurrence, reason: UnsupportedReason)
 
@@ -15,7 +15,12 @@ public enum Conflict: Sendable, Hashable {
         case continuousInGlobal
     }
 
-    public enum Severity: Sendable { case error, warning }
+    /// `.warning < .error`, so adopters can `conflicts.map(\.severity).max()`
+    /// to find the worst severity in a set.
+    public enum Severity: Sendable, Hashable, Comparable {
+        case warning
+        case error
+    }
 
     /// Severity rule: within-context `duplicate` / `unreachablePrefix` are
     /// `.error`; cross-context variants, `systemShared`, and `menuCollision`
@@ -45,9 +50,9 @@ public extension Conflict {
             occurrences
         case let .unreachablePrefix(blocker, blocked):
             [blocker, blocked]
-        case let .systemShared(_, action):
+        case let .systemShared(action):
             [action]
-        case let .menuCollision(_, action, _):
+        case let .menuCollision(action, _):
             [action]
         case let .shadowedByGlobal(local, global):
             [local, global]

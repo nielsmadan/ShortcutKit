@@ -63,7 +63,7 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
             systemShortcutsProvider: stub
         )
         let flaggedActions = registry.conflicts.compactMap { c -> String? in
-            if case let .systemShared(_, action) = c { action.actionID } else { nil }
+            if case let .systemShared(action) = c { action.actionID } else { nil }
         }
         #expect(flaggedActions == ["save"])
     }
@@ -80,7 +80,7 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
             systemShortcutsProvider: stub
         )
         let zoomFlags = registry.conflicts.contains { c in
-            if case let .systemShared(_, action) = c { action.actionID == "zoom" } else { false }
+            if case let .systemShared(action) = c { action.actionID == "zoom" } else { false }
         }
         #expect(zoomFlags == false)
     }

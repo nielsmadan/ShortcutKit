@@ -16,7 +16,7 @@ struct ConflictUIComponentsTests {
     }
 
     @Test func stripeColorWarningIsYellow() {
-        let warn = Conflict.systemShared(shortcut: Shortcut("cmd+space"), action: occ("a"))
+        let warn = Conflict.systemShared(action: occ("a"))
         #expect(ConflictStripeView.color(for: [warn]) == .yellow)
     }
 

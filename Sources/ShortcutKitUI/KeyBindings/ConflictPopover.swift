@@ -42,12 +42,12 @@ private struct ConflictRow: View {
                 jumpButton("Blocker: \(blocker.actionID)", blocker)
                 jumpButton("Blocked: \(blocked.actionID)", blocked)
             }
-        case let .systemShared(shortcut, action):
+        case let .systemShared(action):
             VStack(alignment: .leading) {
-                Text("System shortcut: \(shortcut.displayString)").bold()
+                Text("System shortcut: \(action.shortcut.displayString)").bold()
                 jumpButton(action.actionID, action)
             }
-        case let .menuCollision(_, action, menuItemTitle):
+        case let .menuCollision(action, menuItemTitle):
             VStack(alignment: .leading) {
                 Text("Menu item collision: \(menuItemTitle)").bold()
                 jumpButton(action.actionID, action)

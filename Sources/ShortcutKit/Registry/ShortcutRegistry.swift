@@ -203,9 +203,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             occurrences.map { "\($0.contextID).\($0.actionID)" }
         case let .unreachablePrefix(blocker, blocked):
             ["\(blocker.contextID).\(blocker.actionID)", "\(blocked.contextID).\(blocked.actionID)"]
-        case let .systemShared(_, action):
+        case let .systemShared(action):
             ["\(action.contextID).\(action.actionID)"]
-        case let .menuCollision(_, action, _):
+        case let .menuCollision(action, _):
             ["\(action.contextID).\(action.actionID)"]
         case let .shadowedByGlobal(local, global):
             ["\(local.contextID).\(local.actionID)", "\(global.contextID).\(global.actionID)"]
@@ -230,9 +230,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
                   case let .key(keyCode) = d.steps[0].kind else { continue }
             let key = SystemHotKey(keyCode: keyCode, modifiers: d.steps[0].modifiers)
             if let title = menuShortcuts[key] {
-                collisions.append(.menuCollision(
-                    shortcut: occurrence.shortcut, action: occurrence, menuItemTitle: title
-                ))
+                collisions.append(.menuCollision(action: occurrence, menuItemTitle: title))
             }
         }
         return collisions
@@ -263,9 +261,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             return "duplicate trigger across [\(label)]"
         case let .unreachablePrefix(blocker, blocked):
             return "[\(blocker.contextID).\(blocker.actionID)] blocks prefix of [\(blocked.contextID).\(blocked.actionID)]"
-        case let .systemShared(_, action):
+        case let .systemShared(action):
             return "system collision on [\(action.contextID).\(action.actionID)]"
-        case let .menuCollision(_, action, _):
+        case let .menuCollision(action, _):
             return "menu collision on [\(action.contextID).\(action.actionID)]"
         case let .shadowedByGlobal(local, global):
             return "[\(global.contextID).\(global.actionID)] shadows [\(local.contextID).\(local.actionID)]"

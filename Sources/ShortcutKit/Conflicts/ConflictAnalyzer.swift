@@ -86,9 +86,7 @@ enum ConflictAnalyzer {
                   case let .key(keyCode) = discrete.steps[0].kind else { continue }
             let key = SystemHotKey(keyCode: keyCode, modifiers: discrete.steps[0].modifiers)
             if systemShortcuts.contains(key) {
-                conflicts.append(.systemShared(
-                    shortcut: occurrence.shortcut, action: occurrence
-                ))
+                conflicts.append(.systemShared(action: occurrence))
             }
         }
         return conflicts

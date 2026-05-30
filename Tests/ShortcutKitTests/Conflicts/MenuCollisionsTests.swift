@@ -34,7 +34,7 @@ enum MenuAct: String, ShortcutAction {
         let menu = buildMenu(title: "File…", keyEquivalent: "s", modifiers: .command)
         let collisions = registry.menuCollisions(in: menu)
         #expect(collisions.count == 1)
-        if case let .menuCollision(_, action, menuItemTitle) = collisions[0] {
+        if case let .menuCollision(action, menuItemTitle) = collisions[0] {
             #expect(action.actionID == "save")
             #expect(menuItemTitle == "File…")
         } else { Issue.record("expected .menuCollision") }
