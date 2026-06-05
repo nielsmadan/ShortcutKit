@@ -2,29 +2,31 @@ import Combine
 import ShortcutKit
 import SwiftUI
 
-/// View modifier that observes a registry's `actionFired` publisher and surfaces a
-/// transient "Tip: <action> is bound to <shortcut>" overlay when an action fires via
-/// a non-shortcut path AND has at least one effective binding.
+/// View modifier backing `View.shortcutHintHUD(registry:policy:)`. Observes a
+/// registry's `actionFired` publisher and surfaces a transient
+/// "Tip: <action> is bound to <shortcut>" overlay when an action fires via a
+/// non-shortcut path AND has at least one effective binding.
 ///
 /// Suppression is governed by:
 ///   - `HintPolicy` (developer-set upper bound on frequency)
-///   - `@AppStorage("shortcutkit.hintsEnabled")` (user-set runtime gate, default `true`)
+///   - the `hintsEnabled` user preference (`ShortcutPreferencesView.hintsEnabledStorageKey`,
+///     default `true`)
 @MainActor
-public struct ShortcutHintHUD: ViewModifier {
-    public let registry: ShortcutRegistry
-    public let policy: HintPolicy
+struct ShortcutHintHUD: ViewModifier {
+    let registry: ShortcutRegistry
+    let policy: HintPolicy
 
     @AppStorage(ShortcutPreferencesView.hintsEnabledStorageKey) private var hintsEnabled = true
     @State private var gate: HintPolicyGate
     @State private var current: String?
 
-    public init(registry: ShortcutRegistry, policy: HintPolicy = .oncePerSession) {
+    init(registry: ShortcutRegistry, policy: HintPolicy = .oncePerSession) {
         self.registry = registry
         self.policy = policy
         _gate = State(initialValue: HintPolicyGate(policy: policy))
     }
 
-    public func body(content: Content) -> some View {
+    func body(content: Content) -> some View {
         content
             .overlay(alignment: .topTrailing) {
                 if let current {
@@ -46,7 +48,9 @@ public struct ShortcutHintHUD: ViewModifier {
         guard gate.shouldShow(actionID: event.actionID) else { return }
         gate.markShown(actionID: event.actionID)
         let name = String(localized: entry.displayName)
-        let text = "Tip: \(name) is bound to \(firstBinding.displayString)"
+        let shortcut = firstBinding.displayString
+        // Localizable template — translators get "Tip: %@ is bound to %@".
+        let text = String(localized: "Tip: \(name) is bound to \(shortcut)")
         current = text
         Task {
             try? await Task.sleep(for: .seconds(2))
@@ -67,8 +71,10 @@ public struct ShortcutHintHUD: ViewModifier {
 }
 
 public extension View {
-    /// Attach the discoverability HUD to this view. Reads `@AppStorage("shortcutkit.hintsEnabled")`
-    /// as the user-facing gate (default true). The policy is the developer-set upper bound.
+    /// Attach the discoverability HUD to this view. Reads the `hintsEnabled`
+    /// user preference (`ShortcutPreferencesView.hintsEnabledStorageKey`,
+    /// default `true`) as the runtime gate; `policy` is the developer-set
+    /// upper bound on frequency.
     func shortcutHintHUD(
         registry: ShortcutRegistry,
         policy: HintPolicy = .oncePerSession

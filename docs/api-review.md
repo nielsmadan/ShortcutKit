@@ -482,6 +482,25 @@ punch-list bullet — tracked here so it isn't lost.
   want a unified "show hints" setting read `ShortcutPreferencesView.hintsEnabledStorageKey`
   and gate their own `KeyBindingsLegendView`. No new API.
 
+## ShortcutKitUI — hint HUD (2026-06-03)
+
+- [x] **Hint toast template localized.** Was `"Tip: \(name) is bound to \(shortcut)"`
+  with only the action name resolved — the scaffold was hardcoded English. Now
+  `String(localized: "Tip: \(name) is bound to \(shortcut)")` so translators get
+  the whole "Tip: %@ is bound to %@" format. Consistent with the displayName /
+  description localization.
+- [x] **`ShortcutHintHUD` `ViewModifier` demoted to `internal`.** Adopters apply
+  it via `.shortcutHintHUD(registry:policy:)`; nobody constructs the type. Only
+  the modifier function stays public (standard SwiftUI pattern).
+- [x] **HUD doc literals fixed** — reference `ShortcutPreferencesView.hintsEnabledStorageKey`
+  instead of the raw `@AppStorage("shortcutkit.hintsEnabled")` string.
+- [ ] **[pre-v1] HUD placement + duration options.** Toast is hardcoded
+  `.topTrailing` / 2s. Add `alignment:` (and likely `duration:`) to
+  `.shortcutHintHUD(...)`. Ship before v1.
+- [ ] **[pre-v1] HUD custom appearance.** `HintToast` is a fixed private
+  `.thinMaterial` style; let adopters restyle (custom-content closure or style).
+  Ship before v1.
+
 ## ShortcutKitUI — deferred
 
 - [ ] **`ScopePolicy` duplicates Core's scope-validation rule** (now internal,
