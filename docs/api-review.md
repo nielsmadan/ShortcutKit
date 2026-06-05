@@ -501,6 +501,31 @@ punch-list bullet — tracked here so it isn't lost.
   `.thinMaterial` style; let adopters restyle (custom-content closure or style).
   Ship before v1.
 
+## ShortcutKitUI — preferences pane (2026-06-03)
+
+- [x] **`ShortcutPreferencesView` forwards `searchEnabled` + `contextLayout`** to
+  the embedded `KeyBindingsView`. The canned preferences pane can now use the
+  `.picker` layout for many-context apps instead of being stuck on `.stacked`.
+  Doc literal fixed to reference the storage-key constant.
+- [ ] **[pre-v1 / cross-cutting] Preferences persistence split-brain.**
+  `ShortcutPreferencesView`'s `hintsEnabled` + `denseStyle` toggles (and the HUD's
+  read of `hintsEnabled`) go through `@AppStorage` → `UserDefaults.standard`,
+  bypassing the pluggable `ShortcutBindingsStore`. Adopters using `FileStore`
+  silently leave these in UserDefaults. Fix: route library UI prefs through a
+  `preferences` field on `RawState` (or a sibling persisted state) so they share
+  the adopter's store. This is the same item flagged in the persistence layer at
+  the start of the review — belongs to the cross-cutting design pass.
+- [ ] **[deferred] Library UI strings resolve against the main bundle.**
+  SwiftUI string-literal labels (`ShortcutPreferencesView` toggle/section titles)
+  and the HUD toast are localizable, but `LocalizedStringKey` / `String(localized:)`
+  resolve against `Bundle.main`, so ShortcutKit can't ship its own translations —
+  adopters must add the keys to their catalog. If the library wants to ship
+  localizations, the UI strings need explicit `bundle:` lookups. Localization-
+  packaging decision; affects the HUD + preferences labels.
+- [ ] **[noted] `ShortcutPreferencesView` is fixed composition.** No adopter-row
+  injection into "General"; adopters wanting custom sections compose
+  `KeyBindingsView` directly. Intentional — this is the canned option.
+
 ## ShortcutKitUI — deferred
 
 - [ ] **`ScopePolicy` duplicates Core's scope-validation rule** (now internal,

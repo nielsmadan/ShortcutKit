@@ -2,11 +2,14 @@ import ShortcutKit
 import SwiftUI
 
 /// Drop-in Settings-tab view composing the General preferences (hint toggle) and
-/// the full `KeyBindingsView`. Reads `@AppStorage("shortcutkit.hintsEnabled")`,
-/// the same key the HUD checks at runtime.
+/// the full `KeyBindingsView`. Reads the `hintsEnabled` preference
+/// (`ShortcutPreferencesView.hintsEnabledStorageKey`), the same key the HUD
+/// checks at runtime.
 @MainActor
 public struct ShortcutPreferencesView: View {
     public let registry: ShortcutRegistry
+    private let searchEnabled: Bool
+    private let contextLayout: ContextLayout
 
     /// Stable AppStorage key for the user-facing hint toggle. Public so adopters
     /// can read/write it from anywhere (e.g. their own preferences scene).
@@ -18,8 +21,16 @@ public struct ShortcutPreferencesView: View {
     @AppStorage(Self.hintsEnabledStorageKey) private var hintsEnabled = true
     @AppStorage(Self.denseStyleStorageKey) private var denseStyle = false
 
-    public init(registry: ShortcutRegistry) {
+    /// `searchEnabled` and `contextLayout` are forwarded to the embedded
+    /// `KeyBindingsView` — pass `.picker` for apps with many contexts.
+    public init(
+        registry: ShortcutRegistry,
+        searchEnabled: Bool = true,
+        contextLayout: ContextLayout = .stacked
+    ) {
         self.registry = registry
+        self.searchEnabled = searchEnabled
+        self.contextLayout = contextLayout
     }
 
     var registryForTest: ShortcutRegistry { registry }
@@ -31,7 +42,12 @@ public struct ShortcutPreferencesView: View {
                 Toggle("Dense layout", isOn: $denseStyle)
             }
             Section("Shortcuts") {
-                KeyBindingsView(registry: registry, style: denseStyle ? .dense : .native)
+                KeyBindingsView(
+                    registry: registry,
+                    style: denseStyle ? .dense : .native,
+                    searchEnabled: searchEnabled,
+                    contextLayout: contextLayout
+                )
             }
         }
     }
