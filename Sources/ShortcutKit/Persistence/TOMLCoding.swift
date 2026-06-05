@@ -13,7 +13,9 @@ enum TOMLCoding {
     // MARK: - Whole-file encode/decode
 
     static func encode(_ state: RawState) throws -> String {
-        let root = makeTable(from: state)
+        // Whole-file (un-namespaced) TOML omits preferences — they require a
+        // namespace (`FileStore(key:)`) to sit safely beside context tables.
+        let root = makeTable(from: state, includePreferences: false)
         return serialize(root)
     }
 
@@ -48,7 +50,7 @@ enum TOMLCoding {
         } else {
             TOMLTable()
         }
-        let newSubtree = makeTable(from: state)
+        let newSubtree = makeTable(from: state, includePreferences: true)
         setSubtable(in: root, path: keyPath, to: newSubtree)
         return serialize(root)
     }
@@ -79,7 +81,12 @@ enum TOMLCoding {
         root[head] = headTable
     }
 
-    private static func makeTable(from state: RawState) -> TOMLTable {
+    /// Reserved root-table name for the preferences section. A context can never
+    /// be named this (registry precondition), so a table with this key is
+    /// unambiguously the preferences, not a context.
+    private static let preferencesKey = "preferences"
+
+    private static func makeTable(from state: RawState, includePreferences: Bool) -> TOMLTable {
         let root = TOMLTable()
         for (contextID, perAction) in state.overrides {
             let table = TOMLTable()
@@ -96,12 +103,26 @@ enum TOMLCoding {
             }
             root[contextID] = table
         }
+        if includePreferences, !state.preferences.isDefault {
+            let prefs = TOMLTable()
+            if let hintsEnabled = state.preferences.hintsEnabled {
+                prefs["hints-enabled"] = hintsEnabled
+            }
+            root[preferencesKey] = prefs
+        }
         return root
     }
 
     private static func decodeTable(_ root: TOMLTable) throws -> RawState {
         var state = RawState()
         for contextID in root.keys {
+            // The reserved `preferences` table is the prefs section, not a context.
+            if contextID == preferencesKey {
+                if let prefs = root[preferencesKey]?.table {
+                    state.preferences.hintsEnabled = prefs["hints-enabled"]?.bool
+                }
+                continue
+            }
             guard let contextTable = root[contextID]?.table else { continue }
             var perAction: [String: [Shortcut]] = [:]
             for actionID in contextTable.keys {

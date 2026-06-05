@@ -22,8 +22,7 @@ struct ExampleSettingsView: View {
 @MainActor
 private struct StyledSettingsTab: View {
     let style: KeyBindingsStyle
-    @AppStorage(ShortcutPreferencesView.hintsEnabledStorageKey)
-    private var hintsEnabled = true
+    @ObservedObject private var registry = ContextWiring.shared
 
     var body: some View {
         KeyBindingsView(registry: ContextWiring.shared, style: style)
@@ -42,9 +41,12 @@ private struct StyledSettingsTab: View {
             HStack {
                 Text("Show shortcut hints")
                 Spacer()
-                Toggle("", isOn: $hintsEnabled)
-                    .labelsHidden()
-                    .toggleStyle(.switch)
+                Toggle("", isOn: Binding(
+                    get: { registry.hintsEnabled },
+                    set: { registry.setHintsEnabled($0) }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)

@@ -17,9 +17,13 @@ struct ShortcutPreferencesViewTests {
         #expect(view.registryForTest === reg)
     }
 
-    @Test func appStorageKeyMatchesHUD() {
-        // Both ShortcutHintHUD and ShortcutPreferencesView use @AppStorage("shortcutkit.hintsEnabled").
-        // We don't introspect SwiftUI's AppStorage, but document the contract via a constant test.
-        #expect(ShortcutPreferencesView.hintsEnabledStorageKey == "shortcutkit.hintsEnabled")
+    @Test func hintToggleRoutesThroughRegistry() {
+        let ctx = ShortcutContext<Act>("editor")
+        let reg = ShortcutRegistry(contexts: [ctx])
+        // The pane's toggle reads/writes registry.hintsEnabled (persisted through
+        // the store), not @AppStorage.
+        #expect(reg.hintsEnabled == true)
+        reg.setHintsEnabled(false)
+        #expect(reg.hintsEnabled == false)
     }
 }

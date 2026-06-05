@@ -114,6 +114,11 @@ public final class FileStore: ShortcutBindingsStore {
                 let text = try TOMLCoding.encode(state, intoExisting: existing, atKey: keyPath)
                 try text.write(to: writeURL, atomically: true, encoding: .utf8)
             } else {
+                if !state.preferences.isDefault {
+                    Self.logger.warning(
+                        "preferences not persisted to un-namespaced TOML; set a `key:` to enable a [key.preferences] section"
+                    )
+                }
                 let text = try TOMLCoding.encode(state)
                 try text.write(to: writeURL, atomically: true, encoding: .utf8)
             }

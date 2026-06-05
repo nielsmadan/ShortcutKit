@@ -212,4 +212,55 @@ import Testing
         let loaded = try FileStore(url: url, format: .json, key: "shortcuts").load()
         #expect(loaded.overrides.isEmpty)
     }
+
+    // MARK: - Preferences
+
+    private func stateWithPref() -> RawState {
+        var s = sampleState()
+        s.preferences.hintsEnabled = false
+        return s
+    }
+
+    @Test("JSON round-trips preferences alongside overrides")
+    func jsonPreferencesRoundTrip() throws {
+        let url = tempURL("json")
+        let store = FileStore(url: url, format: .json)
+        let original = stateWithPref()
+        try store.save(original)
+        #expect(try store.load() == original)
+    }
+
+    @Test("default preferences are not written to JSON")
+    func jsonDefaultPreferencesOmitted() throws {
+        let url = tempURL("json")
+        try FileStore(url: url, format: .json).save(sampleState()) // prefs default
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("preferences") == false)
+    }
+
+    @Test("namespaced TOML round-trips preferences under [key.preferences]")
+    func tomlNamespacedPreferencesRoundTrip() throws {
+        let url = tempURL("toml")
+        let store = FileStore(url: url, format: .toml, key: "shortcutkit")
+        let original = stateWithPref()
+        try store.save(original)
+        #expect(try store.load() == original)
+
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("[shortcutkit.preferences]"))
+        #expect(text.contains("hints-enabled = false"))
+    }
+
+    @Test("un-namespaced TOML persists overrides but drops preferences")
+    func tomlNoKeyDropsPreferences() throws {
+        let url = tempURL("toml")
+        let store = FileStore(url: url, format: .toml) // no key
+        try store.save(stateWithPref())
+
+        let reloaded = try store.load()
+        #expect(reloaded.overrides == sampleState().overrides) // bindings kept
+        #expect(reloaded.preferences.isDefault) // prefs dropped
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("preferences") == false)
+    }
 }

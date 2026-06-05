@@ -6,25 +6,52 @@ import ShortcutField
 /// Phase 1.5: each action maps to an array of bindings (`[Shortcut]`). Phase 1
 /// on-disk data wrote a single scalar `Shortcut`; the JSON/TOML decoders
 /// transparently upgrade that legacy shape to a single-element array on read.
+/// Library-owned user preferences, persisted alongside `overrides` through the
+/// same `ShortcutBindingsStore`. A field is `nil` when the user hasn't diverged
+/// from the app author's default, so the section is only written when customized
+/// (mirroring how binding overrides are stored only when overridden).
+public struct Preferences: Sendable, Equatable, Codable {
+    /// User's hint-visibility choice, or `nil` to follow the app default.
+    public var hintsEnabled: Bool?
+
+    public init(hintsEnabled: Bool? = nil) {
+        self.hintsEnabled = hintsEnabled
+    }
+
+    /// True when no preference diverges from its default (nothing to persist).
+    public var isDefault: Bool { hintsEnabled == nil }
+}
+
 public struct RawState: Sendable, Equatable {
     public var overrides: [String: [String: [Shortcut]]]
-    public init(overrides: [String: [String: [Shortcut]]] = [:]) {
+    public var preferences: Preferences
+
+    public init(
+        overrides: [String: [String: [Shortcut]]] = [:],
+        preferences: Preferences = .init()
+    ) {
         self.overrides = overrides
+        self.preferences = preferences
     }
 }
 
 extension RawState: Codable {
-    private enum CodingKeys: String, CodingKey { case overrides }
+    private enum CodingKeys: String, CodingKey { case overrides, preferences }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let raw = try container.decode([String: [String: ShortcutOrArray]].self, forKey: .overrides)
         overrides = raw.mapValues { $0.mapValues(\.values) }
+        preferences = try container.decodeIfPresent(Preferences.self, forKey: .preferences) ?? Preferences()
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(overrides, forKey: .overrides)
+        // Only persist the preferences section when something diverges from default.
+        if !preferences.isDefault {
+            try container.encode(preferences, forKey: .preferences)
+        }
     }
 }
 

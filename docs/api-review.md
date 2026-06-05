@@ -105,15 +105,17 @@ punch-list bullet — tracked here so it isn't lost.
 
 **Open (raised during persistence walkthrough — fix when revisiting this layer):**
 
-- [ ] **Library-owned UI preferences are persisted out-of-band.** The hint toggle
-  (`shortcutkit.hintsEnabled`) and the dense-style toggle
-  (`shortcutkit.style.dense`) are written by SwiftUI views via `@AppStorage`
-  directly to `UserDefaults.standard`, bypassing the pluggable
-  `ShortcutBindingsStore`. Adopters who pick `FileStore` to get a portable
-  dotfile silently leave these settings behind in UserDefaults. With more such
-  toggles likely coming, fix with a small `preferences` field on `RawState` (or a
-  sibling `PersistedState` wrapper) that goes through the same store; UI
-  components read/write through the registry rather than `@AppStorage`.
+- [x] **Library-owned UI preferences split-brain resolved (Step 4, 2026-06-05).**
+  Dense was the wrong kind of state (an app-author choice) — removed as a user
+  toggle, now a `style:` parameter. `hintsEnabled` is a genuine user pref: it now
+  routes through the store via `RawState.preferences` (a `Preferences` section
+  stored only when it diverges from `ShortcutRegistry(defaultHintsEnabled:)`).
+  The registry exposes `@Published hintsEnabled` + `setHintsEnabled(_:)`; the HUD
+  and `ShortcutPreferencesView` read/write the registry instead of `@AppStorage`
+  (the public `hintsEnabledStorageKey` is gone). TOML prefs require a namespace
+  (`FileStore(key:)`) — un-namespaced TOML keeps bindings but drops prefs with a
+  logged warning; JSON always persists them. `"preferences"` is a reserved
+  context id. 205/205 tests pass.
 - [ ] **No `registry.reload()`.** The store is one-shot — there's no public way
   to ask the registry to re-read the store and pick up out-of-band changes
   (hand-edited file, sync, restore). The internal `GlobalBindingDiff` machinery
@@ -520,14 +522,12 @@ punch-list bullet — tracked here so it isn't lost.
   the embedded `KeyBindingsView`. The canned preferences pane can now use the
   `.picker` layout for many-context apps instead of being stuck on `.stacked`.
   Doc literal fixed to reference the storage-key constant.
-- [ ] **[pre-v1 / cross-cutting] Preferences persistence split-brain.**
-  `ShortcutPreferencesView`'s `hintsEnabled` + `denseStyle` toggles (and the HUD's
-  read of `hintsEnabled`) go through `@AppStorage` → `UserDefaults.standard`,
-  bypassing the pluggable `ShortcutBindingsStore`. Adopters using `FileStore`
-  silently leave these in UserDefaults. Fix: route library UI prefs through a
-  `preferences` field on `RawState` (or a sibling persisted state) so they share
-  the adopter's store. This is the same item flagged in the persistence layer at
-  the start of the review — belongs to the cross-cutting design pass.
+- [x] **Preferences persistence split-brain resolved (Step 4, 2026-06-05).**
+  See the persistence-layer entry above. Dense became a `style:` parameter;
+  `hintsEnabled` routes through `RawState.preferences` + the registry
+  (`defaultHintsEnabled`, `hintsEnabled`, `setHintsEnabled`); `ShortcutPreferencesView`
+  gained `showsHintToggle` and binds to the registry; `hintsEnabledStorageKey`
+  removed.
 - [ ] **[deferred] Library UI strings resolve against the main bundle.**
   SwiftUI string-literal labels (`ShortcutPreferencesView` toggle/section titles)
   and the HUD toast are localizable, but `LocalizedStringKey` / `String(localized:)`

@@ -9,14 +9,13 @@ import SwiftUI
 ///
 /// Suppression is governed by:
 ///   - `HintPolicy` (developer-set upper bound on frequency)
-///   - the `hintsEnabled` user preference (`ShortcutPreferencesView.hintsEnabledStorageKey`,
-///     default `true`)
+///   - `registry.hintsEnabled` (the user preference, persisted through the
+///     registry's store; default from `ShortcutRegistry(defaultHintsEnabled:)`)
 @MainActor
 struct ShortcutHintHUD: ViewModifier {
-    let registry: ShortcutRegistry
+    @ObservedObject var registry: ShortcutRegistry
     let policy: HintPolicy
 
-    @AppStorage(ShortcutPreferencesView.hintsEnabledStorageKey) private var hintsEnabled = true
     @State private var gate: HintPolicyGate
     @State private var current: String?
 
@@ -41,7 +40,7 @@ struct ShortcutHintHUD: ViewModifier {
     }
 
     private func handle(event: ActionFiredEvent) {
-        guard hintsEnabled, event.source == .programmatic else { return }
+        guard registry.hintsEnabled, event.source == .programmatic else { return }
         guard let entry = entryFor(event: event),
               let firstBinding = entry.effectiveShortcuts.first
         else { return }
@@ -71,10 +70,9 @@ struct ShortcutHintHUD: ViewModifier {
 }
 
 public extension View {
-    /// Attach the discoverability HUD to this view. Reads the `hintsEnabled`
-    /// user preference (`ShortcutPreferencesView.hintsEnabledStorageKey`,
-    /// default `true`) as the runtime gate; `policy` is the developer-set
-    /// upper bound on frequency.
+    /// Attach the discoverability HUD to this view. Gated by `registry.hintsEnabled`
+    /// (the user preference, persisted through the registry's store); `policy` is
+    /// the developer-set upper bound on frequency.
     func shortcutHintHUD(
         registry: ShortcutRegistry,
         policy: HintPolicy = .oncePerSession

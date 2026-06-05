@@ -2,49 +2,52 @@ import ShortcutKit
 import SwiftUI
 
 /// Drop-in Settings-tab view composing the General preferences (hint toggle) and
-/// the full `KeyBindingsView`. Reads the `hintsEnabled` preference
-/// (`ShortcutPreferencesView.hintsEnabledStorageKey`), the same key the HUD
-/// checks at runtime.
+/// the full `KeyBindingsView`. The hint toggle reads/writes `registry.hintsEnabled`,
+/// persisted through the registry's store — the same value the HUD checks.
 @MainActor
 public struct ShortcutPreferencesView: View {
-    public let registry: ShortcutRegistry
+    @ObservedObject public var registry: ShortcutRegistry
+    private let style: KeyBindingsStyle
     private let searchEnabled: Bool
     private let contextLayout: ContextLayout
+    private let showsHintToggle: Bool
 
-    /// Stable AppStorage key for the user-facing hint toggle. Public so adopters
-    /// can read/write it from anywhere (e.g. their own preferences scene).
-    public static let hintsEnabledStorageKey = "shortcutkit.hintsEnabled"
-
-    /// Stable AppStorage key for the dense-style toggle.
-    public static let denseStyleStorageKey = "shortcutkit.style.dense"
-
-    @AppStorage(Self.hintsEnabledStorageKey) private var hintsEnabled = true
-    @AppStorage(Self.denseStyleStorageKey) private var denseStyle = false
-
-    /// `searchEnabled` and `contextLayout` are forwarded to the embedded
-    /// `KeyBindingsView` — pass `.picker` for apps with many contexts.
+    /// `style` is the app author's density choice (consumer apps `.native`,
+    /// power-user apps `.dense`) — not a user setting. `showsHintToggle` controls
+    /// whether the "Show shortcut hints" toggle is offered at all. `searchEnabled`
+    /// and `contextLayout` are forwarded to the embedded `KeyBindingsView`. The
+    /// hint preference persists through the registry's store (set the registry's
+    /// `defaultHintsEnabled` for the off-by-default case).
     public init(
         registry: ShortcutRegistry,
+        style: KeyBindingsStyle = .native,
         searchEnabled: Bool = true,
-        contextLayout: ContextLayout = .stacked
+        contextLayout: ContextLayout = .stacked,
+        showsHintToggle: Bool = true
     ) {
         self.registry = registry
+        self.style = style
         self.searchEnabled = searchEnabled
         self.contextLayout = contextLayout
+        self.showsHintToggle = showsHintToggle
     }
 
     var registryForTest: ShortcutRegistry { registry }
 
     public var body: some View {
         Form {
-            Section("General") {
-                Toggle("Show shortcut hints", isOn: $hintsEnabled)
-                Toggle("Dense layout", isOn: $denseStyle)
+            if showsHintToggle {
+                Section("General") {
+                    Toggle("Show shortcut hints", isOn: Binding(
+                        get: { registry.hintsEnabled },
+                        set: { registry.setHintsEnabled($0) }
+                    ))
+                }
             }
             Section("Shortcuts") {
                 KeyBindingsView(
                     registry: registry,
-                    style: denseStyle ? .dense : .native,
+                    style: style,
                     searchEnabled: searchEnabled,
                     contextLayout: contextLayout
                 )

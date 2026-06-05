@@ -14,6 +14,15 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     @Published public private(set) var keyBindings: KeyBindings = .init()
     public let actionFired: AnyPublisher<ActionFiredEvent, Never>
 
+    /// Effective hint-visibility state: the user's override if set, else the
+    /// app author's `defaultHintsEnabled`. The HUD reads this; the preferences
+    /// UI flips it via `setHintsEnabled(_:)`.
+    @Published public private(set) var hintsEnabled: Bool = true
+
+    private let defaultHintsEnabled: Bool
+    /// `nil` until the user diverges from `defaultHintsEnabled`; persisted then.
+    private var hintsEnabledOverride: Bool?
+
     // Stored for Tasks 7/8/12/15 to consume.
     let contexts: [any AnyShortcutContext]
     let mutuallyExclusiveContexts: [Set<String>]
@@ -38,12 +47,17 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         mutuallyExclusiveContexts: [Set<String>] = [],
         migrations: [ShortcutMigration] = [],
         store: any ShortcutBindingsStore = UserDefaultsStore(),
-        systemShortcutsProvider: any SystemShortcutsProvider = CarbonSystemShortcuts()
+        systemShortcutsProvider: any SystemShortcutsProvider = CarbonSystemShortcuts(),
+        defaultHintsEnabled: Bool = true
     ) {
         let contextIDs = contexts.map(\.id)
         precondition(
             Set(contextIDs).count == contextIDs.count,
             "ShortcutRegistry: duplicate context IDs in `contexts`: \(contextIDs)."
+        )
+        precondition(
+            !contextIDs.contains("preferences"),
+            "ShortcutRegistry: \"preferences\" is a reserved context id (the persisted preferences section)."
         )
         let knownIDs = Set(contextIDs)
         for set in mutuallyExclusiveContexts {
@@ -60,6 +74,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         self.migrations = [WrapSingleBindingsMigration.entry] + migrations
         self.store = store
         self.systemShortcutsProvider = systemShortcutsProvider
+        self.defaultHintsEnabled = defaultHintsEnabled
         actionFired = actionFiredSubject.eraseToAnyPublisher()
 
         for context in contexts {
@@ -82,9 +97,20 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             }
         }
         overrides = loaded.overrides
+        hintsEnabledOverride = loaded.preferences.hintsEnabled
+        hintsEnabled = hintsEnabledOverride ?? defaultHintsEnabled
         reanalyzeConflicts()
         checkDefaultLevelConflicts()
         rebuildKeyBindings()
+    }
+
+    /// Set the user's hint-visibility preference. Persists through the store as
+    /// an override only when it diverges from `defaultHintsEnabled` (matching how
+    /// binding overrides are stored only when customized).
+    public func setHintsEnabled(_ value: Bool) {
+        hintsEnabledOverride = (value == defaultHintsEnabled) ? nil : value
+        hintsEnabled = value
+        scheduleSave()
     }
 
     private func attach(context: any AnyShortcutContext) {
@@ -289,7 +315,10 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     private func flushSave() {
         pendingSave = nil
         do {
-            try store.save(RawState(overrides: overrides))
+            try store.save(RawState(
+                overrides: overrides,
+                preferences: Preferences(hintsEnabled: hintsEnabledOverride)
+            ))
         } catch {
             // Best-effort; Task 7 adds os.Logger wiring.
         }
