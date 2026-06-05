@@ -4,24 +4,36 @@ import SwiftUI
 
 /// The top-level settings page for shortcut customisation.
 ///
-/// Full mode (`init(registry:searchEnabled:)`) renders one bold-header section
-/// per registry context (filtered to `includeInSettings == true`), each with
-/// its rows inside a rounded grouped container — the standard macOS settings
-/// layout pattern. A top toolbar holds an optional search field and a small
-/// "Reset All…" trailing button.
+/// Full mode (`init(registry:style:searchEnabled:)`) renders one bold-header
+/// section per registry context (filtered to `includeInSettings == true`),
+/// each with its rows inside a rounded grouped container — the standard macOS
+/// settings layout pattern. A top toolbar holds an optional search field and a
+/// small "Reset All…" trailing button.
 ///
-/// Inline mode (`init(context:searchEnabled:)`) renders only the rows for the
-/// given context — no section header, no toolbar, search optional (default
-/// OFF). Designed to embed inside a custom Settings tab. Side effects route
-/// to the context's attached registry.
+/// Inline mode (`init(context:style:searchEnabled:)`) renders only the rows for
+/// the given context — no section header, no toolbar, search optional (default
+/// OFF). Designed to embed inside a custom Settings tab. For a *single action*
+/// rather than a whole context, use `ShortcutBindingEditor`; for one action
+/// laid out your own way (onboarding, popover), prefer that over inline mode.
+/// Side effects route to the context's attached registry.
+/// How full mode lays out multiple contexts.
+public enum ContextLayout: Sendable, Hashable {
+    /// Every context stacked as its own section — one long scroll.
+    case stacked
+    /// A context selector (segmented for a few contexts, a dropdown for many)
+    /// with only the chosen context's rows shown below. Suited to apps with
+    /// many contexts where stacking would scroll endlessly.
+    case picker
+}
+
 @MainActor
 public struct KeyBindingsView: View {
     enum Mode {
-        case full(searchEnabled: Bool)
+        case full(searchEnabled: Bool, layout: ContextLayout)
         case inline(context: any AnyShortcutContext, searchEnabled: Bool)
     }
 
-    /// Observed so `@Published` changes (`keyBindingsTable`, `conflicts`, …)
+    /// Observed so `@Published` changes (`keyBindings`, `conflicts`, …)
     /// re-render the rows when overrides change at runtime.
     @ObservedObject var registry: ShortcutRegistry
     let mode: Mode
@@ -29,19 +41,23 @@ public struct KeyBindingsView: View {
 
     @State private var query: String = ""
     @State private var resetAlertShown: Bool = false
+    @State private var selectedContextID: String = ""
 
     /// Full mode — renders every `includeInSettings` context in the registry.
     /// `searchEnabled` defaults to `true` because the standalone settings
     /// pattern almost always wants the toolbar search field. `style` controls
-    /// visual density (`.native` / `.dense`).
+    /// visual density (`.native` / `.dense`). `contextLayout` chooses between
+    /// stacking every context (`.stacked`, default) and a context selector
+    /// (`.picker`) for apps with many contexts.
     public init(
         registry: ShortcutRegistry,
         style: KeyBindingsStyle = .native,
-        searchEnabled: Bool = true
+        searchEnabled: Bool = true,
+        contextLayout: ContextLayout = .stacked
     ) {
         self.registry = registry
         self.style = style
-        mode = .full(searchEnabled: searchEnabled)
+        mode = .full(searchEnabled: searchEnabled, layout: contextLayout)
     }
 
     /// Inline single-context init. The context must already be attached to a
@@ -65,8 +81,8 @@ public struct KeyBindingsView: View {
 
     public var body: some View {
         switch mode {
-        case let .full(searchEnabled):
-            fullBody(registry: registry, searchEnabled: searchEnabled)
+        case let .full(searchEnabled, layout):
+            fullBody(registry: registry, searchEnabled: searchEnabled, layout: layout)
         case let .inline(context, searchEnabled):
             inlineBody(context: context, registry: registry, searchEnabled: searchEnabled)
         }
@@ -81,9 +97,13 @@ public struct KeyBindingsView: View {
 
     var __searchEnabledForTest: Bool {
         switch mode {
-        case let .full(enabled): enabled
+        case let .full(enabled, _): enabled
         case let .inline(_, enabled): enabled
         }
+    }
+
+    var __contextLayoutForTest: ContextLayout? {
+        if case let .full(_, layout) = mode { layout } else { nil }
     }
 
     // swiftlint:enable identifier_name
@@ -91,7 +111,9 @@ public struct KeyBindingsView: View {
     // MARK: - Full mode body
 
     @ViewBuilder
-    private func fullBody(registry: ShortcutRegistry, searchEnabled: Bool) -> some View {
+    private func fullBody(
+        registry: ShortcutRegistry, searchEnabled: Bool, layout: ContextLayout
+    ) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: style == .dense ? 12 : 22) {
                 if searchEnabled {
@@ -101,8 +123,13 @@ public struct KeyBindingsView: View {
                             .controlSize(.small)
                     }
                 }
-                ForEach(visibleGroups(registry), id: \.id) { group in
-                    contextSection(group, registry: registry)
+                switch layout {
+                case .stacked:
+                    ForEach(visibleGroups(registry), id: \.id) { group in
+                        contextSection(group, registry: registry)
+                    }
+                case .picker:
+                    pickerContent(registry: registry)
                 }
             }
             .padding(.horizontal, style == .dense ? 14 : 24)
@@ -113,6 +140,28 @@ public struct KeyBindingsView: View {
             Button("Reset", role: .destructive) { registry.resetAll() }
         } message: {
             Text("This will discard all customisations across every context.")
+        }
+    }
+
+    /// Context selector + the selected context's rows. The picker itself
+    /// (segmented vs. dropdown) and its conflict dots come from
+    /// `ContextPickerView`.
+    @ViewBuilder
+    private func pickerContent(registry: ShortcutRegistry) -> some View {
+        let groups = visibleGroups(registry)
+        let visibleIDs = groups.map(\.contextID)
+        let selection = Binding(
+            get: { visibleIDs.contains(selectedContextID) ? selectedContextID : (visibleIDs.first ?? "") },
+            set: { selectedContextID = $0 }
+        )
+        ContextPickerView(
+            contexts: registry.allContexts,
+            selection: selection,
+            conflictedIDs: registry.contextIDsWithConflicts()
+        )
+        if let group = groups.first(where: { $0.contextID == selection.wrappedValue }) {
+            // No section header — the picker already names the context.
+            rowsCard(entries: SearchField.filter(group.entries, query: query), registry: registry)
         }
     }
 

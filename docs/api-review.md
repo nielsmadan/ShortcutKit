@@ -449,6 +449,21 @@ punch-list bullet — tracked here so it isn't lost.
 - [x] **`ScopePolicy` demoted to `internal`** (+ `Validation`/`RejectReason`).
   Only the internal recorder uses it now.
 
+## ShortcutKitUI — context picker layout (2026-06-02)
+
+- [x] **`ContextLayout` + `.picker` mode added to `KeyBindingsView` full mode.**
+  `init(registry:style:searchEnabled:contextLayout:)`. `.stacked` (default) is
+  the prior all-contexts-stacked behavior; `.picker` shows a context selector
+  (segmented for ≤3 contexts, dropdown for more, with 🌐 badges + per-context
+  conflict dots) and renders only the selected context's rows — solves endless
+  scroll for shortcut-heavy apps. This also **resurrected `ContextPickerView`**,
+  which was dead code (only its own tests referenced it; never wired into any
+  view). Now an internal sub-view of `.picker` mode. Back-compat (default
+  `.stacked`). 196/196 tests pass.
+- [x] **`KeyBindingsView` stale doc fixed** — init signatures now include
+  `style:`; `keyBindingsTable` reference corrected to `keyBindings`; added a
+  steer toward `ShortcutBindingEditor` for single-action UI.
+
 ## ShortcutKitUI — deferred
 
 - [ ] **`ScopePolicy` duplicates Core's scope-validation rule** (now internal,

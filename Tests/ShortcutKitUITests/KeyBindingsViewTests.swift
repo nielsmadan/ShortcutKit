@@ -38,6 +38,24 @@ struct KeyBindingsViewTests {
         #expect(view.__searchEnabledForTest == false)
     }
 
+    @Test func fullModeDefaultsToStackedLayout() {
+        let view = KeyBindingsView(registry: makeRegistry(contextCount: 2))
+        #expect(view.__contextLayoutForTest == .stacked)
+    }
+
+    @Test func fullModePickerLayoutOptIn() {
+        let view = KeyBindingsView(registry: makeRegistry(contextCount: 5), contextLayout: .picker)
+        #expect(view.__contextLayoutForTest == .picker)
+    }
+
+    @Test func inlineModeHasNoContextLayout() {
+        let ctx = ShortcutContext<Act>("editor")
+        let registry = ShortcutRegistry(contexts: [ctx])
+        let view = KeyBindingsView(context: ctx)
+        #expect(view.__contextLayoutForTest == nil)
+        _ = registry
+    }
+
     @Test func inlineModeHidesPicker() {
         let ctx = ShortcutContext<Act>("editor")
         _ = ShortcutRegistry(contexts: [ctx])
