@@ -13,6 +13,9 @@ public struct BindingID: Sendable, Hashable {
         self.actionID = actionID
         self.bindingIndex = bindingIndex
     }
+
+    /// The `(context, action)` pair this binding belongs to, dropping the slot index.
+    public var ref: ActionRef { ActionRef(contextID: contextID, actionID: actionID) }
 }
 
 /// One effective global binding: its `BindingID` and the shortcut registered

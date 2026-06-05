@@ -9,8 +9,8 @@ import Testing
         var definition: ShortcutActionDefinition { .init("Ping", Shortcut("ctrl+opt+cmd+k")) }
     }
 
-    @Test("fireGlobalAction invokes the dispatch closure with source: .shortcut")
-    func fireGlobalActionDispatches() {
+    @Test("dispatchGlobalAction invokes the dispatch closure with source: .shortcut")
+    func dispatchGlobalActionDispatches() {
         var fired = 0
         let ctx = ShortcutContext<GlobalAct>(global: "global") { action, kind in
             if action == .ping, kind == .discrete { fired += 1 }
@@ -19,19 +19,19 @@ import Testing
         var source: ActionFiredEvent.Source?
         let token = registry.actionFired.sink { source = $0.source }
 
-        registry.fireGlobalAction(contextID: "global", actionID: "ping")
+        registry.dispatchGlobalAction(ActionRef(contextID: "global", actionID: "ping"))
 
         #expect(fired == 1)
         #expect(source == .shortcut)
         _ = token
     }
 
-    @Test("fireGlobalAction is a no-op for an unknown context or action")
-    func fireGlobalActionUnknown() {
+    @Test("dispatchGlobalAction is a no-op for an unknown context or action")
+    func dispatchGlobalActionUnknown() {
         let ctx = ShortcutContext<GlobalAct>(global: "global") { _, _ in }
         let registry = ShortcutRegistry(contexts: [ctx])
-        registry.fireGlobalAction(contextID: "nope", actionID: "ping")
-        registry.fireGlobalAction(contextID: "global", actionID: "nope")
+        registry.dispatchGlobalAction(ActionRef(contextID: "nope", actionID: "ping"))
+        registry.dispatchGlobalAction(ActionRef(contextID: "global", actionID: "nope"))
         #expect(Bool(true))
     }
 

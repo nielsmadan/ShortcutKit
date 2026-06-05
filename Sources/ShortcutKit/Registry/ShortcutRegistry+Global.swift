@@ -1,16 +1,15 @@
 import ShortcutField
 
-public extension ShortcutRegistry {
-    /// Fires an action's dispatch closure with `source: .shortcut`, emitting
-    /// the same `actionFired` event a local matcher-driven fire would. The
-    /// type-erased entry point used by `GlobalActivator` implementations
-    /// (which work in the `String`-ID world). No-op for an unknown
-    /// context/action.
-    func fireGlobalAction(contextID: String, actionID: String) {
-        guard let context = allContexts.first(where: { $0.id == contextID }),
+package extension ShortcutRegistry {
+    /// Dispatches an action's handler with `source: .shortcut`, emitting the
+    /// same `actionFired` event a local matcher-driven fire would. The entry
+    /// point `GlobalActivator` implementations call when the OS routes a global
+    /// hotkey. No-op for an unknown context/action.
+    package func dispatchGlobalAction(_ ref: ActionRef) {
+        guard let context = allContexts.first(where: { $0.id == ref.contextID }),
               let attachable = context as? RegistryAttachable
         else { return }
-        attachable.__dispatchFromMatcher(actionID: actionID)
+        attachable.__dispatchFromMatcher(actionID: ref.actionID)
     }
 
     /// Effective bindings (defaults + overrides) of every `.global`-scoped

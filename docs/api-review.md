@@ -571,13 +571,17 @@ punch-list bullet — tracked here so it isn't lost.
 
 ### ShortcutKitGlobal — deferred to the cross-cutting pass
 
-- [ ] **`fireGlobalAction(contextID: String, actionID: String)` (High)** — a
-  cross-module Core↔Global seam exposed to *all* adopters, with two adjacent
-  `String` params (transposition compiles, silently no-ops). Collapse the two
-  strings into the `BindingID` the only caller already holds:
-  `fireGlobalAction(_ id: BindingID)`. Mark `@_spi(GlobalActivator) public` so it
-  leaves ordinary adopters' autocomplete. Same `@_spi` for `globalBindings()`.
-  (`Registry/ShortcutRegistry+Global.swift`)
+- [x] **`fireGlobalAction` High seam fixed (Step 3, 2026-06-04).** Renamed to
+  `dispatchGlobalAction(_ ref: ActionRef)`, made `package`. One `ActionRef`
+  replaces the two transposable `String` params (footgun gone); `package` removes
+  it from adopter autocomplete (only `CarbonGlobalActivator` calls it); "dispatch"
+  matches Core's verb. Added `BindingID.ref` so the activator passes `id.ref`.
+  `globalBindings()` already went `package` in Step 1.
+- [decided] **`ActionRef` NOT propagated into `ActionFiredEvent` / `Occurrence`.**
+  They're read-access payloads (`event.contextID`); folding to `ActionRef` would
+  add nesting (`event.ref.contextID`) for every read, and the real ActionRef
+  consumers (migrations, `dispatchGlobalAction`) aren't fed from events. Kept flat.
+  `ActionRef` stays where it's a passed value: migrations + `dispatchGlobalAction`.
 - [ ] **`GlobalBindingStatus.failed(reason: String)` is stringly-typed (Medium)** —
   defeats the `Equatable` conformance that exists so adopters can branch on status.
   Replace with a closed `FailureReason` enum (`registrationRejected`,

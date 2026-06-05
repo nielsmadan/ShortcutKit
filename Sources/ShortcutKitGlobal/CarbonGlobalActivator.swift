@@ -96,7 +96,7 @@ public final class CarbonGlobalActivator: GlobalActivator {
                 continue
             }
             guard let hotKey = center.register(combo: combo, onKeyDown: { [weak registry] in
-                registry?.fireGlobalAction(contextID: id.contextID, actionID: id.actionID)
+                registry?.dispatchGlobalAction(id.ref)
             }) else {
                 status[id] = .failed(reason: .registrationRejected)
                 continue
