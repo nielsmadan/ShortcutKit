@@ -11,11 +11,15 @@ import SwiftUI
 ///
 /// On rejection (scope policy violation) the underlying binding is not updated
 /// and an inline reason message is shown until the next valid commit clears it.
+/// Internal recorder cell. The public entry points are `KeyBindingsView`
+/// (whole table) and `ShortcutBindingEditor` (single action); both compose
+/// this. It wraps ShortcutField's discrete/continuous recorder for the bound
+/// shortcut's kind and refuses scope-policy violations inline.
 @MainActor
-public struct ScopedShortcutRecorder: View {
+struct ScopedShortcutRecorder: View {
     @Binding var shortcut: Shortcut?
     let policy: ScopePolicy
-    @Environment(\.shortcutStyle) private var style
+    let style: KeyBindingsStyle
     @State private var rejection: ScopePolicy.RejectReason?
 
     /// Width of the embedded recorder field. Smaller in `.dense` so two
@@ -35,12 +39,13 @@ public struct ScopedShortcutRecorder: View {
         style == .dense ? Self.continuousWidth.dense : Self.continuousWidth.native
     }
 
-    public init(shortcut: Binding<Shortcut?>, policy: ScopePolicy) {
+    init(shortcut: Binding<Shortcut?>, policy: ScopePolicy, style: KeyBindingsStyle = .native) {
         _shortcut = shortcut
         self.policy = policy
+        self.style = style
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             switch shortcut {
             case let .continuous(continuous):

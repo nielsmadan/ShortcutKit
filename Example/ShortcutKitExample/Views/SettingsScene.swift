@@ -3,7 +3,7 @@ import ShortcutKitUI
 import SwiftUI
 
 /// The example app's Settings scene. Two tabs render the same `KeyBindingsView`
-/// with different `ShortcutStyle`s side-by-side so adopters can compare the
+/// with different `KeyBindingsStyle`s side-by-side so adopters can compare the
 /// flavors directly. The General toggle for hint visibility appears in both
 /// tabs so it's always one click away.
 @MainActor
@@ -21,13 +21,12 @@ struct ExampleSettingsView: View {
 
 @MainActor
 private struct StyledSettingsTab: View {
-    let style: ShortcutStyle
+    let style: KeyBindingsStyle
     @AppStorage(ShortcutPreferencesView.hintsEnabledStorageKey)
     private var hintsEnabled = true
 
     var body: some View {
-        KeyBindingsView(registry: ContextWiring.shared)
-            .shortcutStyle(style)
+        KeyBindingsView(registry: ContextWiring.shared, style: style)
             .safeAreaInset(edge: .top, spacing: 0) {
                 displaySection
             }

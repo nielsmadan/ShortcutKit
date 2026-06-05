@@ -25,16 +25,22 @@ public struct KeyBindingsView: View {
     /// re-render the rows when overrides change at runtime.
     @ObservedObject var registry: ShortcutRegistry
     let mode: Mode
+    let style: KeyBindingsStyle
 
-    @Environment(\.shortcutStyle) private var style
     @State private var query: String = ""
     @State private var resetAlertShown: Bool = false
 
     /// Full mode — renders every `includeInSettings` context in the registry.
     /// `searchEnabled` defaults to `true` because the standalone settings
-    /// pattern almost always wants the toolbar search field.
-    public init(registry: ShortcutRegistry, searchEnabled: Bool = true) {
+    /// pattern almost always wants the toolbar search field. `style` controls
+    /// visual density (`.native` / `.dense`).
+    public init(
+        registry: ShortcutRegistry,
+        style: KeyBindingsStyle = .native,
+        searchEnabled: Bool = true
+    ) {
         self.registry = registry
+        self.style = style
         mode = .full(searchEnabled: searchEnabled)
     }
 
@@ -48,10 +54,12 @@ public struct KeyBindingsView: View {
     /// chrome typically already handles its own search/filtering.
     public init(
         context: ShortcutContext<some ShortcutAction>,
+        style: KeyBindingsStyle = .native,
         searchEnabled: Bool = false
     ) {
         let registry = context.__attachedRegistry ?? ShortcutRegistry(contexts: [])
         self.registry = registry
+        self.style = style
         mode = .inline(context: context, searchEnabled: searchEnabled)
     }
 
@@ -181,6 +189,7 @@ public struct KeyBindingsView: View {
                 ShortcutRowView(
                     row: row,
                     policy: ScopePolicy(registry.scope(forContextID: row.contextID)),
+                    style: style,
                     onSet: { shortcuts in
                         registry.setShortcuts(
                             shortcuts,
@@ -234,6 +243,7 @@ public struct KeyBindingsView: View {
                 ShortcutRowView(
                     row: row,
                     policy: ScopePolicy(context.scope),
+                    style: style,
                     onSet: { shortcuts in
                         registry.setShortcuts(
                             shortcuts,

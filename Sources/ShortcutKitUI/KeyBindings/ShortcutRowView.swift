@@ -15,16 +15,16 @@ import SwiftUI
 struct ShortcutRowView: View {
     let row: KeyBindings.Entry
     let policy: ScopePolicy
+    let style: KeyBindingsStyle
     let onSet: ([Shortcut]) -> Void
     let onClear: (Int) -> Void
     let onReset: () -> Void
     let onJump: ((Occurrence) -> Void)?
 
-    @Environment(\.shortcutStyle) private var style
-
     init(
         row: KeyBindings.Entry,
         policy: ScopePolicy,
+        style: KeyBindingsStyle,
         onSet: @escaping ([Shortcut]) -> Void,
         onClear: @escaping (Int) -> Void,
         onReset: @escaping () -> Void,
@@ -32,6 +32,7 @@ struct ShortcutRowView: View {
     ) {
         self.row = row
         self.policy = policy
+        self.style = style
         self.onSet = onSet
         self.onClear = onClear
         self.onReset = onReset
@@ -71,13 +72,14 @@ struct ShortcutRowView: View {
         if style == .dense {
             // Two fixed slots: primary + alternative. Empty slot lets the
             // user record an alternative on the same row.
-            ScopedShortcutRecorder(shortcut: slotBinding(at: 0), policy: policy)
-            ScopedShortcutRecorder(shortcut: slotBinding(at: 1), policy: policy)
+            ScopedShortcutRecorder(shortcut: slotBinding(at: 0), policy: policy, style: style)
+            ScopedShortcutRecorder(shortcut: slotBinding(at: 1), policy: policy, style: style)
         } else {
             ForEach(Array(row.effectiveShortcuts.enumerated()), id: \.offset) { idx, shortcut in
                 ScopedShortcutRecorder(
                     shortcut: binding(for: idx, current: shortcut),
-                    policy: policy
+                    policy: policy,
+                    style: style
                 )
             }
         }

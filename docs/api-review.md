@@ -416,13 +416,53 @@ punch-list bullet — tracked here so it isn't lost.
   example app was already using the constants; now the library's own
   consumption is too.
 
+## ShortcutKitUI — proper walk (2026-05-31)
+
+- [x] **`ShortcutStyle` → `KeyBindingsStyle`, env value → init parameter.** The
+  name overpromised (it only affects the bindings table + recorders; the legend
+  has its own `LegendStyle` and the HUD ignores it). Renamed to parallel
+  `LegendStyle` and scoped honestly. Converted from a `@Environment` value +
+  `.shortcutStyle(_:)` modifier to an init parameter on `KeyBindingsView(registry:style:)`
+  and `ScopedShortcutRecorder(...:style:)` — consistent with how `LegendStyle`
+  is already passed to `KeyBindingsLegendView`, drops the env-key + modifier
+  machinery. Deleted `ShortcutStyleEnvironment.swift`. Threaded through
+  `ShortcutRowView` (internal). 190/190 tests pass.
+- [ ] **`.dense` coverage is partial (documented).** Only the bindings table +
+  recorders honor it; the legend and HUD render at fixed sizes. Documented on
+  `KeyBindingsStyle`; extending dense rendering to the legend/HUD is deferred
+  visual-design work.
+
+## ShortcutKitUI — ShortcutBindingEditor + recorder demotion (2026-06-02)
+
+- [x] **Added `ShortcutBindingEditor<Action>`** — public single-action,
+  registry-bound binding editor (`init(_ action:in:style:showsDescription:)`).
+  Renders the action's display name + optional description + recorder(s) +
+  conflict feedback + reset, persisting through the attached registry.
+  Composes the internal `ShortcutRowView`. Serves onboarding ("ask for the 5
+  most important shortcuts") and any custom per-action UI without the adopter
+  hand-plumbing raw `Shortcut?` bindings. 3 tests.
+- [x] **`ScopedShortcutRecorder` demoted to `internal`.** It was a thin wrapper
+  over ShortcutField's recorder — not worth headline public status. Now the
+  inner cell composed by both `KeyBindingsView` and `ShortcutBindingEditor`.
+  Public UI binding-editing surface is now two meaningful altitudes: the whole
+  table (`KeyBindingsView`) and one action (`ShortcutBindingEditor`).
+- [x] **`ScopePolicy` demoted to `internal`** (+ `Validation`/`RejectReason`).
+  Only the internal recorder uses it now.
+
 ## ShortcutKitUI — deferred
 
-- [ ] **`ScopedShortcutRecorder.discreteWidth`/`continuousWidth`** are bare
-  `(native:dense:)` tuples read cross-file; `continuousWidth` may be unused.
-  Consider a small struct or fold the width logic in. Low priority.
-- [ ] **`ScopePolicy` mirrors Core's `ContextScope`** — defensible (UI module wants
-  its own type + `validate`), but confirm the duplication earns its keep.
+- [ ] **`ScopePolicy` duplicates Core's scope-validation rule** (now internal,
+  lower urgency). `ScopePolicy.validate` re-implements
+  `ConflictAnalyzer.detectUnsupportedInScope`, and `ScopePolicy.RejectReason` is
+  byte-identical to `Conflict.UnsupportedReason`. Consolidate the rule into Core
+  (`ContextScope.unsupportedReason(for:)`) so the analyzer + recorder share one
+  source; then `ScopePolicy` can collapse to a thin scope alias or vanish.
+- [x] **`ScopedShortcutRecorder.discreteWidth`/`continuousWidth` tuples** — now
+  internal-only (recorder is internal), read cross-file by `KeyBindingsView`'s
+  dense column header. Minor organization nit; not adopter surface. Left as-is.
+- [ ] **`ShortcutBindingEditor` / `KeyBindingsView` inline silently no-op on an
+  unattached context** (`__attachedRegistry` weak ref → throwaway empty registry
+  → renders nothing). Should trap or warn. Same footgun both share.
 
 ## ShortcutKitGlobal
 

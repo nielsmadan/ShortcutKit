@@ -17,7 +17,7 @@ struct ShortcutRowViewTests {
         )
         let view = ShortcutRowView(
             row: row,
-            policy: .local,
+            policy: .local, style: .native,
             onSet: { _ in }, onClear: { _ in }, onReset: {}
         )
         #expect(view.bindingCount == 2)
@@ -31,7 +31,7 @@ struct ShortcutRowViewTests {
         )
         var received: [Shortcut]?
         let view = ShortcutRowView(
-            row: row, policy: .local,
+            row: row, policy: .local, style: .native,
             onSet: { received = $0 }, onClear: { _ in }, onReset: {}
         )
         view.appendEmptyBinding()

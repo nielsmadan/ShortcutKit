@@ -31,8 +31,7 @@ public struct ShortcutPreferencesView: View {
                 Toggle("Dense layout", isOn: $denseStyle)
             }
             Section("Shortcuts") {
-                KeyBindingsView(registry: registry)
-                    .shortcutStyle(denseStyle ? .dense : .native)
+                KeyBindingsView(registry: registry, style: denseStyle ? .dense : .native)
             }
         }
     }

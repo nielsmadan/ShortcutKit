@@ -8,29 +8,29 @@ import ShortcutKit
 /// `.unsupportedInScope` conflict. The same gates run at the data layer — defense
 /// in depth: if a violating shortcut sneaks in via persistence or migration it
 /// still gets flagged at runtime.
-public enum ScopePolicy: Sendable, Hashable {
+enum ScopePolicy: Sendable, Hashable {
     case local
     case global
 
-    public enum Validation: Sendable, Equatable {
+    enum Validation: Sendable, Equatable {
         case accept
         case reject(reason: RejectReason)
     }
 
-    public enum RejectReason: Sendable, Equatable {
+    enum RejectReason: Sendable, Equatable {
         case multiStepInGlobal
         case continuousInGlobal
     }
 
     /// Bridges `ContextScope` from Core into a UI-side policy.
-    public init(_ scope: ContextScope) {
+    init(_ scope: ContextScope) {
         switch scope {
         case .local: self = .local
         case .global: self = .global
         }
     }
 
-    public func validate(_ shortcut: Shortcut) -> Validation {
+    func validate(_ shortcut: Shortcut) -> Validation {
         switch self {
         case .local:
             return .accept
