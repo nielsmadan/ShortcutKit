@@ -54,7 +54,7 @@ struct RegistryTypeErasedOverridesTests {
         let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         registry.setShortcuts([Shortcut("opt+s")], contextID: "editor", actionID: "save")
-        registry.resetAction(contextID: "editor", actionID: "save")
+        registry.reset(contextID: "editor", actionID: "save")
         #expect(ctx.shortcuts(for: .save) == [Shortcut("cmd+s")])
     }
 

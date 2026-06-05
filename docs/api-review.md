@@ -281,19 +281,23 @@ punch-list bullet — tracked here so it isn't lost.
 
 ## Core — registry / context / actions (other deferred)
 
-- [ ] **`ShortcutRegistry` override-mutation API is a misuse magnet (High).**
-  5+ overlapping public methods for "change a binding": `setOverride` (singular —
-  silently truncates a multi-binding action), `setShortcuts(_:for:in:)`,
-  `setShortcuts(_:contextID:actionID:)`, `reset`, `resetAction` (a *divergent copy*
-  of `reset` despite its doc claiming it's an alias), `removeShortcut`,
-  `clearAllOverrides`, `resetAll`. Three verbs for "clear", two for "set",
-  inconsistent singular/plural. Consolidate: pick one vocabulary; demote the
-  string-keyed UI-only variants to `@_spi`/`internal`; make `resetAction` call
-  `reset` so the bodies can't diverge; drop singular `setOverride` or document it
-  as deliberately single-binding. (`Registry/ShortcutRegistry+Overrides.swift`)
-- [ ] **Verb inconsistency for "revert overrides":** `ShortcutContext.resetAllToDefaults()`
-  vs `ShortcutRegistry.resetAll()` vs `clearAllOverrides(contextID:)` — three names,
-  one concept. Align on one.
+- [x] **Override-mutation vocabulary consolidated (Step 2, 2026-06-04).** Eight
+  tangled methods → four verbs (`setShortcuts` / `removeShortcut` / `reset` /
+  `resetAll`). Dropped the truncating `setOverride`. Public typed adopter API:
+  `setShortcuts(_:for:in:)`, `reset(_:in:)` (new), `registry.resetAll()`,
+  `context.resetAll()` (was `resetAllToDefaults`). Package string-keyed (UI):
+  `setShortcuts(_:contextID:actionID:)`, `removeShortcut(at:...)`,
+  `reset(contextID:actionID:)` (was `resetAction`). Internal protocol method
+  `resetAll(contextID:)` (was `clearAllOverrides`). The `reset`/`resetAction`
+  duplication is gone (one `reset`, overloaded typed/string). Tests migrated;
+  197/197 pass.
+- [x] **Typed override mutations relocated onto the context (2026-06-04).**
+  `context.setShortcuts(_:for:)` and `context.reset(_:)` replace the registry's
+  `setShortcuts(_:for:in:)` / `reset(_:in:)` — read and write now both live on
+  the typed context (symmetric with `shortcuts(for:)` / `isCustomized(_:)`, and
+  consistent with `dispatch`/`notify`). The registry keeps the whole-app
+  `resetAll()` and the `package` string-keyed methods for UI. UI + example
+  untouched; tests migrated. 197/197 pass.
 - [ ] **`ShortcutContext.__attachedRegistry` is `public` (the only real `__` leak).**
   A `__`-prefixed hook in a `public extension ShortcutContext` block, so members
   default to `public`. UI module's inline mode uses it. Change to

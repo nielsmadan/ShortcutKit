@@ -51,7 +51,7 @@ public struct ShortcutBindingEditor<Action: ShortcutAction>: View {
                     style: style,
                     onSet: { registry.setShortcuts($0, contextID: context.id, actionID: action.rawValue) },
                     onClear: { registry.removeShortcut(at: $0, contextID: context.id, actionID: action.rawValue) },
-                    onReset: { registry.resetAction(contextID: context.id, actionID: action.rawValue) }
+                    onReset: { registry.reset(contextID: context.id, actionID: action.rawValue) }
                 )
                 if showsDescription, let description = action.definition.description {
                     Text(description)

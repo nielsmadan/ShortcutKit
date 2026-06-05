@@ -1,47 +1,15 @@
 import ShortcutField
 
 public extension ShortcutRegistry {
-    /// Set or clear an override for one action in one context. Passing `nil`
-    /// clears the override (the action falls back to its declared defaults).
-    /// Writes are debounced 250 ms to the underlying store.
-    func setOverride(contextID: String, actionID: String, shortcut: Shortcut?) {
-        if let shortcut {
-            overrides[contextID, default: [:]][actionID] = [shortcut]
-        } else {
-            overrides[contextID]?.removeValue(forKey: actionID)
-            if overrides[contextID]?.isEmpty == true {
-                overrides.removeValue(forKey: contextID)
-            }
-        }
-        notifyChange(contextID: contextID, actionID: actionID)
-        scheduleSave()
-    }
+    // MARK: - Override mutation (adopter-facing)
 
-    /// Set the full list of override bindings for one action in one context.
-    func setShortcuts<A: ShortcutAction>(
-        _ shortcuts: [Shortcut], for action: A, in context: ShortcutContext<A>
-    ) {
-        overrides[context.id, default: [:]][action.rawValue] = shortcuts
-        notifyChange(contextID: context.id, actionID: action.rawValue)
-        scheduleSave()
-    }
+    //
+    // Per-action / per-context typed mutations live on `ShortcutContext`
+    // (`setShortcuts(_:for:)`, `reset(_:)`, `resetAll()`) — the typed handle the
+    // adopter holds. The registry keeps only the whole-app `resetAll()` plus the
+    // string-keyed surface `ShortcutKitUI` needs (below).
 
-    /// Clear all overrides for a single context.
-    func clearAllOverrides(contextID: String) {
-        guard let perAction = overrides[contextID] else { return }
-        overrides.removeValue(forKey: contextID)
-        for actionID in perAction.keys {
-            notifyChange(contextID: contextID, actionID: actionID)
-        }
-        scheduleSave()
-    }
-
-    /// Clear one override.
-    func reset(contextID: String, actionID: String) {
-        resetAction(contextID: contextID, actionID: actionID)
-    }
-
-    /// Clear all overrides.
+    /// Reset every override across every context.
     func resetAll() {
         let snapshot = overrides
         overrides.removeAll()
@@ -53,19 +21,19 @@ public extension ShortcutRegistry {
         scheduleSave()
     }
 
-    /// Type-erased override write — used by `KeyBindingsView` in `ShortcutKitUI`,
-    /// which can only see the registry through its string-keyed surface.
-    /// Mirrors the effects of the typed `setShortcuts(_:for:in:)`.
-    func setShortcuts(_ shortcuts: [Shortcut], contextID: String, actionID: String) {
+    // MARK: - Override mutation (string-keyed, cross-module for ShortcutKitUI)
+
+    /// String-keyed equivalent of `setShortcuts(_:for:in:)` — the surface
+    /// `ShortcutKitUI` uses, since it sees actions through string IDs.
+    package func setShortcuts(_ shortcuts: [Shortcut], contextID: String, actionID: String) {
         overrides[contextID, default: [:]][actionID] = shortcuts
         notifyChange(contextID: contextID, actionID: actionID)
         scheduleSave()
     }
 
-    /// Type-erased per-binding clear. If the cleared binding is the last one
-    /// remaining for this action, the action's override entry is removed
-    /// entirely (the action falls back to its declared defaults).
-    func removeShortcut(at index: Int, contextID: String, actionID: String) {
+    /// Remove one binding slot by index. If it was the last, the action's
+    /// override entry is removed (falls back to declared defaults).
+    package func removeShortcut(at index: Int, contextID: String, actionID: String) {
         var current = overrides[contextID]?[actionID] ?? []
         guard index >= 0, index < current.count else { return }
         current.remove(at: index)
@@ -81,16 +49,25 @@ public extension ShortcutRegistry {
         scheduleSave()
     }
 
-    /// Type-erased single-action reset. The shared body that `reset(contextID:actionID:)`
-    /// delegates to. Early-returns when no override exists so subscribers and
-    /// the debounced save aren't triggered for a no-op.
-    func resetAction(contextID: String, actionID: String) {
+    /// String-keyed equivalent of `reset(_:in:)`. Early-returns on no-op so
+    /// subscribers and the debounced save aren't triggered needlessly.
+    package func reset(contextID: String, actionID: String) {
         guard overrides[contextID]?[actionID] != nil else { return }
         overrides[contextID]?.removeValue(forKey: actionID)
         if overrides[contextID]?.isEmpty == true {
             overrides.removeValue(forKey: contextID)
         }
         notifyChange(contextID: contextID, actionID: actionID)
+        scheduleSave()
+    }
+
+    /// Reset every override in one context. Called by `ShortcutContext.resetAll()`.
+    package func resetAll(contextID: String) {
+        guard let perAction = overrides[contextID] else { return }
+        overrides.removeValue(forKey: contextID)
+        for actionID in perAction.keys {
+            notifyChange(contextID: contextID, actionID: actionID)
+        }
         scheduleSave()
     }
 

@@ -161,8 +161,21 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         registry?.overrides(contextID: id, actionID: action.rawValue) != nil
     }
 
-    public func resetAllToDefaults() {
-        registry?.clearAllOverrides(contextID: id)
+    // MARK: - Override mutation
+
+    /// Set (replace) the override bindings for one action in this context.
+    public func setShortcuts(_ shortcuts: [Shortcut], for action: Action) {
+        registry?.setShortcuts(shortcuts, contextID: id, actionID: action.rawValue)
+    }
+
+    /// Reset one action to its declared defaults.
+    public func reset(_ action: Action) {
+        registry?.reset(contextID: id, actionID: action.rawValue)
+    }
+
+    /// Reset every action in this context to its declared defaults.
+    public func resetAll() {
+        registry?.resetAll(contextID: id)
     }
 
     /// Publisher that emits the action's current bindings whenever they change
@@ -227,7 +240,9 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 /// Declared here so test doubles can stand in for the registry.
 @MainActor protocol RegistryOverrideSource: AnyObject {
     func overrides(contextID: String, actionID: String) -> [Shortcut]?
-    func clearAllOverrides(contextID: String)
+    func setShortcuts(_ shortcuts: [Shortcut], contextID: String, actionID: String)
+    func reset(contextID: String, actionID: String)
+    func resetAll(contextID: String)
     func recordActionFired(_ event: ActionFiredEvent)
     func activateContext(id: String)
     func deactivateContext(id: String)

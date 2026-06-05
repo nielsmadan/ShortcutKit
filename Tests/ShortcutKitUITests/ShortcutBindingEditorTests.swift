@@ -30,7 +30,7 @@ struct ShortcutBindingEditorTests {
     func reflectsOverride() {
         let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
-        registry.setShortcuts([Shortcut("cmd+shift+s")], for: .save, in: ctx)
+        ctx.setShortcuts([Shortcut("cmd+shift+s")], for: .save)
         let editor = ShortcutBindingEditor(.save, in: ctx)
         #expect(editor.entry?.effectiveShortcuts == [Shortcut("cmd+shift+s")])
         #expect(editor.entry?.isCustomized == true)

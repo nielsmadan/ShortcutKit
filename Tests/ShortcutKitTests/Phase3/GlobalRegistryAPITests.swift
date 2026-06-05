@@ -57,9 +57,9 @@ import Testing
     func globalBindingsOverrides() {
         let global = ShortcutContext<GlobalAct>(global: "global") { _, _ in }
         let registry = ShortcutRegistry(contexts: [global])
-        registry.setShortcuts(
+        global.setShortcuts(
             [Shortcut("ctrl+opt+cmd+j"), Shortcut("ctrl+opt+cmd+l")],
-            for: .ping, in: global
+            for: .ping
         )
         let bindings = registry.globalBindings()
         #expect(bindings.count == 2)

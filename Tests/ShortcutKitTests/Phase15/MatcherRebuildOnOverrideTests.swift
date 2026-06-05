@@ -32,7 +32,7 @@ import Testing
         }
         let registry = ShortcutRegistry(contexts: [ctx])
 
-        registry.setShortcuts([Shortcut("opt+s")], for: .save, in: ctx)
+        ctx.setShortcuts([Shortcut("opt+s")], for: .save)
 
         guard let matcher = registry.matchers[ctx.id] else {
             Issue.record("expected matcher attached for context")

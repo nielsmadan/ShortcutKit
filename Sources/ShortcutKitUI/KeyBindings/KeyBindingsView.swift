@@ -254,7 +254,7 @@ public struct KeyBindingsView: View {
                         )
                     },
                     onReset: {
-                        registry.resetAction(
+                        registry.reset(
                             contextID: row.contextID,
                             actionID: row.actionID
                         )
@@ -308,7 +308,7 @@ public struct KeyBindingsView: View {
                         )
                     },
                     onReset: {
-                        registry.resetAction(
+                        registry.reset(
                             contextID: row.contextID,
                             actionID: row.actionID
                         )

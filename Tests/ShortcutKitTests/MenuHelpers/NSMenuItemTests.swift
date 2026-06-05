@@ -62,7 +62,7 @@ enum MenuKitAct: String, ShortcutAction {
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let item = NSMenuItem.shortcutKitItem(.save, in: ctx)
         #expect(item.keyEquivalent == "s")
-        registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+t")
+        registry.setShortcuts(["cmd+shift+t"], contextID: "editor", actionID: "save")
         #expect(item.keyEquivalent == "t")
         #expect(item.keyEquivalentModifierMask.contains(.shift))
     }

@@ -112,9 +112,9 @@ import Testing
 
         let id = BindingID(contextID: "global", actionID: "ping", bindingIndex: 0)
         // F19 — another rarely-bound key.
-        registry.setShortcuts(
+        ctx.setShortcuts(
             [Shortcut.discrete(DiscreteShortcut(keyCode: UInt16(kVK_F19), modifiers: []))],
-            for: .ping, in: ctx
+            for: .ping
         )
         let status = activator.status[id]
         #expect(status == .registered || status == .shadowedBySystem)

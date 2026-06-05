@@ -36,7 +36,7 @@ enum DemoAction: String, ShortcutAction {
     func setOverrideReplacesShortcut() {
         let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
-        registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
         let expected: Shortcut = "cmd+shift+s"
         #expect(ctx.shortcuts(for: .save).first == expected)
         #expect(ctx.isCustomized(.save))
@@ -46,8 +46,8 @@ enum DemoAction: String, ShortcutAction {
     func setOverrideNilClears() {
         let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
-        registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
-        registry.setOverride(contextID: "editor", actionID: "save", shortcut: nil)
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
+        registry.reset(contextID: "editor", actionID: "save")
         let expected: Shortcut = "cmd+s"
         #expect(ctx.shortcuts(for: .save).first == expected)
         #expect(ctx.isCustomized(.save) == false)
@@ -57,8 +57,8 @@ enum DemoAction: String, ShortcutAction {
     func resetMethods() {
         let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
-        registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
-        registry.setOverride(contextID: "editor", actionID: "quit", shortcut: "cmd+shift+q")
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
+        registry.setShortcuts(["cmd+shift+q"], contextID: "editor", actionID: "quit")
 
         registry.reset(contextID: "editor", actionID: "save")
         #expect(ctx.isCustomized(.save) == false)
@@ -75,7 +75,7 @@ enum DemoAction: String, ShortcutAction {
 
         var values: [[Shortcut]] = []
         let cancellable = ctx.shortcutsChanges(for: .save).sink { values.append($0) }
-        registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
         #expect(values.count == 2)
         let expected: Shortcut = "cmd+shift+s"
         #expect(values.last == [expected])
@@ -113,7 +113,7 @@ enum DemoAction: String, ShortcutAction {
         let ctx = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: store)
 
-        registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
         #expect(try store.load().overrides.isEmpty)
 
         registry.__flushPendingSave()

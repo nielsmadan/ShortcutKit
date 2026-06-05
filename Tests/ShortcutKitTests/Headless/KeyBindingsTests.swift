@@ -37,7 +37,7 @@ enum TableAct: String, ShortcutAction {
     func rowFields() {
         let ctx = ShortcutContext<TableAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
-        registry.setOverride(contextID: "editor", actionID: "save", shortcut: "cmd+shift+s")
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
         let table = registry.keyBindings
         let save = table.groups[0].entries.first { $0.actionID == "save" }!
         #expect(save.displayName == "Save File")
