@@ -1,10 +1,19 @@
 # ShortcutKit API Review — Outstanding Issues
 
 High-level interface review (2026-05-21, `/review-interfaces`). No data-corruption
-or invalid-state bugs found; architecture is sound. The systemic problem is an
-**over-exposed public surface** — the package has no cross-module-internal
-mechanism, so symbols one module needs from another were marked `public` and leak
-to every adopter.
+or invalid-state bugs found; architecture is sound. The systemic problem was an
+**over-exposed public surface** — symbols one module needs from another were
+marked `public` and leaked to every adopter.
+
+**Resolution (cross-cutting pass, Step 1, 2026-06-04):** the premise was outdated.
+Swift 5.9+'s **`package` access level** is the cross-module-internal mechanism the
+review kept wishing for — all three modules are in one `Package.swift`, so symbols
+UI/Global need from Core become `package` (visible across the package, invisible to
+adopters), not `public`. This dissolves the systemic finding into a mechanical
+access pass and lets the `__`-prefix hack be deleted. `@_spi` is unnecessary (it's
+only needed across *separate* packages). Step 1 moved `attachedRegistry` (was
+`public __attachedRegistry`), `globalBindings()`, `allContexts`, `scope(forContextID:)`,
+and `contextIDsWithConflicts()` to `package`.
 
 **Process note:** this is the running punch-list for the bottom-up API walkthrough.
 As the review reaches each layer below, fix that layer's issues before moving up.

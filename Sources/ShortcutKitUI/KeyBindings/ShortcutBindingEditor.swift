@@ -39,7 +39,7 @@ public struct ShortcutBindingEditor<Action: ShortcutAction>: View {
         self.context = context
         self.style = style
         self.showsDescription = showsDescription
-        registry = context.__attachedRegistry ?? ShortcutRegistry(contexts: [])
+        registry = context.attachedRegistry ?? ShortcutRegistry(contexts: [])
     }
 
     public var body: some View {

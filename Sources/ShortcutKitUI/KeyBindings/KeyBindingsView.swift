@@ -2,6 +2,16 @@ import ShortcutField
 import ShortcutKit
 import SwiftUI
 
+/// How `KeyBindingsView` full mode lays out multiple contexts.
+public enum ContextLayout: Sendable, Hashable {
+    /// Every context stacked as its own section — one long scroll.
+    case stacked
+    /// A context selector (segmented for a few contexts, a dropdown for many)
+    /// with only the chosen context's rows shown below. Suited to apps with
+    /// many contexts where stacking would scroll endlessly.
+    case picker
+}
+
 /// The top-level settings page for shortcut customisation.
 ///
 /// Full mode (`init(registry:style:searchEnabled:)`) renders one bold-header
@@ -16,16 +26,6 @@ import SwiftUI
 /// rather than a whole context, use `ShortcutBindingEditor`; for one action
 /// laid out your own way (onboarding, popover), prefer that over inline mode.
 /// Side effects route to the context's attached registry.
-/// How full mode lays out multiple contexts.
-public enum ContextLayout: Sendable, Hashable {
-    /// Every context stacked as its own section — one long scroll.
-    case stacked
-    /// A context selector (segmented for a few contexts, a dropdown for many)
-    /// with only the chosen context's rows shown below. Suited to apps with
-    /// many contexts where stacking would scroll endlessly.
-    case picker
-}
-
 @MainActor
 public struct KeyBindingsView: View {
     enum Mode {
@@ -73,7 +73,7 @@ public struct KeyBindingsView: View {
         style: KeyBindingsStyle = .native,
         searchEnabled: Bool = false
     ) {
-        let registry = context.__attachedRegistry ?? ShortcutRegistry(contexts: [])
+        let registry = context.attachedRegistry ?? ShortcutRegistry(contexts: [])
         self.registry = registry
         self.style = style
         mode = .inline(context: context, searchEnabled: searchEnabled)

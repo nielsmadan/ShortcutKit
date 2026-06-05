@@ -95,7 +95,7 @@ public extension ShortcutRegistry {
     }
 
     /// Returns the set of context IDs that currently have any conflict.
-    func contextIDsWithConflicts() -> Set<String> {
+    package func contextIDsWithConflicts() -> Set<String> {
         var ids: Set<String> = []
         for conflict in conflicts {
             for occurrence in conflict.occurrences {
@@ -106,14 +106,13 @@ public extension ShortcutRegistry {
     }
 
     /// Looks up the `ContextScope` for a context by id, or `.local` if unknown.
-    func scope(forContextID contextID: String) -> ContextScope {
+    package func scope(forContextID contextID: String) -> ContextScope {
         contexts.first(where: { $0.id == contextID })?.scope ?? .local
     }
 
-    /// Public, type-erased view of registered contexts. Needed because
-    /// `KeyBindingsView` in `ShortcutKitUI` can't see the package-internal
-    /// stored `contexts` array.
-    var allContexts: [any AnyShortcutContext] { contexts }
+    /// Type-erased view of registered contexts. Needed because `ShortcutKitUI`
+    /// can't see the package-internal stored `contexts` array.
+    package var allContexts: [any AnyShortcutContext] { contexts }
 
     private func notifyChange(contextID: String, actionID: String) {
         guard let context = contexts.first(where: { $0.id == contextID }) else { return }
