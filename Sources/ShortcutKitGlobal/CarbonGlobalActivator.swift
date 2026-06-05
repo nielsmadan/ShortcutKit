@@ -79,8 +79,8 @@ public final class CarbonGlobalActivator: GlobalActivator {
     private func syncRegistrations() {
         guard let registry else { return }
         var newShortcuts: [BindingID: Shortcut] = [:]
-        for (id, shortcut) in registry.globalBindings() {
-            newShortcuts[id] = shortcut
+        for binding in registry.globalBindings() {
+            newShortcuts[binding.id] = binding.shortcut
         }
         let diff = GlobalBindingDiff.compute(old: currentShortcuts, new: newShortcuts)
 
@@ -98,7 +98,7 @@ public final class CarbonGlobalActivator: GlobalActivator {
             guard let hotKey = center.register(combo: combo, onKeyDown: { [weak registry] in
                 registry?.fireGlobalAction(contextID: id.contextID, actionID: id.actionID)
             }) else {
-                status[id] = .failed(reason: "RegisterEventHotKey failed (combo may be in use)")
+                status[id] = .failed(reason: .registrationRejected)
                 continue
             }
             registered[id] = hotKey
@@ -144,7 +144,7 @@ public final class CarbonGlobalActivator: GlobalActivator {
             // mode means a re-registration failed (e.g. resumeAllHotKeys could
             // not reclaim the combo after the menu closed). Surface it.
             if !menuTracking, hotKey.eventHotKeyRef == nil, current == .registered {
-                status[id] = .failed(reason: "Hot key could not be re-registered (combo may be in use)")
+                status[id] = .failed(reason: .reregistrationFailed)
                 continue
             }
             status[id] = Self.verifiedStatus(

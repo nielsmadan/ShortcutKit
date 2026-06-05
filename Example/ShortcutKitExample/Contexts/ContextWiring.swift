@@ -69,8 +69,7 @@ enum ContextWiring {
 
         return ShortcutRegistry(
             contexts: allContexts,
-            mutuallyExclusiveContexts: [modeIDs, selectionIDs, wizardVsAll],
-            bindingsPerAction: .two
+            mutuallyExclusiveContexts: [modeIDs, selectionIDs, wizardVsAll]
         )
     }()
 }

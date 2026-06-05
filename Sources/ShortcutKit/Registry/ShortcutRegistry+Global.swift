@@ -16,13 +16,13 @@ public extension ShortcutRegistry {
     /// Effective bindings (defaults + overrides) of every `.global`-scoped
     /// context, in group/entry order. One result per binding; `bindingIndex`
     /// is the slot within the action's binding array.
-    func globalBindings() -> [(id: BindingID, shortcut: Shortcut)] {
-        var result: [(id: BindingID, shortcut: Shortcut)] = []
+    func globalBindings() -> [GlobalBinding] {
+        var result: [GlobalBinding] = []
         let globalIDs = Set(allContexts.filter { $0.scope == .global }.map(\.id))
         for group in keyBindings.groups where globalIDs.contains(group.contextID) {
             for entry in group.entries {
                 for (index, shortcut) in entry.effectiveShortcuts.enumerated() {
-                    result.append((
+                    result.append(GlobalBinding(
                         id: BindingID(
                             contextID: entry.contextID,
                             actionID: entry.actionID,

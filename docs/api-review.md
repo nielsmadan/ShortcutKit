@@ -541,7 +541,22 @@ punch-list bullet — tracked here so it isn't lost.
   unattached context** (`__attachedRegistry` weak ref → throwaway empty registry
   → renders nothing). Should trap or warn. Same footgun both share.
 
-## ShortcutKitGlobal
+## ShortcutKitGlobal — walked (2026-06-03)
+
+- [x] **`globalBindings()` returns a named `GlobalBinding` struct** (was an
+  anonymous `[(id: BindingID, shortcut: Shortcut)]` tuple). `GlobalBinding:
+  Sendable, Hashable { id, shortcut }` in Core. Callers unchanged (`.id`/`.shortcut`
+  access is identical); `CarbonGlobalActivator` updated.
+- [x] **`GlobalBindingStatus.failed(reason:)` is now a closed `FailureReason`
+  enum** (`registrationRejected` / `reregistrationFailed`), was a free-form
+  `String`. The `Equatable` conformance is now meaningful — adopters can branch
+  on the cause. `CarbonGlobalActivator`'s two failure sites updated.
+- [x] **Example `ContextWiring` stale `bindingsPerAction: .two` removed** — the
+  example app (not in `swift build`/`swift test`) hadn't been updated when
+  `bindingsPerAction` was deleted; it wouldn't have compiled. Swept the rest of
+  the example for other renamed/removed symbols — clean.
+
+### ShortcutKitGlobal — deferred to the cross-cutting pass
 
 - [ ] **`fireGlobalAction(contextID: String, actionID: String)` (High)** — a
   cross-module Core↔Global seam exposed to *all* adopters, with two adjacent
