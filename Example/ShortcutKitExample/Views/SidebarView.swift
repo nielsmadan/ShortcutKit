@@ -38,8 +38,9 @@ struct SidebarView: View {
             Divider()
 
             KeyBindingsLegendView(
-                bindings: ContextWiring.shared.bindings(for: [model.context.id]),
-                style: .sidebar
+                registry: ContextWiring.shared,
+                style: .sidebar,
+                contextIDs: [model.context.id]
             )
             .frame(maxHeight: 200)
         }

@@ -464,6 +464,24 @@ punch-list bullet — tracked here so it isn't lost.
   `style:`; `keyBindingsTable` reference corrected to `keyBindings`; added a
   steer toward `ShortcutBindingEditor` for single-action UI.
 
+## ShortcutKitUI — legend (2026-06-02)
+
+- [x] **Added registry-based `KeyBindingsLegendView(registry:style:contextIDs:)`.**
+  Observes the registry and updates live as bindings change — reactivity parity
+  with `KeyBindingsView` (which already takes the registry). The snapshot init
+  `init(bindings:style:)` stays for fixed pre-filtered sets. Implemented via a
+  private `LiveLegend` (`@ObservedObject`) dispatching to a shared `LegendBody`.
+  Example app simplified to the registry init (drops manual recompute).
+- [x] **`LegendStyle` doc leak fixed** — removed the internal "Phase 2 Task 17"
+  references; documented that the legend shows each action's primary binding only.
+- [decided] **Legend visibility (global toggle + per-panel dismiss) stays with
+  the app.** Principle: the library owns content it *places* (the HUD, which it
+  auto-suppresses via `hintsEnabled`); the app owns content *it* places (the
+  legend's sidebar/sheet/window). The library shouldn't blank app-placed content
+  via a global flag or reach into the app's hierarchy for an X button. Apps that
+  want a unified "show hints" setting read `ShortcutPreferencesView.hintsEnabledStorageKey`
+  and gate their own `KeyBindingsLegendView`. No new API.
+
 ## ShortcutKitUI — deferred
 
 - [ ] **`ScopePolicy` duplicates Core's scope-validation rule** (now internal,

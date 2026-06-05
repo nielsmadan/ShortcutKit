@@ -1,21 +1,70 @@
 import ShortcutKit
 import SwiftUI
 
+/// A read-only legend / cheat-sheet of bound shortcuts. Only bound actions
+/// appear (unbound entries are dropped via `KeyBindings.boundOnly()`), and each
+/// entry shows its **primary** binding — an action bound to several shortcuts
+/// shows only the first, to keep the legend compact.
+///
+/// Two ways to feed it:
+/// - `init(registry:style:contextIDs:)` — observes the registry and updates
+///   live as bindings change (parallel to how `KeyBindingsView` takes a
+///   registry). Renders the currently-active contexts, or `contextIDs` if given.
+/// - `init(bindings:style:)` — a fixed snapshot you compute yourself.
 @MainActor
 public struct KeyBindingsLegendView: View {
-    public let bindings: KeyBindings
+    private enum Backing {
+        case snapshot(KeyBindings)
+        case live(ShortcutRegistry, contextIDs: Set<String>?)
+    }
+
+    private let backing: Backing
     public let style: LegendStyle
 
-    /// Renders a legend / cheat-sheet. Only bound actions are shown — unbound
-    /// entries are dropped via `KeyBindings.boundOnly()`.
+    /// Snapshot legend from a fixed `KeyBindings` value.
     public init(bindings: KeyBindings, style: LegendStyle) {
-        self.bindings = bindings.boundOnly()
+        backing = .snapshot(bindings.boundOnly())
+        self.style = style
+    }
+
+    /// Live legend bound to a registry — updates as bindings change. Renders
+    /// the currently-active + global contexts (`activeBindings()`), or just
+    /// `contextIDs` when provided.
+    public init(registry: ShortcutRegistry, style: LegendStyle, contextIDs: Set<String>? = nil) {
+        backing = .live(registry, contextIDs: contextIDs)
         self.style = style
     }
 
     var styleForTest: LegendStyle { style }
 
     public var body: some View {
+        switch backing {
+        case let .snapshot(bindings):
+            LegendBody(bindings: bindings, style: style)
+        case let .live(registry, contextIDs):
+            LiveLegend(registry: registry, contextIDs: contextIDs, style: style)
+        }
+    }
+}
+
+/// Observes the registry and recomputes the legend on every binding change.
+private struct LiveLegend: View {
+    @ObservedObject var registry: ShortcutRegistry
+    let contextIDs: Set<String>?
+    let style: LegendStyle
+
+    var body: some View {
+        let bindings = (contextIDs.map { registry.bindings(for: $0) } ?? registry.activeBindings())
+            .boundOnly()
+        LegendBody(bindings: bindings, style: style)
+    }
+}
+
+private struct LegendBody: View {
+    let bindings: KeyBindings
+    let style: LegendStyle
+
+    var body: some View {
         switch style {
         case .modal: ModalLegend(bindings: bindings)
         case .sidebar: SidebarLegend(bindings: bindings)

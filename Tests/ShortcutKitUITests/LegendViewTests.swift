@@ -41,4 +41,11 @@ struct LegendViewTests {
         let view = KeyBindingsLegendView(bindings: legend, style: .compactStrip)
         #expect(view.styleForTest == .compactStrip)
     }
+
+    @Test func registryBasedInitBuilds() {
+        let ctx = ShortcutContext<Act>("editor")
+        let registry = ShortcutRegistry(contexts: [ctx])
+        let view = KeyBindingsLegendView(registry: registry, style: .sidebar)
+        #expect(view.styleForTest == .sidebar)
+    }
 }
