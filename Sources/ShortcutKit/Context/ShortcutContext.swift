@@ -321,7 +321,7 @@ package extension ShortcutContext {
     /// Used by `ShortcutKitUI` inline mode to invoke the type-erased override
     /// helpers (`setShortcuts(_:contextID:actionID:)` etc.) without requiring
     /// adopters to pass the registry alongside the context.
-    package var attachedRegistry: ShortcutRegistry? {
+    var attachedRegistry: ShortcutRegistry? {
         registry as? ShortcutRegistry
     }
 }

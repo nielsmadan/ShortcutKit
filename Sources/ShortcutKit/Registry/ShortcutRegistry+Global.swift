@@ -5,7 +5,7 @@ package extension ShortcutRegistry {
     /// same `actionFired` event a local matcher-driven fire would. The entry
     /// point `GlobalActivator` implementations call when the OS routes a global
     /// hotkey. No-op for an unknown context/action.
-    package func dispatchGlobalAction(_ ref: ActionRef) {
+    func dispatchGlobalAction(_ ref: ActionRef) {
         guard let context = allContexts.first(where: { $0.id == ref.contextID }),
               let attachable = context as? RegistryAttachable
         else { return }
@@ -15,7 +15,7 @@ package extension ShortcutRegistry {
     /// Effective bindings (defaults + overrides) of every `.global`-scoped
     /// context, in group/entry order. One result per binding; `bindingIndex`
     /// is the slot within the action's binding array.
-    package func globalBindings() -> [GlobalBinding] {
+    func globalBindings() -> [GlobalBinding] {
         var result: [GlobalBinding] = []
         let globalIDs = Set(allContexts.filter { $0.scope == .global }.map(\.id))
         for group in keyBindings.groups where globalIDs.contains(group.contextID) {
