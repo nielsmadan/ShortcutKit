@@ -44,8 +44,21 @@ func deriveContextDisplayName(fromID id: String) -> String {
 /// internal helpers in this file.
 @MainActor
 public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
+    /// Stable persistence key for this context. Immutable (`let`): overrides are
+    /// stored under this id forever, so renaming it would orphan persisted data —
+    /// go through a declared migration instead. Not user-facing; see `displayName`.
     public let id: String
+
+    /// Activation scope, fixed at construction (`.local` via `init(_:)`, `.global`
+    /// via `init(global:dispatch:)`). Immutable (`let`): scope determines the
+    /// activation mechanism and allowed grammar, so it can't change after the
+    /// context is built.
     public let scope: ContextScope
+
+    /// Whether `KeyBindingsView`'s settings UI lists this context. Read at render
+    /// time but **not** `@Published`: mutating it at runtime won't refresh a live
+    /// `KeyBindingsView` picker. Treat it as a construction-time choice; if you
+    /// need it to flip reactively, drive visibility from your own observable state.
     public var includeInSettings: Bool
 
     /// Explicit adopter-set name, or `nil` to fall back to a title-cased `id`.
@@ -112,6 +125,12 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     /// programmatic semantics), then emits `actionFired` with `source: .programmatic`.
     /// No-op if no handler is currently bound (local context not activated; global
     /// context without dispatch — though the latter is unreachable by construction).
+    ///
+    /// Note for continuous actions: a real gesture streams many ticks with varying
+    /// magnitudes (and a terminal `.continuous(magnitude: 0)`); `dispatch(_:)` sends
+    /// exactly one tick at magnitude `1.0`. It exists for tests and macro/replay,
+    /// not to simulate a live gesture — production continuous input arrives through
+    /// the matcher path, not here.
     public func dispatch(_ action: Action) {
         let dispatchKind: ShortcutDispatch = switch action.definition.kind {
         case .discrete: .discrete

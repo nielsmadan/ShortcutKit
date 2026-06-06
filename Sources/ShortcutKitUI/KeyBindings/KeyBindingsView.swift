@@ -73,7 +73,7 @@ public struct KeyBindingsView: View {
         style: KeyBindingsStyle = .native,
         searchEnabled: Bool = false
     ) {
-        let registry = context.attachedRegistry ?? ShortcutRegistry(contexts: [])
+        let registry = attachedRegistry(for: context)
         self.registry = registry
         self.style = style
         mode = .inline(context: context, searchEnabled: searchEnabled)

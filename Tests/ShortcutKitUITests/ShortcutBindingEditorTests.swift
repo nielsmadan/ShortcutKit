@@ -36,10 +36,9 @@ struct ShortcutBindingEditorTests {
         #expect(editor.entry?.isCustomized == true)
     }
 
-    @Test("editor entry is nil for an unattached context")
-    func nilWhenUnattached() {
-        let ctx = ShortcutContext<Act>("editor")
-        let editor = ShortcutBindingEditor(.save, in: ctx)
-        #expect(editor.entry == nil)
-    }
+    // Passing an unattached context is a programmer error: `attachedRegistry(for:)`
+    // fires `assertionFailure` in debug (and falls back to an inert empty registry
+    // in release). That trap can't be exercised from an in-process Swift Testing
+    // case without aborting the runner, so it's verified by code review rather than
+    // a test here.
 }

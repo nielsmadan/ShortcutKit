@@ -220,11 +220,13 @@ punch-list bullet — tracked here so it isn't lost.
   `.shortcutsChanges(for:).map(\.first)` / `.effectiveShortcuts.first`. The
   plural API is the canonical Phase 1.5 shape; singular convenience kept for
   back-compat from Phase 1 was clutter. 181/181 tests pass.
-- [ ] **`ShortcutContext.includeInSettings` is a non-`@Published` `var`.**
-  Mutating it at runtime doesn't refresh `KeyBindingsView`'s picker. Either
-  doc-flag this clearly or promote to `@Published`.
-- [ ] **`ShortcutContext.scope` `public let` immutability undocumented.** Add a
-  doc note (and same for `id`).
+- [x] **`ShortcutContext.includeInSettings` is a non-`@Published` `var` (2026-06-05).**
+  Doc-flagged as a construction-time choice (runtime mutation isn't observed by a
+  live `KeyBindingsView`). Not promoted to `@Published` — reactive toggling is
+  YAGNI; adopters needing it can drive visibility from their own observable state.
+- [x] **`ShortcutContext.scope` `public let` immutability undocumented (2026-06-05).**
+  Doc notes added to `scope` and `id` explaining why each is immutable (scope fixes
+  the activation mechanism; `id` is the forever persistence key — rename via migration).
 - [x] **Activation-bound handler refactor (2026-05-28).** The
   "closure-at-construction" model was replaced with handler-binds-at-activation:
   `ShortcutContext("id")` for local contexts (no closure), with the dispatch
@@ -251,9 +253,9 @@ punch-list bullet — tracked here so it isn't lost.
   per-tick, not per-gesture). All optional polish.
 - [ ] **`UserDefaultsStore.clear()` convenience.** Adopters currently call
   `defaults.removeObject(forKey:)` from outside. Small ergonomic gap.
-- [ ] **Continuous `dispatch(_:)` semantics doc.** `ctx.dispatch(.someContinuousAction)`
-  sends `.continuous(magnitude: 1.0)` ("fire once"); not realistic in production
-  but supports tests and macro replay. Worth a short doc note on `dispatch(_:)`.
+- [x] **Continuous `dispatch(_:)` semantics doc (2026-06-05).** Added a note on
+  `dispatch(_:)`: it sends one tick at magnitude `1.0` for tests/macro replay, not a
+  simulated live gesture (real continuous input streams through the matcher path).
 - [ ] **No global `registry.dispatch(contextID:actionID:)` / `registry.notify(...)`
   for adopters.** Today the only registry-level dispatch hook is the
   `@_spi`-candidate `fireGlobalAction`. A documented adopter-facing pair would
@@ -550,9 +552,14 @@ punch-list bullet — tracked here so it isn't lost.
 - [x] **`ScopedShortcutRecorder.discreteWidth`/`continuousWidth` tuples** — now
   internal-only (recorder is internal), read cross-file by `KeyBindingsView`'s
   dense column header. Minor organization nit; not adopter surface. Left as-is.
-- [ ] **`ShortcutBindingEditor` / `KeyBindingsView` inline silently no-op on an
-  unattached context** (`__attachedRegistry` weak ref → throwaway empty registry
-  → renders nothing). Should trap or warn. Same footgun both share.
+- [x] **`ShortcutBindingEditor` / `KeyBindingsView` inline silently no-op on an
+  unattached context (2026-06-05).** Both inits now route through a shared
+  `attachedRegistry(for:)` helper that `assertionFailure`s when the context has no
+  attached registry — loud in debug (the only place this mistake originates),
+  degrading to the inert empty-registry fallback in release rather than crashing a
+  shipped app. Surfaced a latent test bug: three `KeyBindingsViewTests` created the
+  registry with `_ = …` and relied on the weak back-ref staying alive; the silent
+  fallback had masked it. Now retained.
 
 ## ShortcutKitGlobal — walked (2026-06-03)
 

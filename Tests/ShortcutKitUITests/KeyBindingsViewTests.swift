@@ -58,22 +58,25 @@ struct KeyBindingsViewTests {
 
     @Test func inlineModeHidesPicker() {
         let ctx = ShortcutContext<Act>("editor")
-        _ = ShortcutRegistry(contexts: [ctx])
+        let registry = ShortcutRegistry(contexts: [ctx])
         let view = KeyBindingsView(context: ctx)
         #expect(view.__modeIsFull == false)
+        _ = registry
     }
 
     @Test func inlineModeDefaultsSearchOff() {
         let ctx = ShortcutContext<Act>("editor")
-        _ = ShortcutRegistry(contexts: [ctx])
+        let registry = ShortcutRegistry(contexts: [ctx])
         let view = KeyBindingsView(context: ctx)
         #expect(view.__searchEnabledForTest == false)
+        _ = registry
     }
 
     @Test func inlineModeSearchOptIn() {
         let ctx = ShortcutContext<Act>("editor")
-        _ = ShortcutRegistry(contexts: [ctx])
+        let registry = ShortcutRegistry(contexts: [ctx])
         let view = KeyBindingsView(context: ctx, searchEnabled: true)
         #expect(view.__searchEnabledForTest == true)
+        _ = registry
     }
 }
