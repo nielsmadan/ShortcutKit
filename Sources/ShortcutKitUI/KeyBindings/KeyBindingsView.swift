@@ -119,7 +119,7 @@ public struct KeyBindingsView: View {
                 if searchEnabled {
                     HStack(spacing: 10) {
                         searchBar
-                        Button("Reset All…") { resetAlertShown = true }
+                        Button(uiString("Reset All…")) { resetAlertShown = true }
                             .controlSize(.small)
                     }
                 }
@@ -135,11 +135,11 @@ public struct KeyBindingsView: View {
             .padding(.horizontal, style == .dense ? 14 : 24)
             .padding(.vertical, style == .dense ? 10 : 20)
         }
-        .alert("Reset all shortcuts to defaults?", isPresented: $resetAlertShown) {
-            Button("Cancel", role: .cancel) {}
-            Button("Reset", role: .destructive) { registry.resetAll() }
+        .alert(uiString("Reset all shortcuts to defaults?"), isPresented: $resetAlertShown) {
+            Button(uiString("Cancel"), role: .cancel) {}
+            Button(uiString("Reset"), role: .destructive) { registry.resetAll() }
         } message: {
-            Text("This will discard all customisations across every context.")
+            Text(uiString("This will discard all customisations across every context."))
         }
     }
 
@@ -171,10 +171,10 @@ public struct KeyBindingsView: View {
     private var denseColumnHeader: some View {
         HStack(spacing: 8) {
             Spacer()
-            Text("Primary")
+            Text(uiString("Primary"))
                 .frame(width: ScopedShortcutRecorder.discreteWidth.dense,
                        alignment: .center)
-            Text("Alternative")
+            Text(uiString("Alternative"))
                 .frame(width: ScopedShortcutRecorder.discreteWidth.dense,
                        alignment: .center)
             // Reserve room for the reset icon column to keep header centred
@@ -192,7 +192,7 @@ public struct KeyBindingsView: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Search shortcuts", text: $query)
+            TextField(uiString("Search shortcuts"), text: $query)
                 .textFieldStyle(.plain)
         }
         .padding(.horizontal, 8)

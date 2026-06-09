@@ -36,10 +36,10 @@ struct ContextPickerView: View {
         Group {
             switch pickerStyle {
             case .segmented:
-                Picker("Context", selection: $selection) { entries }
+                Picker(uiString("Context"), selection: $selection) { entries }
                     .pickerStyle(.segmented)
             case .dropdown:
-                Picker("Context", selection: $selection) { entries }
+                Picker(uiString("Context"), selection: $selection) { entries }
                     .pickerStyle(.menu)
             }
         }

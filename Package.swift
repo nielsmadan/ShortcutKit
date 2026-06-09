@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "ShortcutKit",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v13),
     ],
@@ -28,7 +29,8 @@ let package = Package(
             dependencies: [
                 "ShortcutKit",
                 .product(name: "ShortcutField", package: "ShortcutField"),
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
         .target(
             name: "ShortcutKitGlobal",

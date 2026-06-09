@@ -37,14 +37,14 @@ public struct ShortcutPreferencesView: View {
     public var body: some View {
         Form {
             if showsHintToggle {
-                Section("General") {
-                    Toggle("Show shortcut hints", isOn: Binding(
+                Section(uiString("General")) {
+                    Toggle(uiString("Show shortcut hints"), isOn: Binding(
                         get: { registry.hintsEnabled },
                         set: { registry.setHintsEnabled($0) }
                     ))
                 }
             }
-            Section("Shortcuts") {
+            Section(uiString("Shortcuts")) {
                 KeyBindingsView(
                     registry: registry,
                     style: style,

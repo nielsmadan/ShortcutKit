@@ -94,10 +94,12 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
         else { return }
         guard gate.shouldShow(actionID: event.actionID) else { return }
         gate.markShown(actionID: event.actionID)
+        // displayName is adopter content — resolve it against the adopter's bundle.
         let name = String(localized: entry.displayName)
         let shortcut = firstBinding.displayString
-        // Localizable template — translators get "Tip: %@ is bound to %@".
-        let text = String(localized: "Tip: \(name) is bound to \(shortcut)")
+        // The template is ShortcutKit chrome — resolve against the package bundle.
+        // Translators get "Tip: %@ is bound to %@".
+        let text = uiString("Tip: \(name) is bound to \(shortcut)")
         let context = HintToastContext(actionName: name, shortcut: shortcut, text: text)
         withAnimation {
             current = context

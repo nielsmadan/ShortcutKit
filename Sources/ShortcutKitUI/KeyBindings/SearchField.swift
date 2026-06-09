@@ -8,7 +8,7 @@ struct SearchField: View {
     init(query: Binding<String>) { _query = query }
 
     var body: some View {
-        TextField("Search", text: $query)
+        TextField(uiString("Search"), text: $query)
             .textFieldStyle(.roundedBorder)
     }
 

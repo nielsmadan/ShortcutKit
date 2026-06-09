@@ -31,36 +31,36 @@ private struct ConflictRow: View {
         switch conflict {
         case let .duplicate(occurrences):
             VStack(alignment: .leading) {
-                Text("Duplicate binding").bold()
+                Text(uiString("Duplicate binding")).bold()
                 ForEach(occurrences, id: \.self) { occurrence in
                     jumpButton(occurrence.actionID, occurrence)
                 }
             }
         case let .unreachablePrefix(blocker, blocked):
             VStack(alignment: .leading) {
-                Text("Unreachable prefix").bold()
-                jumpButton("Blocker: \(blocker.actionID)", blocker)
-                jumpButton("Blocked: \(blocked.actionID)", blocked)
+                Text(uiString("Unreachable prefix")).bold()
+                jumpButton(uiString("Blocker: \(blocker.actionID)"), blocker)
+                jumpButton(uiString("Blocked: \(blocked.actionID)"), blocked)
             }
         case let .systemShared(action):
             VStack(alignment: .leading) {
-                Text("System shortcut: \(action.shortcut.displayString)").bold()
+                Text(uiString("System shortcut: \(action.shortcut.displayString)")).bold()
                 jumpButton(action.actionID, action)
             }
         case let .menuCollision(action, menuItemTitle):
             VStack(alignment: .leading) {
-                Text("Menu item collision: \(menuItemTitle)").bold()
+                Text(uiString("Menu item collision: \(menuItemTitle)")).bold()
                 jumpButton(action.actionID, action)
             }
         case let .shadowedByGlobal(local, global):
             VStack(alignment: .leading) {
-                Text("Shadowed by global shortcut").foregroundStyle(.red).bold()
-                jumpButton("Local: \(local.actionID)", local)
-                jumpButton("Global: \(global.actionID)", global)
+                Text(uiString("Shadowed by global shortcut")).foregroundStyle(.red).bold()
+                jumpButton(uiString("Local: \(local.actionID)"), local)
+                jumpButton(uiString("Global: \(global.actionID)"), global)
             }
         case let .unsupportedInScope(occurrence, reason):
             VStack(alignment: .leading) {
-                Text("Unsupported in scope").foregroundStyle(.red).bold()
+                Text(uiString("Unsupported in scope")).foregroundStyle(.red).bold()
                 Text(describe(reason)).font(.caption)
                 jumpButton(occurrence.actionID, occurrence)
             }
@@ -73,8 +73,8 @@ private struct ConflictRow: View {
 
     private func describe(_ reason: Conflict.UnsupportedReason) -> String {
         switch reason {
-        case .multiStepInGlobal: "Global shortcuts can't be chords"
-        case .continuousInGlobal: "Global shortcuts can't be continuous"
+        case .multiStepInGlobal: uiString("Global shortcuts can't be chords")
+        case .continuousInGlobal: uiString("Global shortcuts can't be continuous")
         }
     }
 }

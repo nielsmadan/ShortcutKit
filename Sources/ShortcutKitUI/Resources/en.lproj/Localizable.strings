@@ -1,0 +1,43 @@
+/* ShortcutKitUI built-in UI strings. Canonical (English) source; resolved
+   against Bundle.module via uiString(_:). Add <lang>.lproj/Localizable.strings
+   siblings to translate. Adopter-supplied action/context names are NOT here. */
+
+/* Preferences pane */
+"General" = "General";
+"Shortcuts" = "Shortcuts";
+"Show shortcut hints" = "Show shortcut hints";
+
+/* Settings table — reset flow */
+"Reset All…" = "Reset All…";
+"Reset all shortcuts to defaults?" = "Reset all shortcuts to defaults?";
+"This will discard all customisations across every context." = "This will discard all customisations across every context.";
+"Cancel" = "Cancel";
+"Reset" = "Reset";
+
+/* Settings table — dense column headers */
+"Primary" = "Primary";
+"Alternative" = "Alternative";
+
+/* Search fields */
+"Search" = "Search";
+"Search shortcuts" = "Search shortcuts";
+
+/* Context picker (accessibility label) */
+"Context" = "Context";
+
+/* Conflict popover */
+"Duplicate binding" = "Duplicate binding";
+"Unreachable prefix" = "Unreachable prefix";
+"Blocker: %@" = "Blocker: %@";
+"Blocked: %@" = "Blocked: %@";
+"System shortcut: %@" = "System shortcut: %@";
+"Menu item collision: %@" = "Menu item collision: %@";
+"Shadowed by global shortcut" = "Shadowed by global shortcut";
+"Local: %@" = "Local: %@";
+"Global: %@" = "Global: %@";
+"Unsupported in scope" = "Unsupported in scope";
+"Global shortcuts can't be chords" = "Global shortcuts can't be chords";
+"Global shortcuts can't be continuous" = "Global shortcuts can't be continuous";
+
+/* Discoverability HUD */
+"Tip: %@ is bound to %@" = "Tip: %@ is bound to %@";

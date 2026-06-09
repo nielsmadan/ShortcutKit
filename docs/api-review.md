@@ -536,13 +536,16 @@ punch-list bullet — tracked here so it isn't lost.
   (`defaultHintsEnabled`, `hintsEnabled`, `setHintsEnabled`); `ShortcutPreferencesView`
   gained `showsHintToggle` and binds to the registry; `hintsEnabledStorageKey`
   removed.
-- [ ] **[deferred] Library UI strings resolve against the main bundle.**
-  SwiftUI string-literal labels (`ShortcutPreferencesView` toggle/section titles)
-  and the HUD toast are localizable, but `LocalizedStringKey` / `String(localized:)`
-  resolve against `Bundle.main`, so ShortcutKit can't ship its own translations —
-  adopters must add the keys to their catalog. If the library wants to ship
-  localizations, the UI strings need explicit `bundle:` lookups. Localization-
-  packaging decision; affects the HUD + preferences labels.
+- [x] **Library UI strings now resolve against the package bundle (2026-06-10).**
+  All ~26 ShortcutKitUI chrome strings route through `uiString(_:)` →
+  `String(localized:bundle: .module)`, with an English `en.lproj/Localizable.strings`
+  shipped as a package resource (`defaultLocalization: "en"`, `resources:
+  [.process("Resources")]`). Matches Sparkle / KeyboardShortcuts: the library owns
+  and ships its own strings instead of leaning on the adopter's main bundle. Also
+  fixed strings that were previously rendered *verbatim* / non-localizable (the
+  `Conflict.UnsupportedReason` descriptions and the `Blocker:`/`Local:`/etc.
+  prefixes). Adopter-supplied `displayName`/`description` deliberately still resolve
+  against the adopter's bundle.
 - [ ] **[noted] `ShortcutPreferencesView` is fixed composition.** No adopter-row
   injection into "General"; adopters wanting custom sections compose
   `KeyBindingsView` directly. Intentional — this is the canned option.
