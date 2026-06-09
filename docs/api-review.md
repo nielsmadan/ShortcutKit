@@ -511,12 +511,18 @@ punch-list bullet — tracked here so it isn't lost.
   the modifier function stays public (standard SwiftUI pattern).
 - [x] **HUD doc literals fixed** — reference `ShortcutPreferencesView.hintsEnabledStorageKey`
   instead of the raw `@AppStorage("shortcutkit.hintsEnabled")` string.
-- [ ] **[pre-v1] HUD placement + duration options.** Toast is hardcoded
-  `.topTrailing` / 2s. Add `alignment:` (and likely `duration:`) to
-  `.shortcutHintHUD(...)`. Ship before v1.
-- [ ] **[pre-v1] HUD custom appearance.** `HintToast` is a fixed private
-  `.thinMaterial` style; let adopters restyle (custom-content closure or style).
-  Ship before v1.
+- [x] **[pre-v1] HUD placement + duration options (2026-06-07).** New
+  `HintHUDStyle { placement, duration }` (Sendable, default `.topTrailing` / 2s),
+  passed via `.shortcutHintHUD(registry:policy:style:)`. `HintHUDPlacement` is the
+  3×3 anchor grid plus `.cursor` (pointer-anchored via `onContinuousHover`, clamped
+  to bounds, falling back to `.top` when the pointer is outside the view).
+- [x] **[pre-v1] HUD custom appearance (2026-06-07).** Added a
+  `.shortcutHintHUD(registry:policy:style:toast:)` overload taking a
+  `@ViewBuilder (HintToastContext) -> some View`; the context carries the localized
+  text plus the action-name/shortcut components. Default overload keeps the
+  built-in `.thinMaterial` toast. Chose the closure over a style protocol
+  (lighter, fewer public symbols) and over a primitives struct (can't fully
+  re-skin).
 
 ## ShortcutKitUI — preferences pane (2026-06-03)
 
