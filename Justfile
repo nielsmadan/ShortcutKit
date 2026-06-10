@@ -48,7 +48,7 @@ tag-release-major:
 tag-release bump:
     #!/usr/bin/env bash
     set -euo pipefail
-    LATEST_TAG=$(git tag --sort=-v:refname | head -1 | sed 's/^v//')
+    LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1 | sed 's/^v//')
     if [ -z "$LATEST_TAG" ]; then
         VERSION="0.1.0"
         case "{{bump}}" in
