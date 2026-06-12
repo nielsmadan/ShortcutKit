@@ -5,6 +5,9 @@ public enum Conflict: Sendable, Hashable {
     case duplicate(occurrences: [Occurrence])
     case unreachablePrefix(blocker: Occurrence, blocked: Occurrence)
     case systemShared(action: Occurrence)
+    /// `menuItemTitle` is the menu item's already-resolved *displayed* title at
+    /// detection time (AppKit titles are localized/runtime values), for surfacing
+    /// in conflict UI — not a stable identifier.
     case menuCollision(action: Occurrence, menuItemTitle: String)
     case shadowedByGlobal(local: Occurrence, global: Occurrence)
     case unsupportedInScope(occurrence: Occurrence, reason: UnsupportedReason)

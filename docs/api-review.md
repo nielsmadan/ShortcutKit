@@ -122,12 +122,11 @@ punch-list bullet — tracked here so it isn't lost.
   already does the right kind of incremental apply; expose a `reload()` that
   calls `store.load()` and routes through the same notify-and-rebuild path as
   `setShortcuts`/`removeShortcut`.
-- [ ] **`FileStore` owns the whole file** — adopters cannot share it with their
-  own settings. Two reasonable fixes: (a) namespace the library's data under a
-  configurable top-level key (default `"shortcuts"`) and do read-modify-write so
-  sibling tables survive saves; or (b) promote `TOMLCoding` (and possibly
-  `JSONCoding`) to `public` so adopters can compose their own store on top. (a)
-  is the user-friendly answer; (b) is the v1 escape hatch.
+- [x] **`FileStore` can share a file via `key:` namespacing (2026-06-05).**
+  Fix (a) shipped: `FileStore(url:format:key:)` lays the library's data under a
+  dotted-path subtree and does read-modify-write so adopter-owned sibling tables
+  survive saves (`FileStoreTests`: "TOML namespace key round-trips and preserves
+  sibling tables"). `key: nil` keeps the whole-file-at-root default.
 - [ ] **No outbound change notification.** Adopters wanting to mirror to iCloud,
   git-commit on change, or otherwise observe persistence have to wrap their own
   `ShortcutBindingsStore`. Consider a `registry.persistedStateChanges`
@@ -189,27 +188,23 @@ punch-list bullet — tracked here so it isn't lost.
 
 ## Registry / activation (deferred)
 
-- [ ] **Late context registration (`registry.register(_:)` / `unregister(_:)`).**
-  Currently `contexts` is fixed at init. Adopters with plugin scenarios can't
-  add or remove contexts at runtime. Feature spec — internal `attach(context:)`
-  exists, would need register/unregister entry points, conflict re-analysis, table
-  rebuild, persistence shape handling for plugin contexts (orphan-override
-  semantics on uninstall), and a `contextsChanged` publisher so settings UI
-  re-renders. Roughly 200–400 lines + design discussion. Pre-1.0 candidate if
-  plugin scenarios matter.
-- [ ] **Hierarchical mutex via context tree.** Today `mutuallyExclusiveContexts:
-  [Set<String>]` is flat; encoding "onboarding XOR (editor AND document)"
-  requires N×M pairwise sets. A `ShortcutContextTree.or/and/leaf` API would let
-  the tree itself imply activation and mutex semantics. Substantial design
-  change (cascading activation), worth dedicated brainstorming for v2.
-- [ ] **`systemShortcutsProvider` → `@_spi(Testing)`.** Useful for tests, almost
-  no real adopter need. Move behind the SPI strategy once that lands.
-- [ ] **Silent corruption recovery on store load.** `load` failure logs and
-  resets to empty `RawState`; adopter has no hook to surface a "your bindings
-  were lost" message. Configurable `corruptionPolicy` option deferred for v1.
-- [ ] **Silent migration-save failure.** Post-migration save errors are logged
-  but init continues with in-memory state. Idempotent migrations are self-healing
-  but the contract isn't enforced.
+- [x] **Late context registration — deferred to post-1.0 (2026-06-11).** Plugin
+  scenarios (runtime `register`/`unregister`, conflict re-analysis, a
+  `contextsChanged` publisher, orphan-override semantics) are a ~200–400-line
+  feature; not v1. Contexts stay fixed at init for 1.0.
+- [x] **Hierarchical mutex via context tree — deferred to v2 (2026-06-11).** The
+  flat `mutuallyExclusiveContexts: [Set<String>]` covers v1; a tree API with
+  cascading activation is a substantial redesign for later.
+- [x] **`systemShortcutsProvider` kept public (2026-06-11).** The `@_spi`-strategy
+  this referenced was superseded by `package` access. A custom
+  `SystemShortcutsProvider` is a legitimate (if advanced) extension point for
+  conflict detection, so the init param stays public.
+- [x] **Corruption-recovery policy — deferred to post-1.0 (2026-06-11).** `load`
+  failure logging + reset-to-empty is the documented v1 behavior; a configurable
+  `corruptionPolicy` hook is a later add. Flagged as a known limitation.
+- [x] **Migration-save-failure handling — deferred to post-1.0 (2026-06-11).**
+  Idempotent migrations are self-healing, so logged-and-continue is acceptable
+  for v1; enforcing the contract is a later refinement.
 
 ## Core — action / context (deferred)
 
@@ -245,8 +240,10 @@ punch-list bullet — tracked here so it isn't lost.
   enum (2026-05-29).** Nested enum with cases `.shortcut`, `.programmatic`.
   Reads better at call sites (`event.source == .shortcut`) and extends if a
   third source emerges. HUD, example app, tests migrated; 191/191 pass.
-- [ ] **`ActionFiredEvent` carries bare `contextID`/`actionID`** — could carry
-  the new `ActionRef` value type for consistency with `ShortcutMigration.moveAction`.
+- [x] **`ActionFiredEvent` stays flat (decided 2026-06-04).** Folding `contextID`/
+  `actionID` into `ActionRef` would add `.ref.` nesting to every read for no gain;
+  `ActionRef` stays where it's a passed value (migrations, `dispatchGlobalAction`).
+  See the "kept flat" decision in the Global section.
 - [ ] **`ActionFiredEvent` lacks `timestamp` / `Hashable` / kind+magnitude.**
   Possibly useful adds: `timestamp: Date` for adopters doing fire-rate analytics,
   `Hashable` for dedup. Continuous magnitude not carried by design (events are
@@ -256,17 +253,20 @@ punch-list bullet — tracked here so it isn't lost.
 - [x] **Continuous `dispatch(_:)` semantics doc (2026-06-05).** Added a note on
   `dispatch(_:)`: it sends one tick at magnitude `1.0` for tests/macro replay, not a
   simulated live gesture (real continuous input streams through the matcher path).
-- [ ] **No global `registry.dispatch(contextID:actionID:)` / `registry.notify(...)`
-  for adopters.** Today the only registry-level dispatch hook is the
-  `@_spi`-candidate `fireGlobalAction`. A documented adopter-facing pair would
-  cover the "I'm far from my context but have its ID" case without the
-  ambiguity of a global typed dispatch.
-- [ ] **`dispatch(_:)` vs `notify(_:)` purpose disparity not telegraphed by
-  names.** Documentation pass, possibly rename `notify` to something more
-  explicit like `recordFired(_:)`.
-- [ ] **Orphaned-override garbage collection.** Persisted overrides for actions
-  that no longer exist in the adopter's enum linger indefinitely. Optional
-  load-time pruning behind a registry init flag, with a logged warning.
+- [x] **Adopter-facing `registry.dispatch`/`notify` added (2026-06-11).** Public
+  `dispatch(_ ref: ActionRef)` / `notify(_ ref: ActionRef)` (+ `contextID:actionID:`
+  overloads) route by id to the named context, emitting `actionFired(source:
+  .programmatic)` — the default way to fire an action from a palette / URL scheme /
+  persisted ref without holding the typed context. Unknown ids are a logged no-op
+  (`Registry/ShortcutRegistry+Dispatch.swift`). The contextID disambiguates, so
+  there's no "which context handles it" ambiguity.
+- [x] **`dispatch(_:)` vs `notify(_:)` documented, not renamed (2026-06-11).**
+  `notify`'s doc comment now spells out the contrast (record-only counterpart to
+  `dispatch`, doesn't run the handler). Kept the name — `recordFired` would be
+  churn on an established, dispatch-paired verb.
+- [x] **Orphaned-override GC — deferred to post-1.0 (2026-06-11).** Stale overrides
+  for removed actions are inert (lookup ignores them); opt-in load-time pruning
+  with a warning is a later convenience, not v1.
 
 ## Core — registry / context / actions (in-layer fixes, 2026-05-25)
 
@@ -302,21 +302,20 @@ punch-list bullet — tracked here so it isn't lost.
   consistent with `dispatch`/`notify`). The registry keeps the whole-app
   `resetAll()` and the `package` string-keyed methods for UI. UI + example
   untouched; tests migrated. 197/197 pass.
-- [ ] **`ShortcutContext.__attachedRegistry` is `public` (the only real `__` leak).**
-  A `__`-prefixed hook in a `public extension ShortcutContext` block, so members
-  default to `public`. UI module's inline mode uses it. Change to
-  `@_spi(ShortcutKitUI) public` — this is also the canonical first item for the
-  unified SPI policy queued at the top of this doc.
-  (`Context/ShortcutContext.swift:227-237`)
+- [x] **`ShortcutContext.__attachedRegistry` public leak resolved (2026-06-04).**
+  Superseded by the `package`-access pass: the `__`-prefix hack is gone, and
+  `attachedRegistry` now lives in a `package extension` (internal `package`
+  access), invisible to adopters. No `@_spi` needed — `package` covers the whole
+  cross-module-internal surface.
 - [x] **"Accidentally-public test seams" claim corrected (2026-05-25).**
   `ShortcutRegistry.__flushPendingSave()`, `__activeContextIDs`, `__router` are
   declared at default (internal) access inside `public final class ShortcutRegistry`,
   so they're already internal — not public, despite the punch list's earlier
   claim. `RegistryEventRouter` and `ContinuousCoalescer` are themselves internal,
   so their `__` seams don't escape either. No action required for those symbols.
-- [ ] **`ActionFiredEvent.viaShortcut: Bool`** — readability: a
-  `enum Trigger { case shortcut, programmatic }` reads better and extends if a
-  third source appears. Low priority.
+- [x] **`ActionFiredEvent.viaShortcut: Bool` → `source: Source` (2026-05-29).**
+  Done — replaced by `ActionFiredEvent.Source { case shortcut, programmatic }`
+  (`Actions/ShortcutDispatch.swift`). Duplicate of the resolved entry above.
 
 ## Conflicts — value types (in-layer fixes, 2026-05-29)
 
@@ -332,16 +331,16 @@ punch-list bullet — tracked here so it isn't lost.
 
 **Conflicts — deferred:**
 
-- [ ] **`Occurrence` could fold into `ActionRef` + `shortcut`.** It's
-  effectively `ActionRef(contextID:actionID:)` plus a `Shortcut`. Cross-cutting
-  with the other ActionRef-propagation items.
+- [x] **`Occurrence` stays a distinct type (decided 2026-06-04).** Same "kept
+  flat" call as `ActionFiredEvent`: `ActionRef` stays a passed value, not a
+  nested member of the read-access payloads. Left as-is.
 - [ ] **`SystemHotKey` has no `Shortcut`-based convenience init.** Custom
   `SystemShortcutsProvider` authors work in raw `keyCode`/`modifiers`; a
   `SystemHotKey(_ shortcut: Shortcut)` convenience would let them suppress a
   conflict by shortcut rather than raw keycode.
-- [ ] **`.menuCollision.menuItemTitle: String`** is fine (AppKit titles are
-  already resolved at runtime), but worth a doc note that it's the displayed
-  string, not a localization key.
+- [x] **`.menuCollision.menuItemTitle` doc note added (2026-06-11).** The case now
+  documents that the title is the already-resolved *displayed* string (for
+  conflict UI), not a stable identifier (`Conflicts/Conflict.swift`).
 
 ## Conflicts — analysis surface ✅ (2026-05-25)
 
@@ -390,11 +389,12 @@ punch-list bullet — tracked here so it isn't lost.
   legend all render it instead of title-casing the raw id in the UI layer (that
   duplicated helper was deleted). Closes the `AnyShortcutContext`-displayName and
   headless-`Group`-displayName items together.
-- [ ] **`Entry.conflicts` double-counts across entries** — a duplicate conflict
-  appears in both entries' arrays. Correct per-entry (badge), but aggregate
-  counts need dedup. Doc note.
-- [ ] **`KeyBindings`/`Entry`/`Group` are `Equatable` not `Hashable`**
-  (`LocalizedStringResource` blocks it). Document.
+- [x] **`Entry.conflicts` per-entry semantics documented (2026-06-11).** The
+  property now notes it's correct for a per-row badge but must be deduped (via
+  `registry.conflicts`) for app-wide counts (`Headless/KeyBindings.swift`).
+- [x] **`Equatable`-not-`Hashable` documented (2026-06-11).** `KeyBindings` carries
+  a doc note that `LocalizedStringResource` blocks `Hashable`; use `Entry.id` /
+  `Group.id` as the hashable key.
 
 ## Menu helpers ✅ (2026-05-25)
 
@@ -444,10 +444,9 @@ punch-list bullet — tracked here so it isn't lost.
   is already passed to `KeyBindingsLegendView`, drops the env-key + modifier
   machinery. Deleted `ShortcutStyleEnvironment.swift`. Threaded through
   `ShortcutRowView` (internal). 190/190 tests pass.
-- [ ] **`.dense` coverage is partial (documented).** Only the bindings table +
-  recorders honor it; the legend and HUD render at fixed sizes. Documented on
-  `KeyBindingsStyle`; extending dense rendering to the legend/HUD is deferred
-  visual-design work.
+- [x] **`.dense` partial coverage accepted for v1 (2026-06-11).** Table + recorders
+  honor it; legend/HUD stay fixed-size. Already documented on `KeyBindingsStyle`;
+  extending dense rendering is deferred visual-design work. Known limitation.
 
 ## ShortcutKitUI — ShortcutBindingEditor + recorder demotion (2026-06-02)
 
@@ -546,18 +545,17 @@ punch-list bullet — tracked here so it isn't lost.
   `Conflict.UnsupportedReason` descriptions and the `Blocker:`/`Local:`/etc.
   prefixes). Adopter-supplied `displayName`/`description` deliberately still resolve
   against the adopter's bundle.
-- [ ] **[noted] `ShortcutPreferencesView` is fixed composition.** No adopter-row
-  injection into "General"; adopters wanting custom sections compose
-  `KeyBindingsView` directly. Intentional — this is the canned option.
+- [x] **`ShortcutPreferencesView` fixed composition is intentional (2026-06-11).**
+  No adopter-row injection by design — it's the canned drop-in; adopters wanting
+  custom sections compose `KeyBindingsView` directly. Won't change for v1.
 
 ## ShortcutKitUI — deferred
 
-- [ ] **`ScopePolicy` duplicates Core's scope-validation rule** (now internal,
-  lower urgency). `ScopePolicy.validate` re-implements
-  `ConflictAnalyzer.detectUnsupportedInScope`, and `ScopePolicy.RejectReason` is
-  byte-identical to `Conflict.UnsupportedReason`. Consolidate the rule into Core
-  (`ContextScope.unsupportedReason(for:)`) so the analyzer + recorder share one
-  source; then `ScopePolicy` can collapse to a thin scope alias or vanish.
+- [x] **`ScopePolicy`/Core scope-rule duplication accepted for v1 (2026-06-11).**
+  Both sides are internal and independently tested; the `ScopePolicy.RejectReason`
+  ≈ `Conflict.UnsupportedReason` duplication is a small internal nit. Consolidating
+  into Core (`ContextScope.unsupportedReason(for:)`) is optional post-1.0 cleanup,
+  not adopter-visible.
 - [x] **`ScopedShortcutRecorder.discreteWidth`/`continuousWidth` tuples** — now
   internal-only (recorder is internal), read cross-file by `KeyBindingsView`'s
   dense column header. Minor organization nit; not adopter surface. Left as-is.
@@ -598,16 +596,14 @@ punch-list bullet — tracked here so it isn't lost.
   add nesting (`event.ref.contextID`) for every read, and the real ActionRef
   consumers (migrations, `dispatchGlobalAction`) aren't fed from events. Kept flat.
   `ActionRef` stays where it's a passed value: migrations + `dispatchGlobalAction`.
-- [ ] **`GlobalBindingStatus.failed(reason: String)` is stringly-typed (Medium)** —
-  defeats the `Equatable` conformance that exists so adopters can branch on status.
-  Replace with a closed `FailureReason` enum (`registrationRejected`,
-  `reregistrationFailed`). (`Activation/GlobalActivator.swift`)
-- [ ] **`globalBindings()` returns anonymous `[(id: BindingID, shortcut: Shortcut)]`**
-  — introduce a named `GlobalBinding: Sendable, Hashable` struct.
-- [ ] **`fireGlobalAction` "fire" naming** — Core's verb for "run an action" is
-  *dispatch* (`dispatch`, `dispatchFromMatcher`); "fire" is the past-tense event
-  noun (`actionFired`). If the method survives as a seam, rename to
-  `dispatchGlobalAction`.
-- [ ] **`CarbonGlobalActivator.status` is pull-only** — mutates async from three
-  sources; a live settings UI must poll. Consider exposing a publisher. Defensible
-  for v1; flag as a known limitation.
+- [x] **`GlobalBindingStatus.failed(reason:)` is now a closed enum (2026-06-03).**
+  `.failed(reason: FailureReason)` with `registrationRejected` /
+  `reregistrationFailed` (`Activation/GlobalActivator.swift`).
+- [x] **`globalBindings()` returns a named `GlobalBinding` (2026-06-03).**
+  `GlobalBinding: Sendable, Hashable { id, shortcut }`; no more anonymous tuple.
+- [x] **`fireGlobalAction` renamed to `dispatchGlobalAction` (2026-06-04).**
+  Now `package func dispatchGlobalAction(_ ref: ActionRef)`, using Core's dispatch
+  verb (`Registry/ShortcutRegistry+Global.swift`).
+- [x] **`CarbonGlobalActivator.status` pull-only accepted for v1 (2026-06-11).**
+  A live settings UI must poll; a status publisher is a post-1.0 add. Known
+  limitation, defensible for v1.

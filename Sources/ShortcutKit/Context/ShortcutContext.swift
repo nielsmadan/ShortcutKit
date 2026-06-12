@@ -142,7 +142,10 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         ))
     }
 
-    /// Adopter-driven notify. Emits `actionFired` only; handler is not called.
+    /// Adopter-driven notify — the **record-only** counterpart to `dispatch(_:)`:
+    /// emits `actionFired` (observers and the hint HUD see it) but does *not* run
+    /// the handler. Use it when the side effect already happened another way and
+    /// you only want to record that the action fired.
     public func notify(_ action: Action) {
         registry?.recordActionFired(.init(
             contextID: id, actionID: action.rawValue, source: .programmatic

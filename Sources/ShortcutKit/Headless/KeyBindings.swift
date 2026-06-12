@@ -4,6 +4,10 @@ import ShortcutField
 /// Headless snapshot of every action's effective binding state, grouped by
 /// context. The presentation-agnostic source of truth that `KeyBindingsView`,
 /// `KeyBindingsLegendView`, and any adopter-built UI render from.
+///
+/// `Equatable` but not `Hashable`: the entries carry `LocalizedStringResource`
+/// (`displayName`/`description`), which is `Equatable` but not `Hashable`. Use
+/// `Entry.id` / `Group.id` as the stable hashable key when one is needed.
 public struct KeyBindings: Sendable, Equatable {
     /// One action's binding state.
     public struct Entry: Sendable, Equatable, Identifiable {
@@ -14,6 +18,10 @@ public struct KeyBindings: Sendable, Equatable {
         public let kind: Shortcut.Kind
         public let effectiveShortcuts: [Shortcut]
         public let isCustomized: Bool
+        /// Conflicts touching *this* entry — correct for a per-row badge. The same
+        /// conflict appears on every entry it involves, so don't sum `conflicts`
+        /// across entries for an app-wide count; dedupe via `registry.conflicts`
+        /// (or the conflict's identity) instead.
         public let conflicts: [Conflict]
 
         /// Stable identity for `ForEach` — unique across contexts.
