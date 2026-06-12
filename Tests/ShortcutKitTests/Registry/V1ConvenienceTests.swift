@@ -32,7 +32,7 @@ import Testing
         external.preferences.hintsEnabled = false
         try store.save(external)
 
-        registry.reload()
+        #expect(registry.reload()) // returns true on a successful re-read
 
         let entry = registry.keyBindings.groups.first?.entries.first
         #expect(entry?.effectiveShortcuts == [Shortcut("cmd+shift+s")])

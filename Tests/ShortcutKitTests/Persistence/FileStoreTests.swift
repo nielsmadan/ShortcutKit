@@ -263,4 +263,24 @@ import Testing
         let text = try String(contentsOf: url, encoding: .utf8)
         #expect(text.contains("preferences") == false)
     }
+
+    // MARK: - clear() (protocol default)
+
+    @Test("clear() empties the library's data and preserves sibling tables")
+    func clearPreservesSiblings() throws {
+        let url = tempURL("toml")
+        try """
+        [general]
+        theme = "dark"
+        """.write(to: url, atomically: true, encoding: .utf8)
+        let store = FileStore(url: url, key: "shortcuts")
+        try store.save(sampleState())
+        #expect(try store.load().overrides.isEmpty == false)
+
+        try store.clear() // protocol default: save an empty RawState
+
+        #expect(try store.load().overrides.isEmpty)
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("theme = \"dark\"")) // adopter's sibling survives
+    }
 }

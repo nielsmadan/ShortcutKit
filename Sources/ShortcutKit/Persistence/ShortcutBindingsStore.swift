@@ -147,4 +147,13 @@ extension RawState: CustomDebugStringConvertible {
 @MainActor public protocol ShortcutBindingsStore {
     func load() throws -> RawState
     func save(_ state: RawState) throws
+    func clear() throws
+}
+
+public extension ShortcutBindingsStore {
+    /// Remove all persisted ShortcutKit state. The default saves an empty
+    /// `RawState` — for a namespaced `FileStore`, that clears the library's subtree
+    /// while preserving sibling tables. Conformers with a cheaper wipe (e.g.
+    /// `UserDefaultsStore`, which removes its key) override this.
+    func clear() throws { try save(RawState()) }
 }

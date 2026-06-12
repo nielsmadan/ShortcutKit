@@ -117,13 +117,17 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     /// file, a sync or restore) to the live registry: bindings, the hint
     /// preference, conflicts, and the published `keyBindings` all refresh, and
     /// subscribers to `shortcutsChanges(for:)` see the new values. Unsaved
-    /// in-memory overrides are discarded in favor of the store. A load failure is
-    /// logged and leaves the current state untouched.
-    public func reload() {
+    /// in-memory overrides are discarded in favor of the store.
+    ///
+    /// Returns `true` when the store was re-read and applied, `false` when the
+    /// load failed — in which case the error is logged and the current state is
+    /// left untouched (unlike `init`, a transient read error doesn't reset state).
+    @discardableResult
+    public func reload() -> Bool {
         let loaded: RawState
         do { loaded = try store.load() } catch {
             Self.logger.error("reload failed: \(String(describing: error)); keeping current state")
-            return
+            return false
         }
         let previous = overrides
         overrides = loaded.overrides
@@ -152,6 +156,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             matcher.rebuild()
         }
         reanalyzeConflicts()
+        return true
     }
 
     private func attach(context: any AnyShortcutContext) {
