@@ -1,18 +1,60 @@
 # ``ShortcutKitUI``
 
-Auto-generated settings view, legend, and discoverability HUD for ShortcutKit-driven apps.
+Drop-in SwiftUI for shortcut customization: a settings screen, a legend, a
+single-action editor, and a discoverability HUD.
 
 ## Overview
 
-ShortcutKitUI provides the default SwiftUI rendering of the headless data types defined in ShortcutKit. Adopters who want bespoke visuals can consume the same data types from ShortcutKit and skip this module entirely.
+ShortcutKitUI renders the headless data a `ShortcutRegistry`
+exposes. Hand any of these views a registry and they stay in sync as bindings
+change. Adopters who want bespoke visuals can read the same data types from
+ShortcutKit and skip this module.
 
-> Public API arrives in Phase 2. See the [package design spec](https://github.com/nielsmadan/ShortcutKit/blob/main/docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md) for the current state.
+- ``KeyBindingsView`` — the settings table: every context's actions with inline
+  recorders, search, conflict badges, and a reset control. Choose the visual
+  density with ``KeyBindingsStyle`` and the multi-context layout with
+  ``ContextLayout``.
+- ``ShortcutPreferencesView`` — a ready-made Settings tab wrapping
+  `KeyBindingsView` plus the "show hints" toggle.
+- ``ShortcutBindingEditor`` — one action's editor, to drop into an onboarding flow
+  or a custom layout.
+- ``KeyBindingsLegendView`` — a read-only cheat sheet, styled with ``LegendStyle``.
+- The **`shortcutHintHUD(registry:policy:options:)`** view modifier — a transient
+  "you could've used ⌘S" toast when an action fires via a non-shortcut path.
+  Tune frequency with ``HintPolicy`` and placement/duration with ``HintHUDOptions``.
+
+```swift
+import ShortcutKitUI
+
+// A complete settings pane:
+ShortcutPreferencesView(registry: model.registry)
+
+// Discoverability HUD on your root view:
+ContentView().shortcutHintHUD(registry: model.registry)
+```
 
 ## Topics
 
-### Phase 2 — Coming soon
+### Essentials
 
-- `KeyBindingsView` — rendered settings table
-- `KeyBindingsLegendView` — rendered shortcut cheatsheet
-- `ShortcutHintHUD` — discoverability overlay
-- View modifiers for style customization
+- <doc:UIGettingStarted>
+
+### Settings UI
+
+- ``KeyBindingsView``
+- ``ShortcutPreferencesView``
+- ``ShortcutBindingEditor``
+- ``ContextLayout``
+- ``KeyBindingsStyle``
+
+### Legend
+
+- ``KeyBindingsLegendView``
+- ``LegendStyle``
+
+### Discoverability HUD
+
+- ``HintPolicy``
+- ``HintHUDOptions``
+- ``HintHUDPlacement``
+- ``HintToastContext``
