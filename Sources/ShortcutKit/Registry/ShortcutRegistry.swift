@@ -113,6 +113,47 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         scheduleSave()
     }
 
+    /// Re-read the store and apply any out-of-band changes (a hand-edited config
+    /// file, a sync or restore) to the live registry: bindings, the hint
+    /// preference, conflicts, and the published `keyBindings` all refresh, and
+    /// subscribers to `shortcutsChanges(for:)` see the new values. Unsaved
+    /// in-memory overrides are discarded in favor of the store. A load failure is
+    /// logged and leaves the current state untouched.
+    public func reload() {
+        let loaded: RawState
+        do { loaded = try store.load() } catch {
+            Self.logger.error("reload failed: \(String(describing: error)); keeping current state")
+            return
+        }
+        let previous = overrides
+        overrides = loaded.overrides
+        hintsEnabledOverride = loaded.preferences.hintsEnabled
+        hintsEnabled = hintsEnabledOverride ?? defaultHintsEnabled
+
+        // Push the new bindings to every action whose effective value could have
+        // changed (the union of before/after override keys), then rebuild the
+        // live matchers and derived outputs.
+        var affected: Set<ActionRef> = []
+        for (contextID, perAction) in previous {
+            for actionID in perAction.keys {
+                affected.insert(.init(contextID: contextID, actionID: actionID))
+            }
+        }
+        for (contextID, perAction) in overrides {
+            for actionID in perAction.keys {
+                affected.insert(.init(contextID: contextID, actionID: actionID))
+            }
+        }
+        for ref in affected {
+            (contexts.first(where: { $0.id == ref.contextID }) as? RegistryAttachable)?
+                .__notifyOverrideChange(actionID: ref.actionID)
+        }
+        for matcher in matchers.values {
+            matcher.rebuild()
+        }
+        reanalyzeConflicts()
+    }
+
     private func attach(context: any AnyShortcutContext) {
         guard let attachable = context as? RegistryAttachable else { return }
         attachable.__attach(registry: self)

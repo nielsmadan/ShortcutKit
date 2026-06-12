@@ -9,9 +9,9 @@ public enum ShortcutDispatch: Sendable, Equatable {
 }
 
 /// Emitted on `actionFired` whenever an action runs — adopter-driven or matcher-driven.
-public struct ActionFiredEvent: Sendable, Equatable {
+public struct ActionFiredEvent: Sendable, Hashable {
     /// What caused this action to fire.
-    public enum Source: Sendable, Equatable {
+    public enum Source: Sendable, Hashable {
         /// The matcher fired from a real shortcut event.
         case shortcut
         /// An adopter called `dispatch(_:)` or `notify(_:)` programmatically.

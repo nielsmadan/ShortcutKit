@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import ShortcutField
 
 /// One enabled system symbolic hotkey — what `CopySymbolicHotKeys()` returns.
 ///
@@ -21,6 +22,21 @@ public struct SystemHotKey: Hashable, Sendable {
 
     public static func == (lhs: SystemHotKey, rhs: SystemHotKey) -> Bool {
         lhs.keyCode == rhs.keyCode && lhs.modifiers == rhs.modifiers
+    }
+}
+
+public extension SystemHotKey {
+    /// Build an entry from a single-key discrete `Shortcut`, so a custom
+    /// `SystemShortcutsProvider` can suppress a conflict by shortcut rather than
+    /// raw keycode. Returns `nil` for shortcuts with no single-key representation
+    /// (continuous gestures, multi-step chords, or a non-key step).
+    init?(_ shortcut: Shortcut) {
+        guard case let .discrete(discrete) = shortcut,
+              discrete.steps.count == 1,
+              let step = discrete.steps.first,
+              case let .key(keyCode) = step.kind
+        else { return nil }
+        self.init(keyCode: UInt16(keyCode), modifiers: step.modifiers)
     }
 }
 

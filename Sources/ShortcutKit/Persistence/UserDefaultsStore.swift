@@ -26,4 +26,11 @@ public final class UserDefaultsStore: ShortcutBindingsStore {
         let data = try encoder.encode(state)
         defaults.set(data, forKey: key)
     }
+
+    /// Remove all persisted ShortcutKit state (overrides + preferences) under this
+    /// store's key. The next `load()` returns an empty `RawState`, so a registry
+    /// re-reads its declared defaults.
+    public func clear() {
+        defaults.removeObject(forKey: key)
+    }
 }

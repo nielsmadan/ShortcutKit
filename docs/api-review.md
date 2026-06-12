@@ -116,28 +116,25 @@ punch-list bullet — tracked here so it isn't lost.
   (`FileStore(key:)`) — un-namespaced TOML keeps bindings but drops prefs with a
   logged warning; JSON always persists them. `"preferences"` is a reserved
   context id. 205/205 tests pass.
-- [ ] **No `registry.reload()`.** The store is one-shot — there's no public way
-  to ask the registry to re-read the store and pick up out-of-band changes
-  (hand-edited file, sync, restore). The internal `GlobalBindingDiff` machinery
-  already does the right kind of incremental apply; expose a `reload()` that
-  calls `store.load()` and routes through the same notify-and-rebuild path as
-  `setShortcuts`/`removeShortcut`.
+- [x] **`registry.reload()` added (2026-06-12).** Re-reads the store and applies
+  out-of-band changes (hand-edited file, sync, restore) through the same
+  notify-and-rebuild path as `setShortcuts`: bindings, hint preference, conflicts,
+  `keyBindings`, and `shortcutsChanges` subscribers all refresh. Discards unsaved
+  in-memory overrides; a load failure is logged and leaves state untouched.
 - [x] **`FileStore` can share a file via `key:` namespacing (2026-06-05).**
   Fix (a) shipped: `FileStore(url:format:key:)` lays the library's data under a
   dotted-path subtree and does read-modify-write so adopter-owned sibling tables
   survive saves (`FileStoreTests`: "TOML namespace key round-trips and preserves
   sibling tables"). `key: nil` keeps the whole-file-at-root default.
-- [ ] **No outbound change notification.** Adopters wanting to mirror to iCloud,
-  git-commit on change, or otherwise observe persistence have to wrap their own
-  `ShortcutBindingsStore`. Consider a `registry.persistedStateChanges`
-  publisher, or a documented `ShortcutBindingsStore`-decorator pattern.
-- [ ] **No first-class import / export.** Email-a-shortcut-set / import-a-file
-  flows are achievable via direct `FileStore.save`/`load` against a chosen URL,
-  but every adopter reinvents the menu pair. A small `ShortcutPreferencesView`
-  Import…/Export… affordance + a documented pattern would cover most apps.
-- [ ] **No diagnostics helper.** No `RawState.debugDescription` producing a
-  TOML-style dump for bug reports; adopters end up `print(state.overrides)`-ing
-  the raw nested dictionary. Cheap to add.
+- [x] **Outbound change notification — deferred to post-1.0 (2026-06-12).** The
+  `ShortcutBindingsStore`-decorator pattern is the v1 answer for mirroring to
+  iCloud/git; a built-in `persistedStateChanges` publisher is a later add.
+- [x] **Import / export — deferred to post-1.0 (2026-06-12).** Achievable via
+  `FileStore.save`/`load` against a chosen URL; a canned `ShortcutPreferencesView`
+  Import…/Export… affordance is a later convenience, documented as a pattern.
+- [x] **`RawState.debugDescription` added (2026-06-12).** A TOML-ish dump
+  (contexts → actions → binding display strings, plus non-default preferences,
+  sorted) for bug reports (`Persistence/ShortcutBindingsStore.swift`).
 
 ## Core — action / context (in-layer fixes, 2026-05-23)
 
@@ -244,12 +241,13 @@ punch-list bullet — tracked here so it isn't lost.
   `actionID` into `ActionRef` would add `.ref.` nesting to every read for no gain;
   `ActionRef` stays where it's a passed value (migrations, `dispatchGlobalAction`).
   See the "kept flat" decision in the Global section.
-- [ ] **`ActionFiredEvent` lacks `timestamp` / `Hashable` / kind+magnitude.**
-  Possibly useful adds: `timestamp: Date` for adopters doing fire-rate analytics,
-  `Hashable` for dedup. Continuous magnitude not carried by design (events are
-  per-tick, not per-gesture). All optional polish.
-- [ ] **`UserDefaultsStore.clear()` convenience.** Adopters currently call
-  `defaults.removeObject(forKey:)` from outside. Small ergonomic gap.
+- [x] **`ActionFiredEvent` is now `Hashable` (2026-06-12).** Enables dedup. A
+  `timestamp: Date` was deliberately *not* added — it would make otherwise-identical
+  events unequal and un-dedupable (defeating `Hashable`); deferred as analytics
+  polish. Continuous magnitude stays off by design (events are per-tick).
+- [x] **`UserDefaultsStore.clear()` added (2026-06-12).** Removes all persisted
+  state under the store's key; next `load()` returns empty
+  (`Persistence/UserDefaultsStore.swift`).
 - [x] **Continuous `dispatch(_:)` semantics doc (2026-06-05).** Added a note on
   `dispatch(_:)`: it sends one tick at magnitude `1.0` for tests/macro replay, not a
   simulated live gesture (real continuous input streams through the matcher path).
@@ -334,10 +332,11 @@ punch-list bullet — tracked here so it isn't lost.
 - [x] **`Occurrence` stays a distinct type (decided 2026-06-04).** Same "kept
   flat" call as `ActionFiredEvent`: `ActionRef` stays a passed value, not a
   nested member of the read-access payloads. Left as-is.
-- [ ] **`SystemHotKey` has no `Shortcut`-based convenience init.** Custom
-  `SystemShortcutsProvider` authors work in raw `keyCode`/`modifiers`; a
-  `SystemHotKey(_ shortcut: Shortcut)` convenience would let them suppress a
-  conflict by shortcut rather than raw keycode.
+- [x] **`SystemHotKey(_ shortcut:)` added (2026-06-12).** Failable init mapping a
+  single-key discrete `Shortcut` to `keyCode`/`modifiers` (mirrors
+  `ShortcutCarbonBridge`; `nil` for continuous/chord/non-key), so custom
+  `SystemShortcutsProvider` authors can suppress by shortcut, not raw keycode
+  (`Conflicts/SystemShortcuts.swift`).
 - [x] **`.menuCollision.menuItemTitle` doc note added (2026-06-11).** The case now
   documents that the title is the already-resolved *displayed* string (for
   conflict UI), not a stable identifier (`Conflicts/Conflict.swift`).

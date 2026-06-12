@@ -117,6 +117,30 @@ public extension RawState {
     }
 }
 
+extension RawState: CustomDebugStringConvertible {
+    /// A readable, TOML-ish dump for bug reports and logging: each context, its
+    /// overridden actions, and the binding display strings, plus any non-default
+    /// preferences. Sorted for stable output.
+    public var debugDescription: String {
+        var lines: [String] = []
+        for contextID in overrides.keys.sorted() {
+            lines.append("[\(contextID)]")
+            let perAction = overrides[contextID] ?? [:]
+            for actionID in perAction.keys.sorted() {
+                let rendered = (perAction[actionID] ?? []).map(\.displayString).joined(separator: ", ")
+                lines.append("  \(actionID) = \(rendered)")
+            }
+        }
+        if !preferences.isDefault {
+            lines.append("[preferences]")
+            if let hints = preferences.hintsEnabled {
+                lines.append("  hints-enabled = \(hints)")
+            }
+        }
+        return lines.isEmpty ? "(no overrides)" : lines.joined(separator: "\n")
+    }
+}
+
 // MARK: - Store protocol
 
 /// Pluggable persistence for `RawState`.
