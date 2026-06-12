@@ -4,11 +4,11 @@ import SwiftUI
 import Testing
 
 @MainActor
-struct HintHUDStyleTests {
-    @Test func defaultStyleIsTopTrailingTwoSeconds() {
-        let style = HintHUDStyle.default
-        #expect(style.placement == .topTrailing)
-        #expect(style.duration == .seconds(2))
+struct HintHUDOptionsTests {
+    @Test func defaultOptionsAreTopTrailingTwoSeconds() {
+        let options = HintHUDOptions.default
+        #expect(options.placement == .topTrailing)
+        #expect(options.duration == .seconds(2))
     }
 
     @Test func fixedPlacementsMapToMatchingAlignment() {

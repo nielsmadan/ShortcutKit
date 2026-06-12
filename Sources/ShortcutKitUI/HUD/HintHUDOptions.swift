@@ -36,10 +36,11 @@ extension HintHUDPlacement {
     }
 }
 
-/// Visual placement + timing for the discoverability HUD. A `Sendable` value
-/// grouped like `KeyBindingsStyle`/`LegendStyle` so the modifier signature stays
-/// small and the knobs extend without breaking call sites.
-public struct HintHUDStyle: Sendable, Hashable {
+/// The HUD's display knobs — toast placement and per-toast duration — passed via
+/// the modifier's `options:` parameter. A `Sendable` value (a struct, not an enum)
+/// because it bundles several independent knobs; contrast the single-axis
+/// `KeyBindingsStyle` / `LegendStyle` variant enums passed via `style:`.
+public struct HintHUDOptions: Sendable, Hashable {
     /// Where the toast appears. Default `.topTrailing`.
     public var placement: HintHUDPlacement
     /// How long a single toast stays visible before fading. Default 2 seconds.
@@ -51,7 +52,7 @@ public struct HintHUDStyle: Sendable, Hashable {
         self.duration = duration
     }
 
-    public static let `default` = HintHUDStyle()
+    public static let `default` = HintHUDOptions()
 }
 
 /// The data behind one hint, handed to a custom toast builder (and reusable for

@@ -12,13 +12,13 @@ import SwiftUI
 ///   - `registry.hintsEnabled` (the user preference, persisted through the
 ///     registry's store; default from `ShortcutRegistry(defaultHintsEnabled:)`)
 ///
-/// `HintHUDStyle` controls placement + per-toast duration; the `toast` builder
+/// `HintHUDOptions` controls placement + per-toast duration; the `toast` builder
 /// renders each hint (the default overload supplies the built-in `HintToast`).
 @MainActor
 struct ShortcutHintHUD<Toast: View>: ViewModifier {
     @ObservedObject var registry: ShortcutRegistry
     let policy: HintPolicy
-    let style: HintHUDStyle
+    let options: HintHUDOptions
     let toast: (HintToastContext) -> Toast
 
     @State private var gate: HintPolicyGate
@@ -34,12 +34,12 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
     init(
         registry: ShortcutRegistry,
         policy: HintPolicy = .oncePerSession,
-        style: HintHUDStyle = .default,
+        options: HintHUDOptions = .default,
         @ViewBuilder toast: @escaping (HintToastContext) -> Toast
     ) {
         self.registry = registry
         self.policy = policy
-        self.style = style
+        self.options = options
         self.toast = toast
         _gate = State(initialValue: HintPolicyGate(policy: policy))
     }
@@ -69,7 +69,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
                     )
                     .transition(.opacity)
 
-                if style.placement == .cursor, let point = currentCursor {
+                if options.placement == .cursor, let point = currentCursor {
                     measured.position(clampedToastCenter(
                         cursor: point, container: proxy.size, toast: toastSize
                     ))
@@ -79,7 +79,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
                         .frame(
                             width: proxy.size.width,
                             height: proxy.size.height,
-                            alignment: style.placement.alignment
+                            alignment: options.placement.alignment
                         )
                 }
             }
@@ -103,10 +103,10 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
         let context = HintToastContext(actionName: name, shortcut: shortcut, text: text)
         withAnimation {
             current = context
-            currentCursor = style.placement == .cursor ? tracker.point : nil
+            currentCursor = options.placement == .cursor ? tracker.point : nil
         }
         Task {
-            try? await Task.sleep(for: style.duration)
+            try? await Task.sleep(for: options.duration)
             // Guard ensures the timer doesn't clear a newer hint that has since
             // replaced the one we set.
             if current == context {
@@ -127,13 +127,13 @@ public extension View {
     /// Attach the discoverability HUD with the built-in toast. Gated by
     /// `registry.hintsEnabled` (the user preference, persisted through the
     /// registry's store); `policy` is the developer-set upper bound on frequency;
-    /// `style` controls placement and per-toast duration.
+    /// `options` controls placement and per-toast duration.
     func shortcutHintHUD(
         registry: ShortcutRegistry,
         policy: HintPolicy = .oncePerSession,
-        style: HintHUDStyle = .default
+        options: HintHUDOptions = .default
     ) -> some View {
-        modifier(ShortcutHintHUD(registry: registry, policy: policy, style: style) { context in
+        modifier(ShortcutHintHUD(registry: registry, policy: policy, options: options) { context in
             HintToast(text: context.text)
         })
     }
@@ -145,10 +145,10 @@ public extension View {
     func shortcutHintHUD(
         registry: ShortcutRegistry,
         policy: HintPolicy = .oncePerSession,
-        style: HintHUDStyle = .default,
+        options: HintHUDOptions = .default,
         @ViewBuilder toast: @escaping (HintToastContext) -> some View
     ) -> some View {
-        modifier(ShortcutHintHUD(registry: registry, policy: policy, style: style, toast: toast))
+        modifier(ShortcutHintHUD(registry: registry, policy: policy, options: options, toast: toast))
     }
 }
 
