@@ -361,6 +361,8 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     func __defaultOccurrences() -> [Occurrence]
     func __currentEntries(conflictsForAction: (String) -> [Conflict]) -> [KeyBindings.Entry]
     func __dispatchFromMatcher(actionID: String)
+    func __dispatchProgrammatic(actionID: String) -> Bool
+    func __notifyProgrammatic(actionID: String) -> Bool
 }
 
 // swiftlint:enable identifier_name

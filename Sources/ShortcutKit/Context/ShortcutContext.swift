@@ -316,6 +316,25 @@ extension ShortcutContext: RegistryAttachable {
         dispatchFromMatcher(action, kind: .discrete)
     }
 
+    // String-keyed programmatic dispatch/notify behind the registry-level
+    // `dispatch(_ ref:)` / `notify(_ ref:)`. Reuse the typed `dispatch`/`notify`
+    // (so `source: .programmatic`); return `false` for an unknown actionID.
+    // swiftlint:disable:next identifier_name
+    func __dispatchProgrammatic(actionID: String) -> Bool {
+        guard let action = Action.allCases.first(where: { $0.rawValue == actionID })
+        else { return false }
+        dispatch(action)
+        return true
+    }
+
+    // swiftlint:disable:next identifier_name
+    func __notifyProgrammatic(actionID: String) -> Bool {
+        guard let action = Action.allCases.first(where: { $0.rawValue == actionID })
+        else { return false }
+        notify(action)
+        return true
+    }
+
     // swiftlint:disable:next identifier_name
     func __currentEntries(
         conflictsForAction: (String) -> [Conflict]
