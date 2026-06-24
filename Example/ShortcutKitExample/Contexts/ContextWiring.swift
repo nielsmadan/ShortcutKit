@@ -70,19 +70,25 @@ enum ContextWiring {
         .union(modeIDs)
         .union(selectionIDs)
 
-        return ShortcutRegistry(
+        let registry = ShortcutRegistry(
             contexts: allContexts,
             mutuallyExclusiveContexts: [modeIDs, selectionIDs, wizardVsAll]
         )
+        // Defaults are conflict-free; create the demo conflicts the way a user
+        // would, via overrides, so the conflict UI has something to show.
+        conflictDemo.seedConflicts()
+        return registry
     }()
 }
 
 // MARK: - Conflict demo
 
-/// Actions authored to deliberately collide, so the Settings tables and the
-/// Diagnostics tab surface real conflict badges. `dupeA`/`dupeB` share a binding
-/// (a `duplicate` conflict); `shadowed` reuses the global hotkey (a
-/// `shadowedByGlobal` conflict, since the OS intercepts the global one first).
+/// Actions whose *defaults* are conflict-free — shipping colliding defaults would
+/// trip ShortcutKit's developer guard (`checkDefaultLevelConflicts`) and trap. The
+/// conflicts are instead created at runtime via `seedConflicts()`, exactly as an
+/// end user would by re-binding two actions to the same key. That populates the
+/// Settings tables and Diagnostics tab with real `duplicate` and `shadowedByGlobal`
+/// badges, and "Clear stored overrides" makes them disappear.
 enum ConflictDemoAction: String, ShortcutAction {
     case dupeA
     case dupeB
@@ -91,8 +97,8 @@ enum ConflictDemoAction: String, ShortcutAction {
     var definition: ShortcutActionDefinition {
         switch self {
         case .dupeA: .init("Duplicate A", Shortcut("cmd+ctrl+1"))
-        case .dupeB: .init("Duplicate B", Shortcut("cmd+ctrl+1"))
-        case .shadowed: .init("Shadowed by Global", Shortcut("ctrl+opt+cmd+k"))
+        case .dupeB: .init("Duplicate B", Shortcut("cmd+ctrl+2"))
+        case .shadowed: .init("Shadowed by Global", Shortcut("ctrl+opt+cmd+j"))
         }
     }
 }
@@ -103,6 +109,16 @@ final class ConflictDemoContextModel {
 
     init() {
         context = ShortcutContext<ConflictDemoAction>("conflict.demo", displayName: "Conflict Demo")
+    }
+
+    /// Apply user-style overrides that collide on purpose: `dupeB` onto `dupeA`'s
+    /// binding (a `duplicate` conflict), and `shadowed` onto the global hotkey
+    /// (a `shadowedByGlobal` conflict, since the OS intercepts the global first).
+    /// Called once after the registry is wired, so the conflict analyzer surfaces
+    /// them. Idempotent — re-running sets the same overrides.
+    func seedConflicts() {
+        context.setShortcuts([Shortcut("cmd+ctrl+1")], for: .dupeB)
+        context.setShortcuts([Shortcut("ctrl+opt+cmd+k")], for: .shadowed)
     }
 
     // Demo-only: the bindings exist to produce conflicts, not to do work. The
