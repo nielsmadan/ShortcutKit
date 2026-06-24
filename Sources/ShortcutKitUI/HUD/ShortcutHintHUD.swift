@@ -67,7 +67,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
                             Color.clear.preference(key: ToastSizeKey.self, value: sizeProxy.size)
                         }
                     )
-                    .transition(.opacity)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
 
                 if options.placement == .cursor, let point = currentCursor {
                     measured.position(clampedToastCenter(
@@ -101,7 +101,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
         // Translators get "Tip: %@ is bound to %@".
         let text = uiString("Tip: \(name) is bound to \(shortcut)")
         let context = HintToastContext(actionName: name, shortcut: shortcut, text: text)
-        withAnimation {
+        withAnimation(.easeOut(duration: 0.2)) {
             current = context
             currentCursor = options.placement == .cursor ? tracker.point : nil
         }
@@ -110,7 +110,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
             // Guard ensures the timer doesn't clear a newer hint that has since
             // replaced the one we set.
             if current == context {
-                withAnimation { current = nil }
+                withAnimation(.easeIn(duration: 0.3)) { current = nil }
             }
         }
     }
@@ -185,11 +185,25 @@ private struct ToastSizeKey: PreferenceKey {
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
 }
 
+/// The built-in hint toast. Inverts the app's theme — dark text on a light pill
+/// in a dark app, light-on-dark in a light app — so the cue reads as a distinct
+/// overlay rather than blending into the window chrome (the Superhuman style).
+/// Adopters who want a different look pass their own via the custom-toast overload.
 private struct HintToast: View {
     let text: String
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var isDark: Bool { colorScheme == .dark }
+
     var body: some View {
         Text(text)
-            .padding(8)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .foregroundStyle(isDark ? Color.black : Color.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                isDark ? Color(white: 0.97) : Color(white: 0.12),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+            .shadow(color: .black.opacity(0.25), radius: 8, y: 2)
     }
 }
