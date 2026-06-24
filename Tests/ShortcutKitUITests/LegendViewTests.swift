@@ -36,16 +36,27 @@ struct LegendViewTests {
         #expect(view.styleForTest == .sidebar)
     }
 
-    @Test func compactStripBuilds() {
+    @Test func compactBuilds() {
         let legend = sampleLegend()
-        let view = KeyBindingsLegendView(bindings: legend, style: .compactStrip)
-        #expect(view.styleForTest == .compactStrip)
+        let view = KeyBindingsLegendView(bindings: legend, style: .compact)
+        #expect(view.styleForTest == .compact)
     }
 
     @Test func registryBasedInitBuilds() {
         let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         let view = KeyBindingsLegendView(registry: registry, style: .sidebar)
+        #expect(view.styleForTest == .sidebar)
+    }
+
+    @Test func optionsAndLabelInitsBuild() {
+        let legend = sampleLegend()
+        let view = KeyBindingsLegendView(
+            bindings: legend,
+            style: .sidebar,
+            options: LegendOptions(columns: .fixed(2), entryLayout: .labelLeading, fontSize: 12),
+            label: { $0.actionID == "save" ? "Save Doc" : nil }
+        )
         #expect(view.styleForTest == .sidebar)
     }
 }

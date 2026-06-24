@@ -94,18 +94,47 @@ private struct StyledSettingsTab: View {
 @MainActor
 private struct LegendStylesView: View {
     @State private var style: LegendStyle = .sidebar
+    @State private var columns: ColumnChoice = .auto
+    @State private var entryLayout: LegendEntryLayout = .shortcutLeading
+
+    private enum ColumnChoice: String, CaseIterable, Identifiable {
+        case auto, two, single
+        var id: String { rawValue }
+        var columns: LegendColumns {
+            switch self {
+            case .auto: .auto(minWidth: 150)
+            case .two: .fixed(2)
+            case .single: .single
+            }
+        }
+    }
+
+    private var options: LegendOptions {
+        LegendOptions(columns: columns.columns, entryLayout: entryLayout)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Legend Style").font(.headline)
+            Text("Legend").font(.headline)
             Picker("Style", selection: $style) {
                 Text("Sidebar").tag(LegendStyle.sidebar)
                 Text("Modal").tag(LegendStyle.modal)
-                Text("Compact Strip").tag(LegendStyle.compactStrip)
+                Text("Compact").tag(LegendStyle.compact)
+            }
+            .pickerStyle(.segmented)
+            Picker("Columns", selection: $columns) {
+                Text("Auto").tag(ColumnChoice.auto)
+                Text("2 columns").tag(ColumnChoice.two)
+                Text("Single").tag(ColumnChoice.single)
+            }
+            .pickerStyle(.segmented)
+            Picker("Cell", selection: $entryLayout) {
+                Text("Shortcut first").tag(LegendEntryLayout.shortcutLeading)
+                Text("Label first").tag(LegendEntryLayout.labelLeading)
             }
             .pickerStyle(.segmented)
             Divider()
-            KeyBindingsLegendView(registry: ContextWiring.shared, style: style)
+            KeyBindingsLegendView(registry: ContextWiring.shared, style: style, options: options)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
