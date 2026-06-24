@@ -1,3 +1,4 @@
+import Foundation
 import ShortcutKit
 import ShortcutKitGlobal
 
@@ -9,6 +10,7 @@ enum ContextWiring {
     static let inspector = InspectorContextModel()
     static let wizard = WizardContextModel()
     static let global = GlobalContextModel()
+    static let conflictDemo = ConflictDemoContextModel()
 
     /// The Carbon-backed global hotkey activator. Call `startGlobalActivator()`
     /// once at app launch.
@@ -53,6 +55,7 @@ enum ContextWiring {
             wizard.context,
             canvas.sharedContext,
             global.context,
+            conflictDemo.context,
         ]
 
         let allContexts = nonModeContexts + modeContexts + selectionContexts
@@ -72,4 +75,37 @@ enum ContextWiring {
             mutuallyExclusiveContexts: [modeIDs, selectionIDs, wizardVsAll]
         )
     }()
+}
+
+// MARK: - Conflict demo
+
+/// Actions authored to deliberately collide, so the Settings tables and the
+/// Diagnostics tab surface real conflict badges. `dupeA`/`dupeB` share a binding
+/// (a `duplicate` conflict); `shadowed` reuses the global hotkey (a
+/// `shadowedByGlobal` conflict, since the OS intercepts the global one first).
+enum ConflictDemoAction: String, ShortcutAction {
+    case dupeA
+    case dupeB
+    case shadowed
+
+    var definition: ShortcutActionDefinition {
+        switch self {
+        case .dupeA: .init("Duplicate A", Shortcut("cmd+ctrl+1"))
+        case .dupeB: .init("Duplicate B", Shortcut("cmd+ctrl+1"))
+        case .shadowed: .init("Shadowed by Global", Shortcut("ctrl+opt+cmd+k"))
+        }
+    }
+}
+
+@MainActor
+final class ConflictDemoContextModel {
+    let context: ShortcutContext<ConflictDemoAction>
+
+    init() {
+        context = ShortcutContext<ConflictDemoAction>("conflict.demo", displayName: "Conflict Demo")
+    }
+
+    // Demo-only: the bindings exist to produce conflicts, not to do work. The
+    // context isn't activated by any view, so these never fire.
+    func handle(_: ConflictDemoAction, _: ShortcutDispatch) {}
 }

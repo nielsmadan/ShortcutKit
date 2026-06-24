@@ -15,6 +15,22 @@ struct ShortcutKitExampleApp: App {
         WindowGroup("ShortcutKit Example") {
             RootBridge(appModel: appModel)
         }
+        .commands {
+            // Menu items whose key equivalents come from the registry's live
+            // bindings via the `.shortcut(_:in:)` helper — re-binding in Settings
+            // updates these automatically. The button action dispatches the same
+            // action the in-app shortcut would.
+            CommandMenu("Actions") {
+                Button("Toggle Legend") { ContextWiring.app.context.dispatch(.toggleLegend) }
+                    .shortcut(.toggleLegend, in: ContextWiring.app.context)
+                Button("Show Inspector") { ContextWiring.app.context.dispatch(.openInspector) }
+                    .shortcut(.openInspector, in: ContextWiring.app.context)
+                Button("New Project…") { ContextWiring.app.context.dispatch(.newProject) }
+                    .shortcut(.newProject, in: ContextWiring.app.context)
+                Button("Fire Confetti") { ContextWiring.app.context.dispatch(.fireConfetti) }
+                    .shortcut(.fireConfetti, in: ContextWiring.app.context)
+            }
+        }
         WindowGroup("Inspector", id: "inspector") {
             InspectorWindowView()
                 .environmentObject(ContextWiring.inspector)

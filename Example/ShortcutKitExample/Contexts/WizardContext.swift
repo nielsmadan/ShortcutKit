@@ -1,4 +1,5 @@
 import Combine
+import Foundation
 import ShortcutKit
 
 enum WizardAction: String, ShortcutAction {

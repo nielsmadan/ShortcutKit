@@ -1,3 +1,4 @@
+import Foundation
 import ShortcutKit
 
 /// Active when a shape (rectangle/ellipse) is selected. The `=` and `-` keys

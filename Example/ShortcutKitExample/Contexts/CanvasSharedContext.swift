@@ -1,3 +1,4 @@
+import Foundation
 import ShortcutKit
 
 /// Actions that work on the canvas regardless of which mode is active:
