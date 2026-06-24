@@ -52,7 +52,7 @@ private struct RootBridge: View {
 
     var body: some View {
         MainWindowView()
-            .shortcutHintHUD(registry: ContextWiring.shared)
+            .shortcutHintHUD(registry: ContextWiring.shared, policy: .always)
             .onChange(of: appModel.inspectorOpenSignal) { _, _ in
                 openWindow(id: "inspector")
             }

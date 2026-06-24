@@ -38,9 +38,6 @@ struct MainWindowView: View {
         .frame(minWidth: 800, minHeight: 600)
         .activeShortcutContext(appModel.context, dispatch: appModel.handle)
         .activeShortcutContext(canvasModel.sharedContext, dispatch: canvasModel.handleShared)
-        .overlay {
-            ActionToast(registry: ContextWiring.shared)
-        }
         .sheet(isPresented: $wizardModel.visible) {
             NewProjectWizard()
                 .environmentObject(wizardModel)
