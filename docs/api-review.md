@@ -69,6 +69,61 @@ punch-list bullet — tracked here so it isn't lost.
 
 ---
 
+## Proposed: parity pickups from KeyboardShortcuts 3.0 (2026-06-23)
+
+[KeyboardShortcuts 3.0.0](https://github.com/sindresorhus/KeyboardShortcuts/releases)
+(June 2025; 3.0.1 is a Swift 6.3 build-crash fix) shipped several additions.
+Most are already covered by ShortcutKit's registry-centric architecture or are
+KeyboardShortcuts-internal bug fixes. Three are genuine capability gaps worth
+considering as additive, headless-first features (data type in Core, UI layered
+on top). Listed highest-value first.
+
+- [ ] **Customizable recorder validation (highest value).** 3.0 added arbitrary
+  validation closures to its `Recorder` (reject specific combos, reserve keys).
+  ShortcutKit only has *scope-policy* validation today — the internal
+  `ScopePolicy` / `ScopedShortcutRecorder` rejects multi-step / continuous in
+  `.global` scope (`Conflict.UnsupportedReason`), with no hook for an adopter to
+  say "don't let users bind ⌘Q here." Proposal: a `validate: (Shortcut) ->
+  ValidationResult` closure on `ShortcutBindingEditor` / `KeyBindingsView`,
+  surfaced through the existing inline-rejection message path. Clean additive;
+  doesn't touch the data model.
+- [ ] **Repeating key-down for discrete actions.** 3.0's
+  `repeatingKeyDownEvents(for:)` emits once on press then auto-repeats per the
+  system key-repeat settings (macOS 13+). ShortcutKit has `.discrete` and
+  `.continuous(magnitude:)` (`ShortcutDispatch`) but nothing for "hold a
+  discrete shortcut to fire repeatedly" (hold-to-nudge). New dispatch behavior —
+  a `ShortcutDispatch` variant or an `ShortcutActionDefinition` flag. Behavioral
+  feature, genuinely missing.
+- [ ] **Async-sequence event API.** 3.0 added `events(for:)` as an
+  `AsyncSequence`. ShortcutKit is entirely Combine-based (`actionFired`,
+  `shortcutsChanges(for:)` are `AnyPublisher`). A thin `for await` wrapper
+  (`registry.actionEvents` / `events(for:)`) over the existing publishers is
+  low-cost and additive for Swift-concurrency-first adopters — keep Combine, add
+  the async surface. Nice-to-have; lower priority than the two above.
+
+**Already covered / skip:**
+- **`Shortcut#isTakenBySystem`** — ShortcutKit already detects system-reserved
+  combos via `SystemShortcutsProvider` / `CarbonSystemShortcuts`, surfaced as
+  `.systemShared` conflicts. Only missing a per-shortcut *convenience query*
+  (vs. the registry-wide conflict list); easy to expose if a custom recorder
+  needs it, otherwise unnecessary.
+- **`KeyboardShortcuts.storedNames`** — covered by `KeyBindings` groups/entries
+  and `RawState.contextIDs` / `actionIDs(in:)`.
+- **`Shortcut#toSwiftUI`** — partially covered by the `.shortcut(_:in:)` view
+  modifier (`View+Shortcut.swift`), which handles discrete single-key. A direct
+  converter is lossy for ShortcutField multi-step shortcuts — low priority.
+- **`Recorder` binding support** — doesn't map; ShortcutKit's recorder is
+  registry-owned by design, not a standalone bindable control.
+- **Menu-item fixes** (`setShortcut` not overriding hardcoded key equivalents) —
+  KeyboardShortcuts-internal bugs. Worth a sanity check that `shortcutKitItem` /
+  `.shortcut(_:in:)` don't clobber existing key equivalents, nothing to import.
+
+**Recommendation:** take the validation hook and repeating key-down (both real
+gaps that fit the headless-first model); treat the async API as a later
+nice-to-have; skip the rest.
+
+---
+
 ## Persistence layer ✅ (2026-05-23)
 
 - [x] **`WrapSingleBindingsMigration` is `public` but a no-op breadcrumb.** Demoted
