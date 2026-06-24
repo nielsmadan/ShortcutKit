@@ -54,7 +54,7 @@ struct LegendViewTests {
         let view = KeyBindingsLegendView(
             bindings: legend,
             style: .sidebar,
-            options: LegendOptions(columns: .fixed(2), entryLayout: .labelLeading, fontSize: 12),
+            options: LegendOptions(columns: .fixed(2), entryLayout: .labelLeading, size: .large),
             label: { $0.actionID == "save" ? "Save Doc" : nil }
         )
         #expect(view.styleForTest == .sidebar)

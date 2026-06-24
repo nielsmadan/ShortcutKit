@@ -8,7 +8,20 @@ struct LegendOptionsTests {
         let options = LegendOptions.default
         #expect(options.columns == .auto(minWidth: 150))
         #expect(options.entryLayout == .shortcutLeading)
-        #expect(options.fontSize == 10)
+        #expect(options.size == .small)
+        #expect(options.metrics.entryFont == 10)
+    }
+
+    @Test func sizeVariantsScaleUp() {
+        let fonts = LegendSize.allCases.map { LegendOptions(size: $0).metrics.entryFont }
+        #expect(fonts == fonts.sorted()) // small → extraLarge is monotonically larger
+        #expect(Set(fonts).count == LegendSize.allCases.count) // every size is distinct
+        // Each header hugs its rows: header-to-rows gap stays below the gap
+        // between sections, at every size.
+        for size in LegendSize.allCases {
+            let m = size.metrics
+            #expect(m.headerToRows < m.sectionSpacing)
+        }
     }
 
     @Test func columnsResolveToGridItemCounts() {

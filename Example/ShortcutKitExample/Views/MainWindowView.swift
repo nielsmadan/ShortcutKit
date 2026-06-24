@@ -9,7 +9,7 @@ struct MainWindowView: View {
     @ObservedObject var wizardModel = ContextWiring.wizard
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 0) {
             NavigationSplitView {
                 SidebarView()
                     .environmentObject(ContextWiring.sidebar)
@@ -29,6 +29,10 @@ struct MainWindowView: View {
                     style: .sidebar,
                     contextIDs: visibleContextIDs
                 )
+                // A right rail is a fixed-width panel; the legend flows its
+                // columns to fit. Without a width cap it would grab half the
+                // window and stretch its columns.
+                .frame(width: 320)
             }
         }
         .frame(minWidth: 800, minHeight: 600)

@@ -10,8 +10,8 @@ import SwiftUI
 /// grouped by context (the registry's context order). Reorder the enum cases to
 /// reorder the legend.
 ///
-/// `LegendOptions` controls columns, cell order, and font size — the default is
-/// a compact, content-sized, multi-column grid with the shortcut leading each
+/// `LegendOptions` controls columns, cell order, and overall size — the default
+/// is a compact, content-sized, multi-column grid with the shortcut leading each
 /// cell. Pass a `label` closure to show a different (e.g. shorter) text for an
 /// entry than its `displayName`; return `nil` to fall back to `displayName`.
 ///
@@ -104,22 +104,42 @@ private struct LegendBody: View {
 }
 
 /// Grouped grid of entries shared by the vertical styles. **Content-sized** — no
-/// forced height — so the legend is only as tall as its entries. Columns, cell
-/// order, and font come from `options`.
+/// forced height — so the legend is only as tall as its entries. Each group is a
+/// section header hugging its rows (header-to-rows gap < gap between groups), and
+/// the entries flow into even, content-sized columns under `.auto`, or a fixed
+/// `LazyVGrid` under `.single` / `.fixed`.
 private struct LegendGrid: View {
     let bindings: KeyBindings
     let options: LegendOptions
     let label: (KeyBindings.Entry) -> String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: options.metrics.sectionSpacing) {
             ForEach(bindings.groups) { group in
-                Text(group.displayName)
-                    .font(.system(size: options.fontSize + 2, weight: .bold))
-                    .foregroundStyle(.secondary)
-                LazyVGrid(columns: legendGridItems(options.columns), alignment: .leading, spacing: 4) {
-                    ForEach(group.entries) { entry in
-                        LegendEntryCell(entry: entry, options: options, label: label, fillWidth: true)
+                VStack(alignment: .leading, spacing: options.metrics.headerToRows) {
+                    LegendSectionHeader(title: group.displayName, options: options)
+                    switch options.columns {
+                    case let .auto(minWidth):
+                        FlowLayout(spacing: options.metrics.columnSpacing, lineSpacing: options.metrics.rowSpacing) {
+                            ForEach(group.entries) { entry in
+                                LegendEntryCell(
+                                    entry: entry,
+                                    options: options,
+                                    label: label,
+                                    fit: .flow(minWidth: minWidth)
+                                )
+                            }
+                        }
+                    case .single, .fixed:
+                        LazyVGrid(
+                            columns: legendGridItems(options.columns, spacing: options.metrics.columnSpacing),
+                            alignment: .leading,
+                            spacing: options.metrics.rowSpacing
+                        ) {
+                            ForEach(group.entries) { entry in
+                                LegendEntryCell(entry: entry, options: options, label: label, fit: .fill)
+                            }
+                        }
                     }
                 }
             }
@@ -127,27 +147,56 @@ private struct LegendGrid: View {
     }
 }
 
-/// One legend row: shortcut + label in `options.entryLayout` order at
-/// `options.fontSize`. `fillWidth` adds a spacer for grid cells; the compact
-/// strip passes `false` for a tight inline cell.
+/// A section title: uppercased, tracked, and underscored by a thin rule so it
+/// reads as a header distinct from the (sentence-case) entries beneath it.
+private struct LegendSectionHeader: View {
+    let title: LocalizedStringResource
+    let options: LegendOptions
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: options.metrics.headerFont, weight: .heavy))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .kerning(0.6)
+            Divider().opacity(0.6)
+        }
+    }
+}
+
+/// One legend row: shortcut + label in `options.entryLayout` order at the size's
+/// entry font. `fit` decides sizing: `.fill` stretches across a grid column (a
+/// spacer pushes the pair apart); `.flow` sizes to content with an optional
+/// `minWidth` floor so flowed cells line up into loose columns.
 private struct LegendEntryCell: View {
     let entry: KeyBindings.Entry
     let options: LegendOptions
     let label: (KeyBindings.Entry) -> String?
-    let fillWidth: Bool
+    let fit: Fit
+
+    enum Fit: Equatable {
+        case fill
+        case flow(minWidth: CGFloat)
+    }
 
     var body: some View {
         let shortcut = entry.effectiveShortcuts.first?.displayString ?? ""
+        row(shortcut).modifier(FitModifier(fit: fit))
+    }
+
+    @ViewBuilder
+    private func row(_ shortcut: String) -> some View {
         if case .shortcutLeading = options.entryLayout {
             HStack(spacing: 6) {
                 shortcutText(shortcut)
                 labelText
-                if fillWidth { Spacer(minLength: 0) }
+                if fit == .fill { Spacer(minLength: 0) }
             }
         } else {
             HStack(spacing: 4) {
                 labelText
-                if fillWidth { Spacer(minLength: 4) }
+                if fit == .fill { Spacer(minLength: 4) }
                 shortcutText(shortcut)
             }
         }
@@ -155,16 +204,34 @@ private struct LegendEntryCell: View {
 
     private func shortcutText(_ shortcut: String) -> some View {
         Text(shortcut)
-            .font(.system(size: options.fontSize, design: .monospaced))
+            .font(.system(size: options.metrics.entryFont, design: .monospaced))
             .foregroundStyle(.secondary)
     }
 
     @ViewBuilder
     private var labelText: some View {
         if let override = label(entry) {
-            Text(override).font(.system(size: options.fontSize))
+            Text(override).font(.system(size: options.metrics.entryFont))
         } else {
-            Text(entry.displayName).font(.system(size: options.fontSize))
+            Text(entry.displayName).font(.system(size: options.metrics.entryFont))
+        }
+    }
+}
+
+/// Applies `LegendEntryCell.Fit`: `.flow` clamps the cell to a single line at its
+/// intrinsic width (floored at `minWidth`); `.fill` leaves it to stretch.
+private struct FitModifier: ViewModifier {
+    let fit: LegendEntryCell.Fit
+
+    func body(content: Content) -> some View {
+        switch fit {
+        case .fill:
+            content
+        case let .flow(minWidth):
+            content
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(minWidth: minWidth, alignment: .leading)
         }
     }
 }
@@ -200,12 +267,10 @@ private struct CompactLegend: View {
     let label: (KeyBindings.Entry) -> String?
 
     var body: some View {
-        FlowLayout(spacing: 12, lineSpacing: 4) {
+        FlowLayout(spacing: options.metrics.columnSpacing, lineSpacing: options.metrics.rowSpacing) {
             ForEach(bindings.groups) { group in
                 ForEach(group.entries) { entry in
-                    LegendEntryCell(entry: entry, options: options, label: label, fillWidth: false)
-                        .lineLimit(1)
-                        .fixedSize()
+                    LegendEntryCell(entry: entry, options: options, label: label, fit: .flow(minWidth: 0))
                 }
             }
         }
@@ -216,8 +281,8 @@ private struct CompactLegend: View {
 }
 
 /// Wrapping flow: places its subviews left-to-right and wraps to a new line when
-/// the next would overflow the available width — so the compact legend reflows
-/// instead of scrolling off-screen. Placement math lives in `legendFlowLayout`.
+/// the next would overflow the available width — so the legend reflows instead of
+/// stretching or scrolling off-screen. Placement math lives in `legendFlowLayout`.
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 12
     var lineSpacing: CGFloat = 4

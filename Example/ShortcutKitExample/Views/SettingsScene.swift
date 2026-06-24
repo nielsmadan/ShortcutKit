@@ -96,6 +96,7 @@ private struct LegendStylesView: View {
     @State private var style: LegendStyle = .sidebar
     @State private var columns: ColumnChoice = .auto
     @State private var entryLayout: LegendEntryLayout = .shortcutLeading
+    @State private var size: LegendSize = .small
 
     private enum ColumnChoice: String, CaseIterable, Identifiable {
         case auto, two, single
@@ -110,7 +111,7 @@ private struct LegendStylesView: View {
     }
 
     private var options: LegendOptions {
-        LegendOptions(columns: columns.columns, entryLayout: entryLayout)
+        LegendOptions(columns: columns.columns, entryLayout: entryLayout, size: size)
     }
 
     var body: some View {
@@ -131,6 +132,13 @@ private struct LegendStylesView: View {
             Picker("Cell", selection: $entryLayout) {
                 Text("Shortcut first").tag(LegendEntryLayout.shortcutLeading)
                 Text("Label first").tag(LegendEntryLayout.labelLeading)
+            }
+            .pickerStyle(.segmented)
+            Picker("Size", selection: $size) {
+                Text("S").tag(LegendSize.small)
+                Text("M").tag(LegendSize.medium)
+                Text("L").tag(LegendSize.large)
+                Text("XL").tag(LegendSize.extraLarge)
             }
             .pickerStyle(.segmented)
             Divider()
