@@ -1,13 +1,13 @@
 import Foundation
 
-/// Presentation flavor for `KeyBindingsLegendView`. Layout details within a
-/// flavor — columns, cell order, font size — come from `LegendOptions`.
+/// How `KeyBindingsLegendView` is *contained*. Orthogonal to the layout of the
+/// entries themselves — columns, cell order, size, and the `compact` flag all
+/// live in `LegendOptions` and apply to either container.
 public enum LegendStyle: Sendable, Hashable {
-    /// Sheet-presentable, grouped by context. Suited to a Help → "Keyboard
-    /// Shortcuts" menu item.
-    case modal
-    /// Sticky side-panel, grouped by context. Toggle it from the host app.
-    case sidebar
-    /// A single horizontal row of compact `⌘S Save · ⌘N New` entries.
-    case compact
+    /// A material-backed, content-sized card. Suited to a docked side rail or
+    /// inspector panel you keep on screen.
+    case panel
+    /// A chrome-free, scrolling container. Suited to a sheet, popover, or
+    /// Help → "Keyboard Shortcuts" overlay that may grow taller than the space.
+    case sheet
 }

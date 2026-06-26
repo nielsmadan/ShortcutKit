@@ -10,10 +10,12 @@ import SwiftUI
 /// grouped by context (the registry's context order). Reorder the enum cases to
 /// reorder the legend.
 ///
-/// `LegendOptions` controls columns, cell order, and overall size — the default
-/// is a compact, content-sized, multi-column grid with the shortcut leading each
-/// cell. Pass a `label` closure to show a different (e.g. shorter) text for an
-/// entry than its `displayName`; return `nil` to fall back to `displayName`.
+/// `LegendStyle` chooses the container (a material `.panel` or a scrolling
+/// `.sheet`); `LegendOptions` controls the entry layout — columns, cell order,
+/// size, and a `compact` flag that collapses to a dense headerless strip. The
+/// default is a grouped, content-sized, multi-column grid with the shortcut
+/// leading each cell. Pass a `label` closure to show a different (e.g. shorter)
+/// text for an entry than its `displayName`; return `nil` to fall back to it.
 ///
 /// Two ways to feed it:
 /// - `init(registry:style:contextIDs:options:label:)` — observes the registry
@@ -88,6 +90,9 @@ private struct LiveLegend: View {
     }
 }
 
+/// Wraps the entry content (grouped grid or compact strip, per `options.compact`)
+/// in the container chosen by `style`: a material card (`.panel`) or a scrolling,
+/// chrome-free region (`.sheet`).
 private struct LegendBody: View {
     let bindings: KeyBindings
     let style: LegendStyle
@@ -96,9 +101,19 @@ private struct LegendBody: View {
 
     var body: some View {
         switch style {
-        case .modal: ModalLegend(bindings: bindings, options: options, label: label)
-        case .sidebar: SidebarLegend(bindings: bindings, options: options, label: label)
-        case .compact: CompactLegend(bindings: bindings, options: options, label: label)
+        case .panel:
+            content.padding(8).background(.thinMaterial)
+        case .sheet:
+            ScrollView { content.padding() }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if options.compact {
+            CompactStrip(bindings: bindings, options: options, label: label)
+        } else {
+            LegendGrid(bindings: bindings, options: options, label: label)
         }
     }
 }
@@ -236,32 +251,10 @@ private struct FitModifier: ViewModifier {
     }
 }
 
-private struct SidebarLegend: View {
-    let bindings: KeyBindings
-    let options: LegendOptions
-    let label: (KeyBindings.Entry) -> String?
-
-    var body: some View {
-        LegendGrid(bindings: bindings, options: options, label: label)
-            .padding(8)
-            .background(.thinMaterial)
-    }
-}
-
-private struct ModalLegend: View {
-    let bindings: KeyBindings
-    let options: LegendOptions
-    let label: (KeyBindings.Entry) -> String?
-
-    var body: some View {
-        ScrollView {
-            LegendGrid(bindings: bindings, options: options, label: label)
-                .padding()
-        }
-    }
-}
-
-private struct CompactLegend: View {
+/// The densest form (`options.compact`): one continuous wrap of every entry,
+/// no section headers, content-width cells (no column alignment). For a thin
+/// strip. The enclosing `LegendBody` container adds the padding / chrome.
+private struct CompactStrip: View {
     let bindings: KeyBindings
     let options: LegendOptions
     let label: (KeyBindings.Entry) -> String?
@@ -275,8 +268,6 @@ private struct CompactLegend: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
     }
 }
 

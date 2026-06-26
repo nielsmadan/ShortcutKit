@@ -7,6 +7,8 @@ struct MainWindowView: View {
     @ObservedObject var canvasModel = ContextWiring.canvas
     @ObservedObject var appModel = ContextWiring.app
     @ObservedObject var wizardModel = ContextWiring.wizard
+    @State private var legendCompact = false
+    @State private var showingLegendSheet = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -24,14 +26,29 @@ struct MainWindowView: View {
 
             if appModel.legendVisible {
                 Divider()
-                KeyBindingsLegendView(
-                    registry: ContextWiring.shared,
-                    style: .sidebar,
-                    contextIDs: visibleContextIDs
-                )
-                // A right rail is a fixed-width panel; the legend flows its
-                // columns to fit. Without a width cap it would grab half the
-                // window and stretch its columns.
+                // The right rail is the `.panel` legend (a docked, fixed-width
+                // card). The Compact toggle flips `LegendOptions.compact`; the
+                // button shows the same data in a `.sheet` style sheet, where its
+                // scrolling, chrome-free container belongs.
+                VStack(spacing: 0) {
+                    KeyBindingsLegendView(
+                        registry: ContextWiring.shared,
+                        style: .panel,
+                        contextIDs: visibleContextIDs,
+                        options: LegendOptions(compact: legendCompact)
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    Divider()
+                    HStack {
+                        Toggle("Compact", isOn: $legendCompact)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                        Spacer()
+                        Button("Show as sheet…") { showingLegendSheet = true }
+                            .controlSize(.small)
+                    }
+                    .padding(8)
+                }
                 .frame(width: 320)
             }
         }
@@ -41,6 +58,21 @@ struct MainWindowView: View {
         .sheet(isPresented: $wizardModel.visible) {
             NewProjectWizard()
                 .environmentObject(wizardModel)
+        }
+        .sheet(isPresented: $showingLegendSheet) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Keyboard Shortcuts").font(.headline)
+                KeyBindingsLegendView(
+                    registry: ContextWiring.shared,
+                    style: .sheet,
+                    contextIDs: visibleContextIDs
+                )
+                Button("Done") { showingLegendSheet = false }
+                    .keyboardShortcut(.defaultAction)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding()
+            .frame(width: 420, height: 480)
         }
         .onChange(of: appModel.newProjectSignal) { _, _ in
             wizardModel.start()

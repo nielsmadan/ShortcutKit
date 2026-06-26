@@ -93,10 +93,11 @@ private struct StyledSettingsTab: View {
 
 @MainActor
 private struct LegendStylesView: View {
-    @State private var style: LegendStyle = .sidebar
+    @State private var style: LegendStyle = .panel
     @State private var columns: ColumnChoice = .auto
     @State private var entryLayout: LegendEntryLayout = .shortcutLeading
     @State private var size: LegendSize = .small
+    @State private var compact = false
 
     private enum ColumnChoice: String, CaseIterable, Identifiable {
         case auto, two, single
@@ -111,18 +112,20 @@ private struct LegendStylesView: View {
     }
 
     private var options: LegendOptions {
-        LegendOptions(columns: columns.columns, entryLayout: entryLayout, size: size)
+        LegendOptions(columns: columns.columns, entryLayout: entryLayout, size: size, compact: compact)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Legend").font(.headline)
-            Picker("Style", selection: $style) {
-                Text("Sidebar").tag(LegendStyle.sidebar)
-                Text("Modal").tag(LegendStyle.modal)
-                Text("Compact").tag(LegendStyle.compact)
+            HStack {
+                Picker("Style", selection: $style) {
+                    Text("Panel").tag(LegendStyle.panel)
+                    Text("Sheet").tag(LegendStyle.sheet)
+                }
+                .pickerStyle(.segmented)
+                Toggle("Compact", isOn: $compact)
             }
-            .pickerStyle(.segmented)
             Picker("Columns", selection: $columns) {
                 Text("Auto").tag(ColumnChoice.auto)
                 Text("2 columns").tag(ColumnChoice.two)

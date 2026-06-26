@@ -44,7 +44,7 @@ ShortcutBindingEditor(.save, in: model.editor, showsDescription: true)
 with ``LegendStyle``:
 
 ```swift
-KeyBindingsLegendView(registry: model.registry, style: .sidebar)
+KeyBindingsLegendView(registry: model.registry, style: .panel)
 ```
 
 ## The discoverability HUD

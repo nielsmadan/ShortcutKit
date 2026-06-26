@@ -39,7 +39,7 @@ struct SidebarView: View {
 
             KeyBindingsLegendView(
                 registry: ContextWiring.shared,
-                style: .sidebar,
+                style: .panel,
                 contextIDs: [model.context.id]
             )
             .frame(maxHeight: 200)

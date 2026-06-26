@@ -23,7 +23,8 @@ just example      # from the repo root — builds and launches the app
   contexts, and the wizard each form a mutex set.
 - **Global hotkeys** — `⌃⌥⌘K` fires system-wide via `CarbonGlobalActivator`.
 - **Discoverability HUD** — triggering an action by mouse shows its shortcut.
-- **Sidebar legend** — `KeyBindingsLegendView` (`.sidebar`).
+- **Panel legend** — `KeyBindingsLegendView` (`.panel`) in the right rail, with a
+  Compact toggle and a "Show as sheet" button demoing the `.sheet` style.
 - **Menu bar** — the *Actions* menu shows each action's live shortcut via the
   `.shortcut(_:in:)` helper; re-binding in Settings updates it.
 
@@ -31,8 +32,8 @@ just example      # from the repo root — builds and launches the app
 - **Native / Dense** tabs — `KeyBindingsView` in both `KeyBindingsStyle`s, with
   live `ContextLayout` (stacked/picker) and search toggles.
 - **Drop-in** tab — the canned `ShortcutPreferencesView`.
-- **Legend** tab — `KeyBindingsLegendView` with a live `LegendStyle` picker
-  (sidebar / modal / compact strip).
+- **Legend** tab — `KeyBindingsLegendView` with live `LegendStyle` (panel / sheet),
+  a Compact toggle, and column / cell / size controls.
 - **HUD** tab — a playground for `HintHUDOptions` (placement incl. `.cursor`,
   duration), `HintPolicy`, and a custom toast.
 - **Quick Setup** tab — single-action `ShortcutBindingEditor` rows.

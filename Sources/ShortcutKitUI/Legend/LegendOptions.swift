@@ -84,21 +84,27 @@ struct LegendMetrics: Sendable, Hashable {
 /// overrides via the view's `label:` closure (kept separate so this stays
 /// `Sendable`).
 public struct LegendOptions: Sendable, Hashable {
-    /// Column behavior. Default `.auto(minWidth: 150)`.
+    /// Column behavior. Default `.auto(minWidth: 150)`. Ignored when `compact`.
     public var columns: LegendColumns
     /// Shortcut-vs-label order in each cell. Default `.shortcutLeading`.
     public var entryLayout: LegendEntryLayout
     /// Overall scale (font + spacing). Default `.small` (compact).
     public var size: LegendSize
+    /// Collapse to the densest form: one continuous wrap of every entry, with no
+    /// section headers and content-width cells (no column alignment). For a thin
+    /// strip — a status bar, toolbar, or footer. Default `false` (grouped grid).
+    public var compact: Bool
 
     public init(
         columns: LegendColumns = .auto(minWidth: 150),
         entryLayout: LegendEntryLayout = .shortcutLeading,
-        size: LegendSize = .small
+        size: LegendSize = .small,
+        compact: Bool = false
     ) {
         self.columns = columns
         self.entryLayout = entryLayout
         self.size = size
+        self.compact = compact
     }
 
     public static let `default` = LegendOptions()

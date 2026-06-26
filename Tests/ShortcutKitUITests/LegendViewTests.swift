@@ -22,41 +22,41 @@ struct LegendViewTests {
         return reg.bindings(for: ["editor"]).boundOnly()
     }
 
-    @Test func modalRendersAtLeastOneEntry() throws {
+    @Test func sheetRendersAtLeastOneEntry() throws {
         let legend = sampleLegend()
-        let view = KeyBindingsLegendView(bindings: legend, style: .modal)
-        #expect(view.styleForTest == .modal)
+        let view = KeyBindingsLegendView(bindings: legend, style: .sheet)
+        #expect(view.styleForTest == .sheet)
         #expect(legend.groups.isEmpty == false)
         #expect(legend.groups.first?.entries.isEmpty == false)
     }
 
-    @Test func sidebarBuilds() {
+    @Test func panelBuilds() {
         let legend = sampleLegend()
-        let view = KeyBindingsLegendView(bindings: legend, style: .sidebar)
-        #expect(view.styleForTest == .sidebar)
+        let view = KeyBindingsLegendView(bindings: legend, style: .panel)
+        #expect(view.styleForTest == .panel)
     }
 
-    @Test func compactBuilds() {
+    @Test func compactOptionBuilds() {
         let legend = sampleLegend()
-        let view = KeyBindingsLegendView(bindings: legend, style: .compact)
-        #expect(view.styleForTest == .compact)
+        let view = KeyBindingsLegendView(bindings: legend, style: .panel, options: LegendOptions(compact: true))
+        #expect(view.styleForTest == .panel)
     }
 
     @Test func registryBasedInitBuilds() {
         let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
-        let view = KeyBindingsLegendView(registry: registry, style: .sidebar)
-        #expect(view.styleForTest == .sidebar)
+        let view = KeyBindingsLegendView(registry: registry, style: .panel)
+        #expect(view.styleForTest == .panel)
     }
 
     @Test func optionsAndLabelInitsBuild() {
         let legend = sampleLegend()
         let view = KeyBindingsLegendView(
             bindings: legend,
-            style: .sidebar,
+            style: .panel,
             options: LegendOptions(columns: .fixed(2), entryLayout: .labelLeading, size: .large),
             label: { $0.actionID == "save" ? "Save Doc" : nil }
         )
-        #expect(view.styleForTest == .sidebar)
+        #expect(view.styleForTest == .panel)
     }
 }
