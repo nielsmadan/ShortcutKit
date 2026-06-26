@@ -171,7 +171,7 @@ private struct LegendSectionHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: options.metrics.headerFont, weight: .heavy))
+                .font(.system(size: options.metrics.headerFont))
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
                 .kerning(0.6)
