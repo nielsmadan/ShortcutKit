@@ -36,4 +36,4 @@ When adding a DocC code example longer than 3 lines, add a matching test named `
 
 ## Phase-aware work
 
-Implementation proceeds in 4 sequential phases (see `ShortcutKitDevelopment.md` and the package design spec). Each phase has its own brainstorm → spec → plan → execute cycle. Avoid pulling work from a later phase into an earlier one without revisiting the phase boundaries.
+Implementation proceeds in 4 sequential phases (see `ShortcutKitDevelopment.md` and the package design spec). Phases 1–3 (Core, UI, Global) are implemented; remaining work is pre-1.0 API stabilization and the Phase 4 `shortcutkit.dev` docs site. Each phase has its own brainstorm → spec → plan → execute cycle. Avoid pulling work from a later phase into an earlier one without revisiting the phase boundaries.

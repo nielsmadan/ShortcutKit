@@ -18,11 +18,11 @@ VS Code–style keybindings for native macOS apps. Higher-level shortcut managem
 
 ## Installation
 
-Swift Package Manager (once a pre-release tag exists):
+Swift Package Manager (pre-1.0 — pin a minor version, as the API may change):
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/nielsmadan/ShortcutKit", from: "0.1.0")
+    .package(url: "https://github.com/nielsmadan/ShortcutKit", from: "0.5.1")
 ]
 ```
 
@@ -41,7 +41,7 @@ Per-target imports:
 
 ## Status
 
-Phase 1 (Core) — in design.
+All three products — `ShortcutKit` (Core), `ShortcutKitUI`, and `ShortcutKitGlobal` — are implemented and tested. The public API is stabilizing toward 1.0; the `shortcutkit.dev` docs site is still to come.
 
 See [`ShortcutKitDevelopment.md`](ShortcutKitDevelopment.md) for the vision document and [`docs/superpowers/specs/`](docs/superpowers/specs/) for the package design meta-spec.
 

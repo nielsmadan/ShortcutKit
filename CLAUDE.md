@@ -9,11 +9,11 @@ just lint     # Run SwiftLint
 just format   # Run SwiftFormat
 just lint-fix # Auto-fix SwiftLint violations
 just clean    # Remove build directory
+just example        # Build and run the SwiftUI example app
+just reset-example  # Clear the example app's persisted overrides
 just tag-release-patch  # Tag and push a patch release
 just tag-release-minor  # Tag and push a minor release
 ```
-
-`just example` is omitted until the Phase 1 Xcode example app is added.
 
 ## Architecture
 
@@ -25,11 +25,14 @@ ShortcutKit is a Swift package providing higher-level shortcut management for ma
 
 ## Phase status
 
+The three library products are implemented and tested; the public API is
+stabilizing toward 1.0.
+
 | Phase | Target | Status |
 |---|---|---|
-| Phase 1 | `ShortcutKit` (Core) | Not started |
-| Phase 2 | `ShortcutKitUI` | Not started |
-| Phase 3 | `ShortcutKitGlobal` | Not started |
+| Phase 1 | `ShortcutKit` (Core) | Implemented (pre-1.0) |
+| Phase 2 | `ShortcutKitUI` | Implemented (pre-1.0) |
+| Phase 3 | `ShortcutKitGlobal` | Implemented (pre-1.0) |
 | Phase 4 | `shortcutkit.dev` docs site | Not started |
 
 Vision doc: [`ShortcutKitDevelopment.md`](ShortcutKitDevelopment.md).
