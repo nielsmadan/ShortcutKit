@@ -9,6 +9,8 @@ enum AppAction: String, ShortcutAction {
     case fireConfetti
     case openInspector
     case newProject
+    case openShortcutCheatsheet
+    case toggleDiagnosticsOverlay
 
     var definition: ShortcutActionDefinition {
         switch self {
@@ -18,6 +20,12 @@ enum AppAction: String, ShortcutAction {
         case .fireConfetti: .init("Fire Confetti", Shortcut("cmd+shift+f"))
         case .openInspector: .init("Show Inspector", Shortcut("cmd+i"))
         case .newProject: .init("New Project…", Shortcut("cmd+n"))
+        // Chord shortcuts + long descriptions — exercise the legend's tail-
+        // truncation + hover-tooltip behavior at every LegendSize.
+        case .openShortcutCheatsheet:
+            .init("Open Full Keyboard Shortcut Reference Cheatsheet", Shortcut("cmd+k cmd+r"))
+        case .toggleDiagnosticsOverlay:
+            .init("Toggle Diagnostics Overlay Showing Frame Timings and Layout Bounds", Shortcut("cmd+k cmd+d"))
         }
     }
 }
@@ -29,6 +37,7 @@ final class AppContextModel: ObservableObject {
     @Published var inspectorOpenSignal = 0
     @Published var newProjectSignal = 0
     @Published var openSettingsSignal = 0
+    @Published var chordDemoSignal = 0
     let context: ShortcutContext<AppAction>
 
     init() {
@@ -43,6 +52,7 @@ final class AppContextModel: ObservableObject {
         case .fireConfetti: confettiTriggerCount += 1
         case .openInspector: inspectorOpenSignal += 1
         case .newProject: newProjectSignal += 1
+        case .openShortcutCheatsheet, .toggleDiagnosticsOverlay: chordDemoSignal += 1
         }
     }
 }

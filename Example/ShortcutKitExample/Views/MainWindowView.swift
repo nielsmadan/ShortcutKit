@@ -8,7 +8,27 @@ struct MainWindowView: View {
     @ObservedObject var appModel = ContextWiring.app
     @ObservedObject var wizardModel = ContextWiring.wizard
     @State private var legendCompact = false
+    @State private var legendSize: LegendSize = .small
+    @State private var legendColumns = 1
+    @State private var legendLabelWidth: LegendLabelWidth = .size
     @State private var showingLegendSheet = false
+
+    /// `.single` for one column, `.fixed(n)` beyond — matches the rail's Columns stepper.
+    private var legendColumnMode: LegendColumns {
+        legendColumns <= 1 ? .single : .fixed(legendColumns)
+    }
+
+    /// Width of one entry cell for the current options, read from the library's
+    /// public `cellWidth` (so it tracks the size / label-width choices instead of
+    /// duplicating the internal metrics), plus a little padding.
+    private var railColumnWidth: CGFloat {
+        LegendOptions(columns: legendColumnMode, size: legendSize, labelWidth: legendLabelWidth).cellWidth + 16
+    }
+
+    /// Rail width: wide enough for the controls, and for the chosen column count.
+    private var railWidth: CGFloat {
+        max(300, railColumnWidth * CGFloat(legendColumns) + 16)
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -35,21 +55,47 @@ struct MainWindowView: View {
                         registry: ContextWiring.shared,
                         style: .panel,
                         contextIDs: visibleContextIDs,
-                        options: LegendOptions(compact: legendCompact)
+                        options: LegendOptions(
+                            columns: legendColumnMode,
+                            size: legendSize,
+                            compact: legendCompact,
+                            labelWidth: legendLabelWidth
+                        )
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     Divider()
-                    HStack {
-                        Toggle("Compact", isOn: $legendCompact)
-                            .toggleStyle(.switch)
+                    VStack(spacing: 6) {
+                        HStack {
+                            Picker("Size", selection: $legendSize) {
+                                Text("S").tag(LegendSize.small)
+                                Text("M").tag(LegendSize.medium)
+                                Text("L").tag(LegendSize.large)
+                                Text("XL").tag(LegendSize.extraLarge)
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            Toggle("Compact", isOn: $legendCompact)
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
+                        }
+                        Picker("Label", selection: $legendLabelWidth) {
+                            Text("Size").tag(LegendLabelWidth.size)
+                            Text("Flex").tag(LegendLabelWidth.flexible)
+                            Text("Fixed 240").tag(LegendLabelWidth.fixed(240))
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .disabled(legendCompact)
+                        Stepper("Columns: \(legendColumns)", value: $legendColumns, in: 1 ... 4)
                             .controlSize(.small)
-                        Spacer()
+                            .disabled(legendCompact)
                         Button("Show as sheet…") { showingLegendSheet = true }
                             .controlSize(.small)
+                            .frame(maxWidth: .infinity)
                     }
                     .padding(8)
                 }
-                .frame(width: 320)
+                .frame(width: railWidth)
             }
         }
         .frame(minWidth: 800, minHeight: 600)
@@ -65,7 +111,8 @@ struct MainWindowView: View {
                 KeyBindingsLegendView(
                     registry: ContextWiring.shared,
                     style: .sheet,
-                    contextIDs: visibleContextIDs
+                    contextIDs: visibleContextIDs,
+                    options: LegendOptions(size: legendSize)
                 )
                 Button("Done") { showingLegendSheet = false }
                     .keyboardShortcut(.defaultAction)
