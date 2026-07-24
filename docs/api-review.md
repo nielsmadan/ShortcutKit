@@ -552,6 +552,52 @@ nice-to-have; skip the rest.
   want a unified "show hints" setting read `ShortcutPreferencesView.hintsEnabledStorageKey`
   and gate their own `KeyBindingsLegendView`. No new API.
 
+## ShortcutKitUI — legend redesign (2026-07-13)
+
+Supersedes the "legend" section above. A Juggler regression (the docked legend
+rendered a tall single-column `name → shortcut` list) drove a ground-up rework of
+the legend layout model. **Breaking public API — fine pre-1.0.** Current shape:
+
+- [x] **`LegendStyle` is now the *container* only — `.panel` / `.sheet`** (was
+  `.sidebar` / `.modal` / `.compactStrip`). `.panel` is a material-backed,
+  content-sized card for a docked rail / inspector; `.sheet` is a chrome-free,
+  scrolling region for a popover / sheet / Help overlay. The old `maxHeight:
+  .infinity` stretch is gone, so the legend is only as tall as its entries.
+- [x] **`compact` is an orthogonal `Bool` on `LegendOptions`** (default `false`),
+  applied to *either* container. It collapses the entries to one continuous
+  headerless `FlowLayout` of content-width cells (a thin status-bar/toolbar/footer
+  strip). Rationale for the split: **style = where it's contained; compact = how
+  the entries lay out** — the two are independent, so "compact in a panel" and
+  "compact in a sheet" are both expressible. The old standalone `.compact`/`.compactStrip`
+  *style* is gone.
+- [x] **`LegendSize` S/M/L/XL** (`.small` / `.medium` / `.large` / `.extraLarge`,
+  `CaseIterable`; default `.small`) on `LegendOptions` — one scale knob driving
+  entry font, header font, all derived spacing, and the fixed column widths
+  coherently. Replaced the bare `fontSize` field.
+- [x] **Non-compact grid = fixed-width, gutter-aligned, truncating columns.** Each
+  entry is a cell of a fixed shortcut column (right-aligned to a gutter) + a wider
+  fixed label column (left-aligned), single-line, tail-truncated (`…`), with the
+  full value on hover. Hover works over the whole column (not just the glyphs) via
+  `.contentShape(Rectangle())` before `.help()`. Widths auto-scale from `LegendSize`
+  (`LegendMetrics.shortcutWidth` / `labelWidth` / `gutter`, derived `cellWidth`) — no
+  new public surface. Arranged per `options.columns`: `.single` → `VStack`, `.fixed(n)`
+  → `LazyVGrid`, `.auto` → wrapping `FlowLayout`. (`.auto`'s `minWidth:` is a live
+  per-cell floor in `legendFlowLayout` — cells narrower than it are padded up; it's
+  inert at the default `150` only because size-derived `cellWidth` already exceeds it.)
+- [x] **Shortcut rendering via `options.shortcutStyle: ShortcutLabelStyle?`**
+  (ShortcutField's `.text` / `.compact`; default `nil` → `.compact`). Compact renders
+  gestures/scroll as SF-symbols and mouse clicks as abbreviations (`LMB`/`RMB`/`MMB`)
+  through ShortcutField's `ShortcutLabel` view, each with a hover tooltip; set `.text`
+  to force verbose words.
+- [note] **The `displayString(style: .symbol)` cross-repo proposal was superseded.**
+  Mid-session the plan was to add `displayString(style:)` to ShortcutField (keeping
+  the no-arg `displayString` = `.text`) so the legend could show rotate/scroll
+  symbols. That is **not** what shipped: ShortcutField instead exposes a
+  `ShortcutLabelStyle` (`.text` / `.compact`) enum, a `ShortcutLabel` view, and
+  `Step.displayElements(style:)`, and ShortcutKit adopted *those* via
+  `options.shortcutStyle`. There is no `displayString(style:)` in the code and no
+  `.symbol` case — `displayString` remains a no-arg `.text`-equivalent property.
+
 ## ShortcutKitUI — hint HUD (2026-06-03)
 
 - [x] **Hint toast template localized.** Was `"Tip: \(name) is bound to \(shortcut)"`

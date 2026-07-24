@@ -8,7 +8,12 @@ The `0.x` line is pre-release: the public API is stabilizing toward 1.0 and may 
 
 ## [Unreleased]
 
-_No unreleased changes._
+### Added
+- **[UI]** `LegendOptions.shortcutStyle` — render shortcuts as ShortcutField `.compact` SF-symbol / abbreviation labels (the default) or `.text` verbose words.
+- **[UI]** Legend cells are fixed-width, gutter-aligned columns (shortcut right-aligned, label left-aligned), single-line with tail truncation and the full value shown on hover. `LegendOptions.labelWidth` (`.size` / `.flexible` / `.fixed(_)`) and the public `LegendOptions.cellWidth` size the columns.
+
+### Changed
+- Bumped ShortcutField to 2.2.3 (SF-symbol shortcut labels).
 
 ## [0.5.1] - 2026-06-26
 

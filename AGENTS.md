@@ -44,6 +44,16 @@ Tests use Swift Testing (`@Test`, `#expect`). Test files live in the target's ma
 
 When adding a DocC code example longer than 3 lines, add a matching test named `test_DocExample_<topicSlug>` in the target's test suite — keeps documentation from silently drifting from the API.
 
+In `#expect`, don't put bare integer-literal arithmetic on one side of `==` against a `CGFloat`/`Double` — the macro evaluates the arithmetic operand as `Int`, giving a false failure that reads as "152.0 == 152 unequal". Use a single typed literal (`#expect(center.x == 152)`) or precompute the expected value into a `CGFloat`/`Double` `let`.
+
+## Verifying dependency behavior
+
+Before asserting what a dependency does — especially event handling, availability annotations, or OS event interception — read its source, don't reason from first principles. ShortcutField and KeyboardShortcuts are checked out as siblings (`../ShortcutField`, `../KeyboardShortcuts`); read them directly. (ShortcutField uses `NSEvent.addLocalMonitorForEvents`, so it *does* see OS-level shortcuts like ⌘Space — a first-principles guess got this wrong once.)
+
+## Squashing history
+
+Don't use the squash-commits skill's default `git merge --squash <tip> && git commit` here: the lefthook pre-commit reformats staged content (rebuilt tree diverges) and `rerere.enabled=true` replays stale conflict resolutions, producing phantom conflicts mid-rebuild. Rebuild the chain with `git commit-tree` instead (stamp each group-tip's exact tree onto a parent chain — no hook, no merge, no rerere), then `git reset --soft`. Verify `git diff ORIG_TIP NEW` is empty and keep a backup tag first.
+
 ## Phase status & phase-aware work
 
 Implementation proceeds in 4 sequential phases (see [`ShortcutKitDevelopment.md`](ShortcutKitDevelopment.md) and the package design spec). The three library products are implemented and tested; the public API is stabilizing toward 1.0.
