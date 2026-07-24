@@ -11,8 +11,8 @@ import ShortcutKit
 /// back to an empty registry in release so a shipped app degrades to an inert
 /// view rather than crashing on an end user.
 @MainActor
-func attachedRegistry<Action: ShortcutAction>(
-    for context: ShortcutContext<Action>
+func attachedRegistry(
+    for context: ShortcutContext<some ShortcutAction>
 ) -> ShortcutRegistry {
     if let registry = context.attachedRegistry {
         return registry
