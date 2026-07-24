@@ -13,9 +13,13 @@ import SwiftUI
 /// `LegendStyle` chooses the container (a material `.panel` or a scrolling
 /// `.sheet`); `LegendOptions` controls the entry layout — columns, cell order,
 /// size, and a `compact` flag that collapses to a dense headerless strip. The
-/// default is a grouped, content-sized, multi-column grid with the shortcut
-/// leading each cell. Pass a `label` closure to show a different (e.g. shorter)
-/// text for an entry than its `displayName`; return `nil` to fall back to it.
+/// default is a grouped table of fixed-width, aligned columns (shortcut then label,
+/// long values tail-truncated with the full text on hover). Shortcuts render with
+/// ShortcutField's `.compact` symbol labels by default in both layouts
+/// (gestures/scroll as icons, mouse clicks abbreviated, each with a hover tooltip);
+/// set `options.shortcutStyle = .text` for verbose words. Pass a `label` closure to
+/// show a different (e.g. shorter) text for an entry than its `displayName`; return
+/// `nil` to fall back to it.
 ///
 /// Two ways to feed it:
 /// - `init(registry:style:contextIDs:options:label:)` — observes the registry
@@ -118,11 +122,11 @@ private struct LegendBody: View {
     }
 }
 
-/// Grouped grid of entries shared by the vertical styles. **Content-sized** — no
-/// forced height — so the legend is only as tall as its entries. Each group is a
-/// section header hugging its rows (header-to-rows gap < gap between groups), and
-/// the entries flow into even, content-sized columns under `.auto`, or a fixed
-/// `LazyVGrid` under `.single` / `.fixed`.
+/// Grouped table of entries. **Content-sized** — no forced height — so the legend
+/// is only as tall as its entries. Each group is a section header hugging its rows,
+/// and the entries are fixed-width cells (so the shortcut / label columns line up)
+/// arranged per `options.columns`: a `VStack` for `.single`, a `LazyVGrid` of fixed
+/// columns for `.fixed(n)`, or a wrapping `FlowLayout` for `.auto`.
 private struct LegendGrid: View {
     let bindings: KeyBindings
     let options: LegendOptions
@@ -134,31 +138,44 @@ private struct LegendGrid: View {
                 VStack(alignment: .leading, spacing: options.metrics.headerToRows) {
                     LegendSectionHeader(title: group.displayName, options: options)
                     switch options.columns {
-                    case let .auto(minWidth):
-                        FlowLayout(spacing: options.metrics.columnSpacing, lineSpacing: options.metrics.rowSpacing) {
-                            ForEach(group.entries) { entry in
-                                LegendEntryCell(
-                                    entry: entry,
-                                    options: options,
-                                    label: label,
-                                    fit: .flow(minWidth: minWidth)
+                    case .single:
+                        VStack(alignment: .leading, spacing: options.metrics.rowSpacing) {
+                            ForEach(group.entries) { cell($0) }
+                        }
+                    case let .fixed(count):
+                        let items: [GridItem] = {
+                            if case .flexible = effectiveLabelWidth(for: options) {
+                                return legendFlexibleGridItems(
+                                    count: count,
+                                    minCellWidth: options.metrics.cellWidth,
+                                    spacing: options.metrics.columnSpacing
                                 )
                             }
+                            return legendGridItems(
+                                count: count,
+                                cellWidth: resolvedCellWidth(for: options),
+                                spacing: options.metrics.columnSpacing
+                            )
+                        }()
+                        LazyVGrid(columns: items, alignment: .leading, spacing: options.metrics.rowSpacing) {
+                            ForEach(group.entries) { cell($0) }
                         }
-                    case .single, .fixed:
-                        LazyVGrid(
-                            columns: legendGridItems(options.columns, spacing: options.metrics.columnSpacing),
-                            alignment: .leading,
-                            spacing: options.metrics.rowSpacing
+                    case let .auto(minWidth):
+                        FlowLayout(
+                            spacing: options.metrics.columnSpacing,
+                            lineSpacing: options.metrics.rowSpacing,
+                            minCellWidth: minWidth
                         ) {
-                            ForEach(group.entries) { entry in
-                                LegendEntryCell(entry: entry, options: options, label: label, fit: .fill)
-                            }
+                            ForEach(group.entries) { cell($0) }
                         }
                     }
                 }
             }
         }
+    }
+
+    private func cell(_ entry: KeyBindings.Entry) -> some View {
+        LegendEntryCell(entry: entry, options: options, label: label, mode: .columns)
     }
 }
 
@@ -180,74 +197,102 @@ private struct LegendSectionHeader: View {
     }
 }
 
-/// One legend row: shortcut + label in `options.entryLayout` order at the size's
-/// entry font. `fit` decides sizing: `.fill` stretches across a grid column (a
-/// spacer pushes the pair apart); `.flow` sizes to content with an optional
-/// `minWidth` floor so flowed cells line up into loose columns.
+/// One legend entry, shortcut + label in `options.entryLayout` order at the size's
+/// entry font. `.columns` renders each as a fixed-width column (shortcut trailing,
+/// label leading), single-line and tail-truncated, with the full value on hover —
+/// so entries line up into a table. `.inline` is the compact strip's content-sized,
+/// single-line pair (no fixed width, no truncation).
 private struct LegendEntryCell: View {
     let entry: KeyBindings.Entry
     let options: LegendOptions
     let label: (KeyBindings.Entry) -> String?
-    let fit: Fit
+    let mode: Mode
 
-    enum Fit: Equatable {
-        case fill
-        case flow(minWidth: CGFloat)
+    enum Mode: Equatable { case columns, inline }
+
+    private var primaryShortcut: Shortcut? { entry.effectiveShortcuts.first }
+    private var shortcut: String { primaryShortcut?.displayString ?? "" }
+    private var labelString: String { label(entry) ?? String(localized: entry.displayName) }
+
+    /// Both layouts default to ShortcutField's `.compact` symbols;
+    /// `options.shortcutStyle` overrides to verbose text.
+    private var effectiveStyle: ShortcutLabelStyle {
+        legendShortcutStyle(override: options.shortcutStyle)
+    }
+
+    /// The shortcut portion: a symbol/abbreviation `ShortcutLabel` in `.compact`
+    /// style, otherwise the plain monospaced `displayString`.
+    @ViewBuilder
+    private func shortcutDisplay(fontSize: CGFloat) -> some View {
+        if effectiveStyle == .compact, let primaryShortcut {
+            ShortcutLabel(primaryShortcut, style: .compact)
+                .font(.system(size: fontSize))
+                .foregroundStyle(.secondary)
+        } else {
+            Text(shortcut)
+                .font(.system(size: fontSize, design: .monospaced))
+                .foregroundStyle(.secondary)
+        }
     }
 
     var body: some View {
-        let shortcut = entry.effectiveShortcuts.first?.displayString ?? ""
-        row(shortcut).modifier(FitModifier(fit: fit))
+        switch mode {
+        case .columns: columnsRow
+        case .inline: inlineRow
+        }
     }
 
-    @ViewBuilder
-    private func row(_ shortcut: String) -> some View {
-        if case .shortcutLeading = options.entryLayout {
-            HStack(spacing: 6) {
-                shortcutText(shortcut)
-                labelText
-                if fit == .fill { Spacer(minLength: 0) }
+    /// Fixed-width, tail-truncated columns. `.clipped()` keeps a wide shortcut
+    /// (multi-step chords in `.compact`) from spilling past its column into the
+    /// gutter/label. The `.compact` shortcut relies on `ShortcutLabel`'s own
+    /// per-glyph tooltips; the `.text` path gets a column-wide tooltip (gated on a
+    /// monospaced truncation measurement) since a truncated word otherwise has no
+    /// way to reveal its full value.
+    private var columnsRow: some View {
+        let m = options.metrics
+        let shortcutColumn = shortcutDisplay(fontSize: m.entryFont)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(width: m.shortcutWidth, alignment: .trailing)
+            .clipped()
+            .tooltip(
+                shortcut,
+                isEnabled: effectiveStyle == .text
+                    && legendTextIsTruncated(shortcut, fontSize: m.entryFont, width: m.shortcutWidth, monospaced: true)
+            )
+        let sizing: TruncatableLabel.Sizing = switch effectiveLabelWidth(for: options) {
+        case .size: .fixed(m.labelWidth)
+        case .flexible: .flexible
+        case let .fixed(width): .fixed(width)
+        }
+        let labelColumn = TruncatableLabel(text: labelString, fontSize: m.entryFont, sizing: sizing)
+        return HStack(spacing: m.gutter) {
+            if case .shortcutLeading = options.entryLayout {
+                shortcutColumn
+                labelColumn
+            } else {
+                labelColumn
+                shortcutColumn
             }
-        } else {
-            HStack(spacing: 4) {
+        }
+    }
+
+    /// Content-sized single-line pair for the compact strip.
+    private var inlineRow: some View {
+        let m = options.metrics
+        let shortcutView = shortcutDisplay(fontSize: m.entryFont)
+        let labelText = Text(labelString).font(.system(size: m.entryFont))
+        return HStack(spacing: 6) {
+            if case .shortcutLeading = options.entryLayout {
+                shortcutView
                 labelText
-                if fit == .fill { Spacer(minLength: 4) }
-                shortcutText(shortcut)
+            } else {
+                labelText
+                shortcutView
             }
         }
-    }
-
-    private func shortcutText(_ shortcut: String) -> some View {
-        Text(shortcut)
-            .font(.system(size: options.metrics.entryFont, design: .monospaced))
-            .foregroundStyle(.secondary)
-    }
-
-    @ViewBuilder
-    private var labelText: some View {
-        if let override = label(entry) {
-            Text(override).font(.system(size: options.metrics.entryFont))
-        } else {
-            Text(entry.displayName).font(.system(size: options.metrics.entryFont))
-        }
-    }
-}
-
-/// Applies `LegendEntryCell.Fit`: `.flow` clamps the cell to a single line at its
-/// intrinsic width (floored at `minWidth`); `.fill` leaves it to stretch.
-private struct FitModifier: ViewModifier {
-    let fit: LegendEntryCell.Fit
-
-    func body(content: Content) -> some View {
-        switch fit {
-        case .fill:
-            content
-        case let .flow(minWidth):
-            content
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .frame(minWidth: minWidth, alignment: .leading)
-        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
 
@@ -263,7 +308,7 @@ private struct CompactStrip: View {
         FlowLayout(spacing: options.metrics.columnSpacing, lineSpacing: options.metrics.rowSpacing) {
             ForEach(bindings.groups) { group in
                 ForEach(group.entries) { entry in
-                    LegendEntryCell(entry: entry, options: options, label: label, fit: .flow(minWidth: 0))
+                    LegendEntryCell(entry: entry, options: options, label: label, mode: .inline)
                 }
             }
         }
@@ -277,12 +322,13 @@ private struct CompactStrip: View {
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 12
     var lineSpacing: CGFloat = 4
+    var minCellWidth: CGFloat = 0
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
         let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
         return legendFlowLayout(
             sizes: sizes, maxWidth: proposal.width ?? .infinity,
-            spacing: spacing, lineSpacing: lineSpacing
+            spacing: spacing, lineSpacing: lineSpacing, minCellWidth: minCellWidth
         ).size
     }
 
@@ -290,7 +336,7 @@ private struct FlowLayout: Layout {
         let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
         let positions = legendFlowLayout(
             sizes: sizes, maxWidth: bounds.width,
-            spacing: spacing, lineSpacing: lineSpacing
+            spacing: spacing, lineSpacing: lineSpacing, minCellWidth: minCellWidth
         ).positions
         for (subview, position) in zip(subviews, positions) {
             subview.place(

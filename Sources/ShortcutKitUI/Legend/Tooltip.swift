@@ -1,0 +1,129 @@
+import AppKit
+import SwiftUI
+
+/// True when `text` rendered at `fontSize` would exceed `width`. Uses the AppKit
+/// text-sizing path so it's synchronous + testable. Not pixel-identical to
+/// SwiftUI `Text` (kerning + hinting differ slightly), but close enough to gate
+/// a tooltip.
+func legendTextIsTruncated(_ text: String, fontSize: CGFloat, width: CGFloat, monospaced: Bool = false) -> Bool {
+    guard !text.isEmpty, width > 0 else { return false }
+    let font = monospaced
+        ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        : NSFont.systemFont(ofSize: fontSize)
+    let attributes: [NSAttributedString.Key: Any] = [.font: font]
+    return (text as NSString).size(withAttributes: attributes).width > width
+}
+
+/// Custom hover tooltip. SwiftUI's `.help(...)` uses the macOS system tooltip
+/// which honors `NSInitialToolTipDelay` (default ~2s) and can't be tuned; this
+/// modifier renders a small overlay after a caller-supplied `delay`, gated by
+/// `isEnabled` so callers only present it when the underlying text truncated.
+struct TooltipModifier: ViewModifier {
+    let text: String
+    let isEnabled: Bool
+    let delay: Duration
+
+    @State private var isShowing = false
+    @State private var pendingTask: Task<Void, Never>?
+
+    func body(content: Content) -> some View {
+        content
+            .onHover { hovering in
+                pendingTask?.cancel()
+                pendingTask = nil
+                guard isEnabled else {
+                    isShowing = false
+                    return
+                }
+                if hovering {
+                    pendingTask = Task { @MainActor in
+                        try? await Task.sleep(for: delay)
+                        if !Task.isCancelled { isShowing = true }
+                    }
+                } else {
+                    isShowing = false
+                }
+            }
+            .overlay(alignment: .top) {
+                if isShowing {
+                    Text(text)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(.regularMaterial)
+                                .shadow(radius: 2, y: 1)
+                        )
+                        .fixedSize()
+                        .offset(y: -22)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.12), value: isShowing)
+            .onDisappear {
+                pendingTask?.cancel()
+                pendingTask = nil
+            }
+    }
+}
+
+extension View {
+    /// Attach a hover tooltip that appears after `delay` when `isEnabled` is
+    /// true. Unlike SwiftUI's `.help(...)`, the delay is tunable. Internal — a
+    /// legend-only helper, not adopter-facing API.
+    func tooltip(
+        _ text: String,
+        isEnabled: Bool = true,
+        delay: Duration = .milliseconds(300)
+    ) -> some View {
+        modifier(TooltipModifier(text: text, isEnabled: isEnabled, delay: delay))
+    }
+}
+
+/// A single-line `Text` in a fixed or flexible frame that automatically
+/// attaches a hover tooltip *only when the text truncated*. Owns its own frame
+/// so its `GeometryReader` measures the applied frame, not the Text's
+/// intrinsic size — modifier order is significant.
+struct TruncatableLabel: View {
+    enum Sizing: Equatable {
+        case fixed(CGFloat)
+        case flexible
+    }
+
+    let text: String
+    let fontSize: CGFloat
+    let sizing: Sizing
+
+    @State private var frameWidth: CGFloat = 0
+
+    var body: some View {
+        framed
+            .background(GeometryReader { proxy in
+                Color.clear
+                    .onAppear { frameWidth = proxy.size.width }
+                    .onChange(of: proxy.size.width) { new in frameWidth = new }
+            })
+            .contentShape(Rectangle())
+            .tooltip(
+                text,
+                isEnabled: legendTextIsTruncated(text, fontSize: fontSize, width: frameWidth)
+            )
+    }
+
+    @ViewBuilder
+    private var framed: some View {
+        let base = Text(text)
+            .font(.system(size: fontSize))
+            .lineLimit(1)
+            .truncationMode(.tail)
+        switch sizing {
+        case let .fixed(width):
+            base.frame(width: width, alignment: .leading)
+        case .flexible:
+            base.frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
