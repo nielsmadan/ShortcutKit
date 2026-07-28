@@ -11,11 +11,14 @@ change. Adopters who want bespoke visuals can read the same data types from
 ShortcutKit and skip this module.
 
 - ``KeyBindingsView`` — the settings table: every context's actions with inline
-  recorders, search, conflict badges, and a reset control. Choose the visual
-  density with ``KeyBindingsStyle`` and the multi-context layout with
-  ``ContextLayout``.
-- ``ShortcutPreferencesView`` — a ready-made Settings tab wrapping
-  `KeyBindingsView` plus the "show hints" toggle.
+  recorders, conflict badges, and reset controls. Choose the visual density with
+  ``KeyBindingsStyle``. Its ``KeyBindingsPresentation`` decides containment:
+  `.standalone` (a self-contained pane that owns its scroll + search, for a whole
+  tab) or `.embedded` (`Section`s you drop into your own `Form`/`List` so
+  shortcuts sit natively alongside other settings). For a single context, use
+  `init(context:)`; for a single action, ``ShortcutBindingEditor``.
+- ``ShortcutPreferencesView`` — a ready-made grouped-`Form` Settings tab wrapping
+  the embedded `KeyBindingsView` plus the "show hints" toggle.
 - ``ShortcutBindingEditor`` — one action's editor, to drop into an onboarding flow
   or a custom layout.
 - ``KeyBindingsLegendView`` — a read-only cheat sheet, styled with ``LegendStyle``.
@@ -42,6 +45,7 @@ ContentView().shortcutHintHUD(registry: model.registry)
 ### Settings UI
 
 - ``KeyBindingsView``
+- ``KeyBindingsPresentation``
 - ``ShortcutPreferencesView``
 - ``ShortcutBindingEditor``
 - ``ContextLayout``

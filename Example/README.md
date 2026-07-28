@@ -29,8 +29,9 @@ just example      # from the repo root — builds and launches the app
   `.shortcut(_:in:)` helper; re-binding in Settings updates it.
 
 **Settings window (component showcase)**
-- **Native / Dense** tabs — `KeyBindingsView` in both `KeyBindingsStyle`s, with
-  live `ContextLayout` (stacked/picker) and search toggles.
+- **Regular / Dense** tabs — `KeyBindingsView` in both `KeyBindingsStyle`s
+  (`.standalone` presentation), with live `ContextLayout` (stacked/picker) and
+  search toggles.
 - **Drop-in** tab — the canned `ShortcutPreferencesView`.
 - **Legend** tab — `KeyBindingsLegendView` with live `LegendStyle` (panel / sheet),
   a Compact toggle, and column / cell / size controls.

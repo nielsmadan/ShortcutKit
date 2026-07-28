@@ -32,7 +32,7 @@ public struct ShortcutBindingEditor<Action: ShortcutAction>: View {
     public init(
         _ action: Action,
         in context: ShortcutContext<Action>,
-        style: KeyBindingsStyle = .native,
+        style: KeyBindingsStyle = .regular,
         showsDescription: Bool = false
     ) {
         self.action = action

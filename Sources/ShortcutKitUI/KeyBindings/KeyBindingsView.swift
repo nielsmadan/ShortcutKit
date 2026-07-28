@@ -12,24 +12,38 @@ public enum ContextLayout: Sendable, Hashable {
     case picker
 }
 
-/// The top-level settings page for shortcut customisation.
+/// How full-mode `KeyBindingsView` is contained. The self-contained pane's
+/// options (`search`, `layout`) live on the `.standalone` case so they can't be
+/// set on an `.embedded` view, where they don't apply.
+public enum KeyBindingsPresentation: Sendable, Hashable {
+    /// A self-contained pane that owns its scroll, a grouped card, an optional
+    /// search field, and the "Reset All…" button. Use it as the whole content of
+    /// a Settings tab. `search` toggles the search field; `layout` stacks every
+    /// context (`.stacked`) or shows a context selector (`.picker`).
+    case standalone(search: Bool = true, layout: ContextLayout = .stacked)
+    /// Form/List section content: one SwiftUI `Section` per context — no scroll,
+    /// card, search, or Reset-All. Place it inside your own `Form`/`List` so it
+    /// inherits native grouped styling and the host's single scroll. Search and
+    /// Reset-All are the host's to provide.
+    case embedded
+}
+
+/// The top-level settings view for shortcut customisation.
 ///
-/// Full mode (`init(registry:style:searchEnabled:)`) renders one bold-header
-/// section per registry context (filtered to `includeInSettings == true`),
-/// each with its rows inside a rounded grouped container — the standard macOS
-/// settings layout pattern. A top toolbar holds an optional search field and a
-/// small "Reset All…" trailing button.
+/// Full mode (`init(registry:style:presentation:)`) renders one section per
+/// registry context (filtered to `includeInSettings == true`). ``KeyBindingsPresentation``
+/// decides containment: `.standalone` (default) is a self-contained pane for a
+/// whole Settings tab; `.embedded` emits bare `Section`s to drop into your own
+/// `Form`/`List` — prefer it whenever the view is one part of a larger pane.
 ///
 /// Inline mode (`init(context:style:searchEnabled:)`) renders only the rows for
 /// the given context — no section header, no toolbar, search optional (default
-/// OFF). Designed to embed inside a custom Settings tab. For a *single action*
-/// rather than a whole context, use `ShortcutBindingEditor`; for one action
-/// laid out your own way (onboarding, popover), prefer that over inline mode.
-/// Side effects route to the context's attached registry.
+/// OFF). For a *single action* rather than a whole context, use
+/// `ShortcutBindingEditor`. Side effects route to the context's attached registry.
 @MainActor
 public struct KeyBindingsView: View {
     enum Mode {
-        case full(searchEnabled: Bool, layout: ContextLayout)
+        case full(presentation: KeyBindingsPresentation)
         case inline(context: any AnyShortcutContext, searchEnabled: Bool)
     }
 
@@ -44,20 +58,17 @@ public struct KeyBindingsView: View {
     @State private var selectedContextID: String = ""
 
     /// Full mode — renders every `includeInSettings` context in the registry.
-    /// `searchEnabled` defaults to `true` because the standalone settings
-    /// pattern almost always wants the toolbar search field. `style` controls
-    /// visual density (`.native` / `.dense`). `contextLayout` chooses between
-    /// stacking every context (`.stacked`, default) and a context selector
-    /// (`.picker`) for apps with many contexts.
+    /// `presentation` picks `.standalone` (a self-contained pane; the default) or
+    /// `.embedded` (bare `Section`s for your own `Form`/`List`). `style` controls
+    /// visual density (`.regular` / `.dense`).
     public init(
         registry: ShortcutRegistry,
-        style: KeyBindingsStyle = .native,
-        searchEnabled: Bool = true,
-        contextLayout: ContextLayout = .stacked
+        style: KeyBindingsStyle = .regular,
+        presentation: KeyBindingsPresentation = .standalone()
     ) {
         self.registry = registry
         self.style = style
-        mode = .full(searchEnabled: searchEnabled, layout: contextLayout)
+        mode = .full(presentation: presentation)
     }
 
     /// Inline single-context init. The context must already be attached to a
@@ -70,7 +81,7 @@ public struct KeyBindingsView: View {
     /// chrome typically already handles its own search/filtering.
     public init(
         context: ShortcutContext<some ShortcutAction>,
-        style: KeyBindingsStyle = .native,
+        style: KeyBindingsStyle = .regular,
         searchEnabled: Bool = false
     ) {
         let registry = attachedRegistry(for: context)
@@ -81,8 +92,13 @@ public struct KeyBindingsView: View {
 
     public var body: some View {
         switch mode {
-        case let .full(searchEnabled, layout):
-            fullBody(registry: registry, searchEnabled: searchEnabled, layout: layout)
+        case let .full(presentation):
+            switch presentation {
+            case let .standalone(search, layout):
+                fullBody(registry: registry, searchEnabled: search, layout: layout)
+            case .embedded:
+                embeddedBody(registry: registry)
+            }
         case let .inline(context, searchEnabled):
             inlineBody(context: context, registry: registry, searchEnabled: searchEnabled)
         }
@@ -97,13 +113,23 @@ public struct KeyBindingsView: View {
 
     var __searchEnabledForTest: Bool {
         switch mode {
-        case let .full(enabled, _): enabled
+        case let .full(presentation):
+            if case let .standalone(search, _) = presentation { search } else { false }
         case let .inline(_, enabled): enabled
         }
     }
 
     var __contextLayoutForTest: ContextLayout? {
-        if case let .full(_, layout) = mode { layout } else { nil }
+        if case let .full(presentation) = mode, case let .standalone(_, layout) = presentation {
+            layout
+        } else {
+            nil
+        }
+    }
+
+    /// The full-mode presentation, or `nil` in inline mode.
+    var __presentationForTest: KeyBindingsPresentation? {
+        if case let .full(presentation) = mode { presentation } else { nil }
     }
 
     // swiftlint:enable identifier_name
@@ -141,6 +167,39 @@ public struct KeyBindingsView: View {
         } message: {
             Text(uiString("This will discard all customisations across every context."))
         }
+    }
+
+    // MARK: - Embedded mode body
+
+    /// Form/List section content: one `Section` per non-empty `includeInSettings`
+    /// context, with no scroll view, no card, no search / Reset-All. The enclosing
+    /// `Form`/`List` supplies the grouped styling and the single scroll.
+    @ViewBuilder
+    private func embeddedBody(registry: ShortcutRegistry) -> some View {
+        ForEach(visibleGroups(registry).filter { !$0.entries.isEmpty }, id: \.id) { group in
+            Section {
+                if style == .dense { denseColumnHeader }
+                ForEach(group.entries, id: \.id) { row in
+                    shortcutRow(row, registry: registry)
+                }
+            } header: {
+                Text(group.displayName)
+            }
+        }
+    }
+
+    /// One binding row wired to the registry.
+    private func shortcutRow(
+        _ row: KeyBindings.Entry, registry: ShortcutRegistry
+    ) -> some View {
+        ShortcutRowView(
+            row: row,
+            policy: ScopePolicy(registry.scope(forContextID: row.contextID)),
+            style: style,
+            onSet: { registry.setShortcuts($0, contextID: row.contextID, actionID: row.actionID) },
+            onClear: { registry.removeShortcut(at: $0, contextID: row.contextID, actionID: row.actionID) },
+            onReset: { registry.reset(contextID: row.contextID, actionID: row.actionID) }
+        )
     }
 
     /// Context selector + the selected context's rows. The picker itself
@@ -235,32 +294,8 @@ public struct KeyBindingsView: View {
                 Divider().padding(.leading, 10)
             }
             ForEach(Array(entries.enumerated()), id: \.element.id) { idx, row in
-                ShortcutRowView(
-                    row: row,
-                    policy: ScopePolicy(registry.scope(forContextID: row.contextID)),
-                    style: style,
-                    onSet: { shortcuts in
-                        registry.setShortcuts(
-                            shortcuts,
-                            contextID: row.contextID,
-                            actionID: row.actionID
-                        )
-                    },
-                    onClear: { idx in
-                        registry.removeShortcut(
-                            at: idx,
-                            contextID: row.contextID,
-                            actionID: row.actionID
-                        )
-                    },
-                    onReset: {
-                        registry.reset(
-                            contextID: row.contextID,
-                            actionID: row.actionID
-                        )
-                    }
-                )
-                .padding(.horizontal, style == .dense ? 10 : 14)
+                shortcutRow(row, registry: registry)
+                    .padding(.horizontal, style == .dense ? 10 : 14)
                 if idx < entries.count - 1 {
                     Divider().padding(.leading, style == .dense ? 10 : 14)
                 }
@@ -289,31 +324,7 @@ public struct KeyBindingsView: View {
                 .entries ?? []
             let filtered = SearchField.filter(scoped, query: query)
             ForEach(filtered, id: \.id) { row in
-                ShortcutRowView(
-                    row: row,
-                    policy: ScopePolicy(context.scope),
-                    style: style,
-                    onSet: { shortcuts in
-                        registry.setShortcuts(
-                            shortcuts,
-                            contextID: row.contextID,
-                            actionID: row.actionID
-                        )
-                    },
-                    onClear: { idx in
-                        registry.removeShortcut(
-                            at: idx,
-                            contextID: row.contextID,
-                            actionID: row.actionID
-                        )
-                    },
-                    onReset: {
-                        registry.reset(
-                            contextID: row.contextID,
-                            actionID: row.actionID
-                        )
-                    }
-                )
+                shortcutRow(row, registry: registry)
                 Divider()
             }
         }

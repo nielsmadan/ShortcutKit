@@ -18,12 +18,21 @@ struct SettingsScene: Scene {
 }
 ```
 
-For more control, embed ``KeyBindingsView`` directly. Pick the density with
-``KeyBindingsStyle`` and, for many-context apps, a ``ContextLayout``:
+When shortcuts sit **alongside other settings** in a pane (the common case), embed
+``KeyBindingsView`` in your own `Form` with the `.embedded` presentation — it emits
+one `Section` per context and inherits the native grouped styling and single scroll:
 
 ```swift
-KeyBindingsView(registry: model.registry, style: .native, contextLayout: .picker)
+Form {
+    Section("Display") { Toggle("Show hints", isOn: $showHints) }
+    KeyBindingsView(registry: model.registry, presentation: .embedded)
+}
+.formStyle(.grouped)
 ```
+
+Use the default `.standalone` presentation only when the view is the **entire** tab
+(it owns its own scroll, search field, and Reset-All button). For a single context,
+`KeyBindingsView(context:)`; pick density with ``KeyBindingsStyle``.
 
 ## A single-action editor
 

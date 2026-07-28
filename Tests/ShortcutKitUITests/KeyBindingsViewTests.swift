@@ -34,7 +34,7 @@ struct KeyBindingsViewTests {
     }
 
     @Test func fullModeSearchOptOut() {
-        let view = KeyBindingsView(registry: makeRegistry(contextCount: 1), searchEnabled: false)
+        let view = KeyBindingsView(registry: makeRegistry(contextCount: 1), presentation: .standalone(search: false))
         #expect(view.__searchEnabledForTest == false)
     }
 
@@ -44,8 +44,35 @@ struct KeyBindingsViewTests {
     }
 
     @Test func fullModePickerLayoutOptIn() {
-        let view = KeyBindingsView(registry: makeRegistry(contextCount: 5), contextLayout: .picker)
+        let view = KeyBindingsView(registry: makeRegistry(contextCount: 5), presentation: .standalone(layout: .picker))
         #expect(view.__contextLayoutForTest == .picker)
+    }
+
+    @Test func fullModeDefaultsToStandalonePresentation() {
+        let view = KeyBindingsView(registry: makeRegistry(contextCount: 2))
+        #expect(view.__presentationForTest == .standalone())
+    }
+
+    @Test func embeddedPresentationOptIn() {
+        let view = KeyBindingsView(registry: makeRegistry(contextCount: 2), presentation: .embedded)
+        #expect(view.__presentationForTest == .embedded)
+        #expect(view.__modeIsFull) // embedded is still full mode, just container-agnostic
+    }
+
+    @Test func embeddedIgnoresSearchAndLayout() {
+        // `.embedded` carries no search/layout — the hooks report the neutral values.
+        let view = KeyBindingsView(registry: makeRegistry(contextCount: 2), presentation: .embedded)
+        #expect(view.__searchEnabledForTest == false)
+        #expect(view.__contextLayoutForTest == nil)
+    }
+
+    @Test func test_DocExample_settingsEmbedded() {
+        // Mirrors the embedded-in-Form example in UIGettingStarted.md.
+        let registry = makeRegistry(contextCount: 2)
+        _ = Form {
+            KeyBindingsView(registry: registry, presentation: .embedded)
+        }
+        .formStyle(.grouped)
     }
 
     @Test func inlineModeHasNoContextLayout() {

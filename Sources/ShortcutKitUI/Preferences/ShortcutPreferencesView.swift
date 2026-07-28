@@ -1,34 +1,30 @@
 import ShortcutKit
 import SwiftUI
 
-/// Drop-in Settings-tab view composing the General preferences (hint toggle) and
-/// the full `KeyBindingsView`. The hint toggle reads/writes `registry.hintsEnabled`,
+/// Drop-in Settings-tab view: the General preferences (hint toggle) and the
+/// shortcut lists, in a native grouped `Form`. Composes `KeyBindingsView` in its
+/// `.embedded` presentation so everything shares one scroll and the system
+/// grouped styling. The hint toggle reads/writes `registry.hintsEnabled`,
 /// persisted through the registry's store — the same value the HUD checks.
 @MainActor
 public struct ShortcutPreferencesView: View {
     @ObservedObject public var registry: ShortcutRegistry
     private let style: KeyBindingsStyle
-    private let searchEnabled: Bool
-    private let contextLayout: ContextLayout
     private let showsHintToggle: Bool
+    @State private var resetAlertShown = false
 
-    /// `style` is the app author's density choice (consumer apps `.native`,
+    /// `style` is the app author's density choice (consumer apps `.regular`,
     /// power-user apps `.dense`) — not a user setting. `showsHintToggle` controls
-    /// whether the "Show shortcut hints" toggle is offered at all. `searchEnabled`
-    /// and `contextLayout` are forwarded to the embedded `KeyBindingsView`. The
-    /// hint preference persists through the registry's store (set the registry's
+    /// whether the "Show shortcut hints" toggle is offered at all. The hint
+    /// preference persists through the registry's store (set the registry's
     /// `defaultHintsEnabled` for the off-by-default case).
     public init(
         registry: ShortcutRegistry,
-        style: KeyBindingsStyle = .native,
-        searchEnabled: Bool = true,
-        contextLayout: ContextLayout = .stacked,
+        style: KeyBindingsStyle = .regular,
         showsHintToggle: Bool = true
     ) {
         self.registry = registry
         self.style = style
-        self.searchEnabled = searchEnabled
-        self.contextLayout = contextLayout
         self.showsHintToggle = showsHintToggle
     }
 
@@ -44,14 +40,20 @@ public struct ShortcutPreferencesView: View {
                     ))
                 }
             }
-            Section(uiString("Shortcuts")) {
-                KeyBindingsView(
-                    registry: registry,
-                    style: style,
-                    searchEnabled: searchEnabled,
-                    contextLayout: contextLayout
-                )
+            KeyBindingsView(registry: registry, style: style, presentation: .embedded)
+            // `.embedded` leaves Reset-All to the host; this drop-in provides it.
+            // (A search field, if wanted, is likewise the host's to add — e.g.
+            // `.searchable` on this Form.)
+            Section {
+                Button(uiString("Reset All…"), role: .destructive) { resetAlertShown = true }
             }
+        }
+        .formStyle(.grouped)
+        .alert(uiString("Reset all shortcuts to defaults?"), isPresented: $resetAlertShown) {
+            Button(uiString("Cancel"), role: .cancel) {}
+            Button(uiString("Reset"), role: .destructive) { registry.resetAll() }
+        } message: {
+            Text(uiString("This will discard all customisations across every context."))
         }
     }
 }

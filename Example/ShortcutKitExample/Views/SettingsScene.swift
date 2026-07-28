@@ -12,8 +12,8 @@ import SwiftUI
 struct ExampleSettingsView: View {
     var body: some View {
         TabView {
-            StyledSettingsTab(style: .native)
-                .tabItem { Label("Native", systemImage: "rectangle") }
+            StyledSettingsTab(style: .regular)
+                .tabItem { Label("Regular", systemImage: "rectangle") }
             StyledSettingsTab(style: .dense)
                 .tabItem { Label("Dense", systemImage: "rectangle.compress.vertical") }
             ShortcutPreferencesView(registry: ContextWiring.shared)
@@ -44,8 +44,7 @@ private struct StyledSettingsTab: View {
         KeyBindingsView(
             registry: ContextWiring.shared,
             style: style,
-            searchEnabled: search,
-            contextLayout: layout
+            presentation: .standalone(search: search, layout: layout)
         )
         .safeAreaInset(edge: .top, spacing: 0) { displaySection }
     }

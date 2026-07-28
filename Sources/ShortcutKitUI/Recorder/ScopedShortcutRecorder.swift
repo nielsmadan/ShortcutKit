@@ -28,18 +28,18 @@ struct ScopedShortcutRecorder: View {
     /// underlying NSSearchField actually honors them (without that, the
     /// AppKit view renders at its intrinsic placeholder width and overflows
     /// into the next column).
-    static let discreteWidth: (native: CGFloat, dense: CGFloat) = (110, 85)
-    static let continuousWidth: (native: CGFloat, dense: CGFloat) = (130, 100)
+    static let discreteWidth: (regular: CGFloat, dense: CGFloat) = (110, 85)
+    static let continuousWidth: (regular: CGFloat, dense: CGFloat) = (130, 100)
 
     private var fieldWidth: CGFloat {
-        style == .dense ? Self.discreteWidth.dense : Self.discreteWidth.native
+        style == .dense ? Self.discreteWidth.dense : Self.discreteWidth.regular
     }
 
     private var continuousFieldWidth: CGFloat {
-        style == .dense ? Self.continuousWidth.dense : Self.continuousWidth.native
+        style == .dense ? Self.continuousWidth.dense : Self.continuousWidth.regular
     }
 
-    init(shortcut: Binding<Shortcut?>, policy: ScopePolicy, style: KeyBindingsStyle = .native) {
+    init(shortcut: Binding<Shortcut?>, policy: ScopePolicy, style: KeyBindingsStyle = .regular) {
         _shortcut = shortcut
         self.policy = policy
         self.style = style
