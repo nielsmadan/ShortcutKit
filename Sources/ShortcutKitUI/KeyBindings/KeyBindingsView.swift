@@ -141,7 +141,10 @@ public struct KeyBindingsView: View {
         registry: ShortcutRegistry, searchEnabled: Bool, layout: ContextLayout
     ) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: style == .dense ? 12 : 22) {
+            // Lazy so off-screen context cards — each holding several
+            // `NSViewRepresentable` recorders that are costly to realize — aren't
+            // built until they scroll near the viewport.
+            LazyVStack(alignment: .leading, spacing: style == .dense ? 12 : 22) {
                 if searchEnabled {
                     HStack(spacing: 10) {
                         searchBar
