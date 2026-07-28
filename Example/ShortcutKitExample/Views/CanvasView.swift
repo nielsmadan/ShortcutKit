@@ -73,7 +73,7 @@ struct CanvasView: View {
 
     private func color(for mode: CanvasMode) -> Color {
         switch mode {
-        case .select: Color(white: 0.95)
+        case .select: Color(white: 0.82)
         case .fill: Color.yellow.opacity(0.3)
         case .stroke: Color.blue.opacity(0.3)
         case .text: Color.green.opacity(0.3)
