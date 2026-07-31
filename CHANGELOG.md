@@ -13,6 +13,7 @@ The `0.x` line is pre-release: the public API is stabilizing toward 1.0 and may 
 - **[UI]** `LegendOptions.shortcutStyle` — render shortcuts as ShortcutField `.compact` SF-symbol / abbreviation labels (the default) or `.text` verbose words.
 - **[UI]** Legend cells are fixed-width, gutter-aligned columns (shortcut right-aligned, label left-aligned), single-line with tail truncation and the full value shown on hover. `LegendOptions.labelWidth` (`.size` / `.flexible` / `.fixed(_)`) and the public `LegendOptions.cellWidth` size the columns.
 - **[Core/UI]** User-controllable hint frequency: `registry.hintFrequency` / `setHintFrequency(_:)` (persisted like `hintsEnabled`, defaulted via `ShortcutRegistry(defaultHintFrequency:)`), surfaced as a picker in `ShortcutPreferencesView` and read live by the HUD.
+- **[UI]** `HintPreferencesView` — the "show hints" toggle and frequency picker as bare `Form` rows to drop inside your own `Section`, so the hint controls compose into your settings layout instead of only inside the full `ShortcutPreferencesView` pane.
 
 ### Changed
 - **[Core] Breaking:** `HintPolicy` moved from `ShortcutKitUI` to `ShortcutKit` (re-exported, so `import ShortcutKitUI` still sees it) — it's now a persisted preference value, not just a HUD parameter.

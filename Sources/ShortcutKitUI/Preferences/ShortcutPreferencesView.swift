@@ -1,11 +1,10 @@
 import ShortcutKit
 import SwiftUI
 
-/// Drop-in Settings-tab view: the General preferences (hint toggle) and the
-/// shortcut lists, in a native grouped `Form`. Composes `KeyBindingsView` in its
-/// `.embedded` presentation so everything shares one scroll and the system
-/// grouped styling. The hint toggle reads/writes `registry.hintsEnabled`,
-/// persisted through the registry's store — the same value the HUD checks.
+/// Drop-in Settings-tab view: the General preferences (via ``HintPreferencesView``)
+/// and the shortcut lists, in a native grouped `Form`. Composes `KeyBindingsView`
+/// in its `.embedded` presentation so everything shares one scroll and the system
+/// grouped styling.
 @MainActor
 public struct ShortcutPreferencesView: View {
     @ObservedObject public var registry: ShortcutRegistry
@@ -34,26 +33,7 @@ public struct ShortcutPreferencesView: View {
         Form {
             if showsHintToggle {
                 Section(uiString("General")) {
-                    Toggle(uiString("Show shortcut hints"), isOn: Binding(
-                        get: { registry.hintsEnabled },
-                        set: { registry.setHintsEnabled($0) }
-                    ))
-                    if registry.hintsEnabled {
-                        Picker(uiString("Hint frequency"), selection: Binding(
-                            get: { registry.hintFrequency },
-                            set: { registry.setHintFrequency($0) }
-                        )) {
-                            Text(uiString("Always")).tag(HintPolicy.always)
-                            Text(uiString("Once per session")).tag(HintPolicy.oncePerSession)
-                            // The named rows can't represent an arbitrary interval, so
-                            // when the app author's default is a `.timeout` offer it as a
-                            // stable, always-reselectable row (driven by the default, not
-                            // the current value, so it survives switching away and back).
-                            if case .timeout = registry.defaultHintFrequency {
-                                Text(uiString("Occasionally")).tag(registry.defaultHintFrequency)
-                            }
-                        }
-                    }
+                    HintPreferencesView(registry: registry)
                 }
             }
             KeyBindingsView(registry: registry, style: style, presentation: .embedded)

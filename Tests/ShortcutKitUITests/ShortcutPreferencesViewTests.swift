@@ -26,4 +26,11 @@ struct ShortcutPreferencesViewTests {
         reg.setHintsEnabled(false)
         #expect(reg.hintsEnabled == false)
     }
+
+    @Test func hintPreferencesViewBindsRegistry() {
+        let ctx = ShortcutContext<Act>("editor")
+        let reg = ShortcutRegistry(contexts: [ctx])
+        // The hint controls are constructible standalone, bound to the registry.
+        #expect(HintPreferencesView(registry: reg).registry === reg)
+    }
 }

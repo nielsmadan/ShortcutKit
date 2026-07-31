@@ -75,6 +75,19 @@ struct KeyBindingsViewTests {
         .formStyle(.grouped)
     }
 
+    @Test func test_DocExample_hintPreferencesInForm() {
+        // Mirrors the compose-your-own-settings example in UIGettingStarted.md.
+        let registry = makeRegistry(contextCount: 2)
+        _ = Form {
+            Section("Display") {
+                Toggle("Menu bar icon", isOn: .constant(true))
+                HintPreferencesView(registry: registry)
+            }
+            KeyBindingsView(registry: registry, presentation: .embedded)
+        }
+        .formStyle(.grouped)
+    }
+
     @Test func inlineModeHasNoContextLayout() {
         let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])

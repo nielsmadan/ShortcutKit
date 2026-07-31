@@ -48,6 +48,7 @@ ContentView().shortcutHintHUD(registry: model.registry)
 - ``KeyBindingsView``
 - ``KeyBindingsPresentation``
 - ``ShortcutPreferencesView``
+- ``HintPreferencesView``
 - ``ShortcutBindingEditor``
 - ``ContextLayout``
 - ``KeyBindingsStyle``

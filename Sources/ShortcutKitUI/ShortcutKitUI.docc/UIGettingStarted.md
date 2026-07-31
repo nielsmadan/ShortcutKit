@@ -34,6 +34,22 @@ Use the default `.standalone` presentation only when the view is the **entire** 
 (it owns its own scroll, search field, and Reset-All button). For a single context,
 `KeyBindingsView(context:)`; pick density with ``KeyBindingsStyle``.
 
+When you compose the settings screen yourself, drop ``HintPreferencesView`` wherever
+you want the hint controls — it emits the "show hints" toggle and the frequency
+picker as bare `Form` rows, so you can put them in your own `Section` alongside other
+preferences instead of taking the whole ``ShortcutPreferencesView`` pane:
+
+```swift
+Form {
+    Section("Display") {
+        Toggle("Menu bar icon", isOn: $showMenuBarIcon)
+        HintPreferencesView(registry: model.registry)
+    }
+    KeyBindingsView(registry: model.registry, presentation: .embedded)
+}
+.formStyle(.grouped)
+```
+
 ## A single-action editor
 
 To ask for just one shortcut — say, in an onboarding step — use
