@@ -12,8 +12,11 @@ The `0.x` line is pre-release: the public API is stabilizing toward 1.0 and may 
 - **[UI]** `KeyBindingsView` gains a `KeyBindingsPresentation`: `.standalone(search:layout:)` (the default self-contained pane) and `.embedded` — container-agnostic `Section`s (no scroll view, card, or search) to drop into your own `Form`/`List` so shortcuts sit natively alongside other settings.
 - **[UI]** `LegendOptions.shortcutStyle` — render shortcuts as ShortcutField `.compact` SF-symbol / abbreviation labels (the default) or `.text` verbose words.
 - **[UI]** Legend cells are fixed-width, gutter-aligned columns (shortcut right-aligned, label left-aligned), single-line with tail truncation and the full value shown on hover. `LegendOptions.labelWidth` (`.size` / `.flexible` / `.fixed(_)`) and the public `LegendOptions.cellWidth` size the columns.
+- **[Core/UI]** User-controllable hint frequency: `registry.hintFrequency` / `setHintFrequency(_:)` (persisted like `hintsEnabled`, defaulted via `ShortcutRegistry(defaultHintFrequency:)`), surfaced as a picker in `ShortcutPreferencesView` and read live by the HUD.
 
 ### Changed
+- **[Core] Breaking:** `HintPolicy` moved from `ShortcutKitUI` to `ShortcutKit` (re-exported, so `import ShortcutKitUI` still sees it) — it's now a persisted preference value, not just a HUD parameter.
+- **[UI] Breaking:** `shortcutHintHUD(registry:policy:options:)` dropped its `policy:` parameter; the developer default moves to `ShortcutRegistry(defaultHintFrequency:)` and the effective frequency is now a user preference.
 - **[UI] Breaking:** `KeyBindingsStyle.native` renamed to `.regular` — the axis is visual density (`.regular` vs `.dense`), and everything is equally "native" SwiftUI.
 - **[UI] Breaking:** `KeyBindingsView`'s `searchEnabled:` / `contextLayout:` init params moved onto `.standalone(search:layout:)`, so they can't be set on an `.embedded` view where they don't apply.
 - **[UI]** `ShortcutPreferencesView` now composes the `.embedded` `KeyBindingsView` inside a grouped `Form` (fixes the nested-scroll / double-card when it was the drop-in tab) and keeps a "Reset All…" button; its `searchEnabled` / `contextLayout` parameters were removed (search is host-owned in embedded layouts — add `.searchable` if wanted).

@@ -251,6 +251,29 @@ import Testing
         #expect(text.contains("hints-enabled = false"))
     }
 
+    @Test("JSON round-trips hintFrequency including a timeout value")
+    func jsonHintFrequencyRoundTrip() throws {
+        let url = tempURL("json")
+        let store = FileStore(url: url, format: .json)
+        var original = sampleState()
+        original.preferences.hintFrequency = .timeout(45)
+        try store.save(original)
+        #expect(try store.load() == original)
+    }
+
+    @Test("namespaced TOML round-trips hintFrequency as a hand-editable string")
+    func tomlHintFrequencyRoundTrip() throws {
+        let url = tempURL("toml")
+        let store = FileStore(url: url, format: .toml, key: "shortcutkit")
+        var original = sampleState()
+        original.preferences.hintFrequency = .always
+        try store.save(original)
+        #expect(try store.load() == original)
+
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("hint-frequency = \"always\""))
+    }
+
     @Test("un-namespaced TOML persists overrides but drops preferences")
     func tomlNoKeyDropsPreferences() throws {
         let url = tempURL("toml")

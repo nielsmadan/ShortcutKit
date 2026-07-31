@@ -209,9 +209,11 @@ private struct HUDPlaygroundView: View {
                 ForEach(PolicyChoice.allCases) { Text($0.label).tag($0) }
             }
             .pickerStyle(.segmented)
+            .onChange(of: policyChoice) { registry.setHintFrequency(policyChoice.policy) }
             Toggle("Custom toast", isOn: $customToast)
             Button("Fire test hint") {
                 registry.setHintsEnabled(true)
+                registry.setHintFrequency(policyChoice.policy)
                 registry.dispatch(contextID: "app", actionID: "toggleLegend")
             }
             Spacer()
@@ -223,7 +225,7 @@ private struct HUDPlaygroundView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .modifier(PlaygroundHUD(custom: customToast, policy: policyChoice.policy, options: options))
+        .modifier(PlaygroundHUD(custom: customToast, options: options))
     }
 }
 
@@ -233,19 +235,18 @@ private struct HUDPlaygroundView: View {
 @MainActor
 private struct PlaygroundHUD: ViewModifier {
     let custom: Bool
-    let policy: HintPolicy
     let options: HintHUDOptions
 
     func body(content: Content) -> some View {
         if custom {
-            content.shortcutHintHUD(registry: ContextWiring.shared, policy: policy, options: options) { hint in
+            content.shortcutHintHUD(registry: ContextWiring.shared, options: options) { hint in
                 Label(hint.text, systemImage: "keyboard")
                     .padding(8)
                     .background(.tint, in: Capsule())
                     .foregroundStyle(.white)
             }
         } else {
-            content.shortcutHintHUD(registry: ContextWiring.shared, policy: policy, options: options)
+            content.shortcutHintHUD(registry: ContextWiring.shared, options: options)
         }
     }
 }

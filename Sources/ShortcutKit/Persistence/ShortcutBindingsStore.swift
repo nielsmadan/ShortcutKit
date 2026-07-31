@@ -13,13 +13,29 @@ import ShortcutField
 public struct Preferences: Sendable, Equatable, Codable {
     /// User's hint-visibility choice, or `nil` to follow the app default.
     public var hintsEnabled: Bool?
+    /// User's hint-frequency choice, or `nil` to follow the app default.
+    public var hintFrequency: HintPolicy?
 
-    public init(hintsEnabled: Bool? = nil) {
+    public init(hintsEnabled: Bool? = nil, hintFrequency: HintPolicy? = nil) {
         self.hintsEnabled = hintsEnabled
+        self.hintFrequency = hintFrequency
     }
 
     /// True when no preference diverges from its default (nothing to persist).
-    public var isDefault: Bool { hintsEnabled == nil }
+    public var isDefault: Bool { hintsEnabled == nil && hintFrequency == nil }
+
+    private enum CodingKeys: String, CodingKey { case hintsEnabled, hintFrequency }
+
+    // Custom decode so an unrecognized `hintFrequency` string degrades to `nil`
+    // (follow the app default) rather than throwing — a bad preference must never
+    // fail the whole `RawState` load and reset every binding override. This mirrors
+    // the TOML decoder's tolerant `flatMap(HintPolicy.init(persistedString:))`.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        hintsEnabled = try container.decodeIfPresent(Bool.self, forKey: .hintsEnabled)
+        let raw = (try? container.decodeIfPresent(String.self, forKey: .hintFrequency)) ?? nil
+        hintFrequency = raw.flatMap(HintPolicy.init(persistedString:))
+    }
 }
 
 public struct RawState: Sendable, Equatable {
@@ -135,6 +151,9 @@ extension RawState: CustomDebugStringConvertible {
             lines.append("[preferences]")
             if let hints = preferences.hintsEnabled {
                 lines.append("  hints-enabled = \(hints)")
+            }
+            if let frequency = preferences.hintFrequency {
+                lines.append("  hint-frequency = \(frequency.persistedString)")
             }
         }
         return lines.isEmpty ? "(no overrides)" : lines.joined(separator: "\n")

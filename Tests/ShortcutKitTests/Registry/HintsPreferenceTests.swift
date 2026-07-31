@@ -68,4 +68,71 @@ import Testing
         )
         #expect(reloaded.hintsEnabled == true)
     }
+
+    @Test("effective hintFrequency follows the app default when unset")
+    func frequencyDefaultApplies() {
+        let ctx = ShortcutContext<Act>("editor")
+        let defaulted = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
+        #expect(defaulted.hintFrequency == .oncePerSession)
+
+        let ctx2 = ShortcutContext<Act>("editor")
+        let custom = ShortcutRegistry(
+            contexts: [ctx2], store: isolatedStore(), defaultHintFrequency: .timeout(30)
+        )
+        #expect(custom.hintFrequency == .timeout(30))
+    }
+
+    @Test("setHintFrequency persists an override and survives reload")
+    func frequencyOverridePersists() throws {
+        let store = isolatedStore()
+        let registry = ShortcutRegistry(contexts: [ShortcutContext<Act>("editor")], store: store)
+        registry.setHintFrequency(.always)
+        #expect(registry.hintFrequency == .always)
+        registry.flushPendingSave()
+
+        let reloaded = ShortcutRegistry(contexts: [ShortcutContext<Act>("editor")], store: store)
+        #expect(reloaded.hintFrequency == .always)
+    }
+
+    @Test("setting the frequency back to the default clears the stored override")
+    func frequencyDefaultClearsOverride() throws {
+        let store = isolatedStore()
+        let registry = ShortcutRegistry(contexts: [ShortcutContext<Act>("editor")], store: store)
+        registry.setHintFrequency(.always)
+        registry.setHintFrequency(.oncePerSession) // back to the default
+        registry.flushPendingSave()
+        #expect(try store.load().preferences.hintFrequency == nil)
+    }
+
+    @Test("an off-default (.timeout) registry persists a divergent override and clears on match")
+    func frequencyOverrideAgainstOffDefault() throws {
+        let store = isolatedStore()
+        func makeRegistry() -> ShortcutRegistry {
+            ShortcutRegistry(
+                contexts: [ShortcutContext<Act>("editor")], store: store,
+                defaultHintFrequency: .timeout(30)
+            )
+        }
+        let registry = makeRegistry()
+        registry.setHintFrequency(.oncePerSession)
+        registry.flushPendingSave()
+        #expect(try store.load().preferences.hintFrequency == .oncePerSession)
+        #expect(makeRegistry().hintFrequency == .oncePerSession)
+
+        // Associated-value equality: setting back to the exact default timeout clears.
+        registry.setHintFrequency(.timeout(30))
+        registry.flushPendingSave()
+        #expect(try store.load().preferences.hintFrequency == nil)
+    }
+
+    @Test("reload() picks up an out-of-band hintFrequency change")
+    func reloadPicksUpFrequency() throws {
+        let store = isolatedStore()
+        let registry = ShortcutRegistry(contexts: [ShortcutContext<Act>("editor")], store: store)
+        #expect(registry.hintFrequency == .oncePerSession)
+
+        try store.save(RawState(preferences: Preferences(hintFrequency: .always)))
+        registry.reload()
+        #expect(registry.hintFrequency == .always)
+    }
 }

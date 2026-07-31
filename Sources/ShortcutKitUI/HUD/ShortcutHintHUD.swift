@@ -8,7 +8,8 @@ import SwiftUI
 /// non-shortcut path AND has at least one effective binding.
 ///
 /// Suppression is governed by:
-///   - `HintPolicy` (developer-set upper bound on frequency)
+///   - `registry.hintFrequency` (how often the same hint may recur; default from
+///     `ShortcutRegistry(defaultHintFrequency:)`, user-overridable)
 ///   - `registry.hintsEnabled` (the user preference, persisted through the
 ///     registry's store; default from `ShortcutRegistry(defaultHintsEnabled:)`)
 ///
@@ -17,7 +18,6 @@ import SwiftUI
 @MainActor
 struct ShortcutHintHUD<Toast: View>: ViewModifier {
     @ObservedObject var registry: ShortcutRegistry
-    let policy: HintPolicy
     let options: HintHUDOptions
     let toast: (HintToastContext) -> Toast
 
@@ -33,15 +33,13 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
 
     init(
         registry: ShortcutRegistry,
-        policy: HintPolicy = .oncePerSession,
         options: HintHUDOptions = .default,
         @ViewBuilder toast: @escaping (HintToastContext) -> Toast
     ) {
         self.registry = registry
-        self.policy = policy
         self.options = options
         self.toast = toast
-        _gate = State(initialValue: HintPolicyGate(policy: policy))
+        _gate = State(initialValue: HintPolicyGate())
     }
 
     func body(content: Content) -> some View {
@@ -92,7 +90,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
         guard let entry = entryFor(event: event),
               let firstBinding = entry.effectiveShortcuts.first
         else { return }
-        guard gate.shouldShow(actionID: event.actionID) else { return }
+        guard gate.shouldShow(actionID: event.actionID, policy: registry.hintFrequency) else { return }
         gate.markShown(actionID: event.actionID)
         // displayName is adopter content — resolve it against the adopter's bundle.
         let name = String(localized: entry.displayName)
@@ -125,30 +123,29 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
 
 public extension View {
     /// Attach the discoverability HUD with the built-in toast. Gated by
-    /// `registry.hintsEnabled` (the user preference, persisted through the
-    /// registry's store); `policy` is the developer-set upper bound on frequency;
-    /// `options` controls placement and per-toast duration.
+    /// `registry.hintsEnabled` and paced by `registry.hintFrequency` (both user
+    /// preferences persisted through the registry's store; set their defaults via
+    /// `ShortcutRegistry(defaultHintsEnabled:defaultHintFrequency:)`). `options`
+    /// controls placement and per-toast duration.
     func shortcutHintHUD(
         registry: ShortcutRegistry,
-        policy: HintPolicy = .oncePerSession,
         options: HintHUDOptions = .default
     ) -> some View {
-        modifier(ShortcutHintHUD(registry: registry, policy: policy, options: options) { context in
+        modifier(ShortcutHintHUD(registry: registry, options: options) { context in
             HintToast(text: context.text)
         })
     }
 
     /// Attach the discoverability HUD with a custom toast. The builder receives a
     /// `HintToastContext` (localized text plus the action name and shortcut
-    /// components) and returns the view to show; everything else (gating, policy,
+    /// components) and returns the view to show; everything else (gating, pacing,
     /// placement, duration) behaves as the built-in variant.
     func shortcutHintHUD(
         registry: ShortcutRegistry,
-        policy: HintPolicy = .oncePerSession,
         options: HintHUDOptions = .default,
         @ViewBuilder toast: @escaping (HintToastContext) -> some View
     ) -> some View {
-        modifier(ShortcutHintHUD(registry: registry, policy: policy, options: options, toast: toast))
+        modifier(ShortcutHintHUD(registry: registry, options: options, toast: toast))
     }
 }
 

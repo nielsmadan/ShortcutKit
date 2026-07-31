@@ -72,7 +72,8 @@ enum ContextWiring {
 
         let registry = ShortcutRegistry(
             contexts: allContexts,
-            mutuallyExclusiveContexts: [modeIDs, selectionIDs, wizardVsAll]
+            mutuallyExclusiveContexts: [modeIDs, selectionIDs, wizardVsAll],
+            defaultHintFrequency: .always
         )
         // Defaults are conflict-free; create the demo conflicts the way a user
         // would, via overrides, so the conflict UI has something to show.

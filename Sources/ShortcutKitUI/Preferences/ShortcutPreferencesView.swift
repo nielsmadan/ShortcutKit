@@ -38,6 +38,22 @@ public struct ShortcutPreferencesView: View {
                         get: { registry.hintsEnabled },
                         set: { registry.setHintsEnabled($0) }
                     ))
+                    if registry.hintsEnabled {
+                        Picker(uiString("Hint frequency"), selection: Binding(
+                            get: { registry.hintFrequency },
+                            set: { registry.setHintFrequency($0) }
+                        )) {
+                            Text(uiString("Always")).tag(HintPolicy.always)
+                            Text(uiString("Once per session")).tag(HintPolicy.oncePerSession)
+                            // The named rows can't represent an arbitrary interval, so
+                            // when the app author's default is a `.timeout` offer it as a
+                            // stable, always-reselectable row (driven by the default, not
+                            // the current value, so it survives switching away and back).
+                            if case .timeout = registry.defaultHintFrequency {
+                                Text(uiString("Occasionally")).tag(registry.defaultHintFrequency)
+                            }
+                        }
+                    }
                 }
             }
             KeyBindingsView(registry: registry, style: style, presentation: .embedded)

@@ -58,14 +58,20 @@ KeyBindingsLegendView(registry: model.registry, style: .panel)
 
 ## The discoverability HUD
 
-Attach `shortcutHintHUD(registry:policy:options:)` near your root view. When an
-action fires via a non-shortcut path (a button, a menu) it briefly shows the
-shortcut the user could have pressed — gated by the user's hint preference and by
-a ``HintPolicy``:
+Attach `shortcutHintHUD(registry:options:)` near your root view. When an action
+fires via a non-shortcut path (a button, a menu) it briefly shows the shortcut the
+user could have pressed — gated by the user's `hintsEnabled` preference and paced
+by their `hintFrequency`. Set the defaults for both on the registry; the user can
+override them in ``ShortcutPreferencesView``:
 
 ```swift
+let registry = ShortcutRegistry(
+    contexts: [...],
+    defaultHintFrequency: .oncePerSession
+)
+// ...
 ContentView()
-    .shortcutHintHUD(registry: model.registry, policy: .oncePerSession)
+    .shortcutHintHUD(registry: registry)
 ```
 
 Position and timing come from ``HintHUDOptions`` — including ``HintHUDPlacement``'s

@@ -68,6 +68,7 @@ For system-wide hotkeys, add **ShortcutKitGlobal**.
 - ``FileStore``
 - ``RawState``
 - ``Preferences``
+- ``HintPolicy``
 - ``ShortcutMigration``
 
 ### Conflict Detection

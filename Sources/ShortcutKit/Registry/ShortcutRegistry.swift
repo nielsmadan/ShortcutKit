@@ -23,6 +23,18 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     /// `nil` until the user diverges from `defaultHintsEnabled`; persisted then.
     private var hintsEnabledOverride: Bool?
 
+    /// Effective hint-frequency state: the user's override if set, else the app
+    /// author's `defaultHintFrequency`. The HUD reads this live; the preferences
+    /// UI flips it via `setHintFrequency(_:)`.
+    @Published public private(set) var hintFrequency: HintPolicy = .oncePerSession
+
+    /// The app author's hint-frequency default (from `init(defaultHintFrequency:)`).
+    /// Exposed so a preferences UI can always offer it as a re-selectable option,
+    /// even after the user has moved off it.
+    public let defaultHintFrequency: HintPolicy
+    /// `nil` until the user diverges from `defaultHintFrequency`; persisted then.
+    private var hintFrequencyOverride: HintPolicy?
+
     // Stored for Tasks 7/8/12/15 to consume.
     let contexts: [any AnyShortcutContext]
     let mutuallyExclusiveContexts: [Set<String>]
@@ -48,7 +60,8 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         migrations: [ShortcutMigration] = [],
         store: any ShortcutBindingsStore = UserDefaultsStore(),
         systemShortcutsProvider: any SystemShortcutsProvider = CarbonSystemShortcuts(),
-        defaultHintsEnabled: Bool = true
+        defaultHintsEnabled: Bool = true,
+        defaultHintFrequency: HintPolicy = .oncePerSession
     ) {
         let contextIDs = contexts.map(\.id)
         precondition(
@@ -75,6 +88,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         self.store = store
         self.systemShortcutsProvider = systemShortcutsProvider
         self.defaultHintsEnabled = defaultHintsEnabled
+        self.defaultHintFrequency = defaultHintFrequency
         actionFired = actionFiredSubject.eraseToAnyPublisher()
 
         for context in contexts {
@@ -99,6 +113,8 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         overrides = loaded.overrides
         hintsEnabledOverride = loaded.preferences.hintsEnabled
         hintsEnabled = hintsEnabledOverride ?? defaultHintsEnabled
+        hintFrequencyOverride = loaded.preferences.hintFrequency
+        hintFrequency = hintFrequencyOverride ?? defaultHintFrequency
         reanalyzeConflicts()
         checkDefaultLevelConflicts()
         rebuildKeyBindings()
@@ -110,6 +126,14 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     public func setHintsEnabled(_ value: Bool) {
         hintsEnabledOverride = (value == defaultHintsEnabled) ? nil : value
         hintsEnabled = value
+        scheduleSave()
+    }
+
+    /// Set the user's hint-frequency preference. Persists as an override only when
+    /// it diverges from `defaultHintFrequency`, mirroring `setHintsEnabled(_:)`.
+    public func setHintFrequency(_ value: HintPolicy) {
+        hintFrequencyOverride = (value == defaultHintFrequency) ? nil : value
+        hintFrequency = value
         scheduleSave()
     }
 
@@ -133,6 +157,8 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         overrides = loaded.overrides
         hintsEnabledOverride = loaded.preferences.hintsEnabled
         hintsEnabled = hintsEnabledOverride ?? defaultHintsEnabled
+        hintFrequencyOverride = loaded.preferences.hintFrequency
+        hintFrequency = hintFrequencyOverride ?? defaultHintFrequency
 
         // Push the new bindings to every action whose effective value could have
         // changed (the union of before/after override keys), then rebuild the
@@ -363,7 +389,10 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         do {
             try store.save(RawState(
                 overrides: overrides,
-                preferences: Preferences(hintsEnabled: hintsEnabledOverride)
+                preferences: Preferences(
+                    hintsEnabled: hintsEnabledOverride,
+                    hintFrequency: hintFrequencyOverride
+                )
             ))
         } catch {
             // Best-effort; Task 7 adds os.Logger wiring.

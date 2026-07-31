@@ -22,9 +22,10 @@ ShortcutKit and skip this module.
 - ``ShortcutBindingEditor`` — one action's editor, to drop into an onboarding flow
   or a custom layout.
 - ``KeyBindingsLegendView`` — a read-only cheat sheet, styled with ``LegendStyle``.
-- The **`shortcutHintHUD(registry:policy:options:)`** view modifier — a transient
+- The **`shortcutHintHUD(registry:options:)`** view modifier — a transient
   "you could've used ⌘S" toast when an action fires via a non-shortcut path.
-  Tune frequency with ``HintPolicy`` and placement/duration with ``HintHUDOptions``.
+  Frequency follows the registry's `hintFrequency` (a `HintPolicy`); tune
+  placement/duration with ``HintHUDOptions``.
 
 ```swift
 import ShortcutKitUI
@@ -62,7 +63,6 @@ ContentView().shortcutHintHUD(registry: model.registry)
 
 ### Discoverability HUD
 
-- ``HintPolicy``
 - ``HintHUDOptions``
 - ``HintHUDPlacement``
 - ``HintToastContext``

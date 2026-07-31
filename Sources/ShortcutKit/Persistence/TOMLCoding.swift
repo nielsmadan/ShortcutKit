@@ -108,6 +108,9 @@ enum TOMLCoding {
             if let hintsEnabled = state.preferences.hintsEnabled {
                 prefs["hints-enabled"] = hintsEnabled
             }
+            if let hintFrequency = state.preferences.hintFrequency {
+                prefs["hint-frequency"] = hintFrequency.persistedString
+            }
             root[preferencesKey] = prefs
         }
         return root
@@ -120,6 +123,8 @@ enum TOMLCoding {
             if contextID == preferencesKey {
                 if let prefs = root[preferencesKey]?.table {
                     state.preferences.hintsEnabled = prefs["hints-enabled"]?.bool
+                    state.preferences.hintFrequency = prefs["hint-frequency"]?.string
+                        .flatMap(HintPolicy.init(persistedString:))
                 }
                 continue
             }
