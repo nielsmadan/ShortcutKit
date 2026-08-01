@@ -36,6 +36,8 @@ struct LegendOptionsTests {
     }
 
     @Test func columnWidthsScaleWithSize() {
+        let shortcutWidths = LegendSize.allCases.map(\.metrics.shortcutWidth)
+        #expect(shortcutWidths == [44, 52, 60, 72])
         let widths = LegendSize.allCases.map(\.metrics.cellWidth)
         #expect(widths == widths.sorted()) // wider at larger sizes
         #expect(Set(widths).count == LegendSize.allCases.count) // every size distinct
@@ -80,6 +82,13 @@ struct LegendOptionsTests {
         let result = legendFlowLayout(sizes: sizes, maxWidth: 1000, spacing: 10, lineSpacing: 5)
         #expect(result.positions.allSatisfy { $0.y == 0 }) // all on one row
         #expect(result.size.height == 20)
+    }
+
+    @Test func flowLayoutClampsCellWiderThanAvailableWidth() {
+        let sizes = [CGSize(width: 300, height: 20), CGSize(width: 50, height: 20)]
+        let result = legendFlowLayout(sizes: sizes, maxWidth: 200, spacing: 10, lineSpacing: 5)
+        #expect(result.size.width == 200)
+        #expect(result.positions[1] == CGPoint(x: 0, y: 25))
     }
 
     @Test func flowLayoutRespectsMinCellWidth() {

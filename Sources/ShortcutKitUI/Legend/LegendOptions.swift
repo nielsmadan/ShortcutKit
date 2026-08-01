@@ -54,7 +54,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
                 columnSpacing: 12,
                 headerToRows: 5,
                 sectionSpacing: 16,
-                shortcutWidth: 58,
+                shortcutWidth: 44,
                 labelWidth: 110,
                 gutter: 8
             )
@@ -65,7 +65,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
                 columnSpacing: 14,
                 headerToRows: 6,
                 sectionSpacing: 19,
-                shortcutWidth: 68,
+                shortcutWidth: 52,
                 labelWidth: 130,
                 gutter: 9
             )
@@ -76,7 +76,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
                 columnSpacing: 16,
                 headerToRows: 7,
                 sectionSpacing: 22,
-                shortcutWidth: 80,
+                shortcutWidth: 60,
                 labelWidth: 150,
                 gutter: 10
             )
@@ -87,7 +87,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
                 columnSpacing: 20,
                 headerToRows: 9,
                 sectionSpacing: 27,
-                shortcutWidth: 96,
+                shortcutWidth: 72,
                 labelWidth: 180,
                 gutter: 12
             )
@@ -226,9 +226,10 @@ func legendFlexibleGridItems(count: Int, minCellWidth: CGFloat, spacing: CGFloat
 }
 
 /// Wrapping flow placement: positions cells left-to-right and wraps to a new row
-/// when the next cell would exceed `maxWidth`. Returns each cell's origin plus the
-/// total content size. Any cell narrower than `minCellWidth` is padded up to that
-/// floor before placement — that's how `LegendColumns.auto(minWidth:)` enforces a
+/// when the next cell would exceed `maxWidth`. Returns each cell's origin and
+/// constrained size plus the total content size. Any cell narrower than
+/// `minCellWidth` is padded up to that floor before placement — that's how
+/// `LegendColumns.auto(minWidth:)` enforces a
 /// per-cell design rhythm. Pure, so the legend's `Layout` can be unit-tested.
 func legendFlowLayout(
     sizes: [CGSize],
@@ -236,23 +237,25 @@ func legendFlowLayout(
     spacing: CGFloat,
     lineSpacing: CGFloat,
     minCellWidth: CGFloat = 0
-) -> (size: CGSize, positions: [CGPoint]) {
+) -> (size: CGSize, positions: [CGPoint], itemSizes: [CGSize]) {
     var positions: [CGPoint] = []
+    var itemSizes: [CGSize] = []
     var x: CGFloat = 0
     var y: CGFloat = 0
     var rowHeight: CGFloat = 0
     var contentWidth: CGFloat = 0
     for size in sizes {
-        let effectiveWidth = max(size.width, minCellWidth)
-        if x > 0, x + effectiveWidth > maxWidth {
+        let itemSize = CGSize(width: min(max(size.width, minCellWidth), maxWidth), height: size.height)
+        if x > 0, x + itemSize.width > maxWidth {
             x = 0
             y += rowHeight + lineSpacing
             rowHeight = 0
         }
         positions.append(CGPoint(x: x, y: y))
-        x += effectiveWidth + spacing
-        rowHeight = max(rowHeight, size.height)
+        itemSizes.append(itemSize)
+        x += itemSize.width + spacing
+        rowHeight = max(rowHeight, itemSize.height)
         contentWidth = max(contentWidth, x - spacing)
     }
-    return (CGSize(width: contentWidth, height: y + rowHeight), positions)
+    return (CGSize(width: contentWidth, height: y + rowHeight), positions, itemSizes)
 }

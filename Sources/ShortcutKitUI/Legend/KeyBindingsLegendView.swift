@@ -201,7 +201,7 @@ private struct LegendSectionHeader: View {
 /// entry font. `.columns` renders each as a fixed-width column (shortcut trailing,
 /// label leading), single-line and tail-truncated, with the full value on hover —
 /// so entries line up into a table. `.inline` is the compact strip's content-sized,
-/// single-line pair (no fixed width, no truncation).
+/// single-line pair, truncated only when one entry exceeds the available width.
 private struct LegendEntryCell: View {
     let entry: KeyBindings.Entry
     let options: LegendOptions
@@ -277,10 +277,11 @@ private struct LegendEntryCell: View {
         }
     }
 
-    /// Content-sized single-line pair for the compact strip.
+    /// Content-sized single-line pair for the compact strip, bounded by its container.
     private var inlineRow: some View {
         let m = options.metrics
         let shortcutView = shortcutDisplay(fontSize: m.entryFont)
+            .fixedSize(horizontal: true, vertical: false)
         let labelText = Text(labelString).font(.system(size: m.entryFont))
         return HStack(spacing: 6) {
             if case .shortcutLeading = options.entryLayout {
@@ -292,7 +293,7 @@ private struct LegendEntryCell: View {
             }
         }
         .lineLimit(1)
-        .fixedSize(horizontal: true, vertical: false)
+        .truncationMode(.tail)
     }
 }
 
@@ -334,14 +335,16 @@ private struct FlowLayout: Layout {
 
     func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
         let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
-        let positions = legendFlowLayout(
+        let layout = legendFlowLayout(
             sizes: sizes, maxWidth: bounds.width,
             spacing: spacing, lineSpacing: lineSpacing, minCellWidth: minCellWidth
-        ).positions
-        for (subview, position) in zip(subviews, positions) {
+        )
+        for (index, subview) in subviews.enumerated() {
+            let position = layout.positions[index]
+            let itemSize = layout.itemSizes[index]
             subview.place(
                 at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
-                proposal: .unspecified
+                proposal: ProposedViewSize(itemSize)
             )
         }
     }
