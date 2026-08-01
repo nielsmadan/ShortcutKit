@@ -69,5 +69,5 @@ tag-release bump:
         VERSION="$MAJOR.$MINOR.$PATCH"
     fi
     echo "Tagging v$VERSION..."
-    git tag "v$VERSION" && git push origin main "v$VERSION" && \
+    git tag -a -m "Release v$VERSION" "v$VERSION" && git push origin main "v$VERSION" && \
     echo "Tagged and pushed v$VERSION"
