@@ -8,7 +8,7 @@ import SwiftUI
 func legendTextIsTruncated(_ text: String, fontSize: CGFloat, width: CGFloat, monospaced: Bool = false) -> Bool {
     guard !text.isEmpty, width > 0 else { return false }
     let font = monospaced
-        ? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        ? legendShortcutNSFont(size: fontSize)
         : NSFont.systemFont(ofSize: fontSize)
     let attributes: [NSAttributedString.Key: Any] = [.font: font]
     return (text as NSString).size(withAttributes: attributes).width > width

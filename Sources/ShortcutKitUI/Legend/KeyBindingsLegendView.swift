@@ -221,17 +221,18 @@ private struct LegendEntryCell: View {
     }
 
     /// The shortcut portion: a symbol/abbreviation `ShortcutLabel` in `.compact`
-    /// style, otherwise the plain monospaced `displayString`.
+    /// style, otherwise the plain `displayString`. Monospaced either way, and the
+    /// emphasized half of the pair — the label beside it renders secondary.
     @ViewBuilder
     private func shortcutDisplay(fontSize: CGFloat) -> some View {
         if effectiveStyle == .compact, let primaryShortcut {
             ShortcutLabel(primaryShortcut, style: .compact)
-                .font(.system(size: fontSize))
-                .foregroundStyle(.secondary)
+                .font(legendShortcutFont(size: fontSize))
+                .foregroundStyle(.primary)
         } else {
             Text(shortcut)
-                .font(.system(size: fontSize, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .font(legendShortcutFont(size: fontSize))
+                .foregroundStyle(.primary)
         }
     }
 
@@ -266,6 +267,7 @@ private struct LegendEntryCell: View {
         case let .fixed(width): .fixed(width)
         }
         let labelColumn = TruncatableLabel(text: labelString, fontSize: m.entryFont, sizing: sizing)
+            .foregroundStyle(legendLabelForeground)
         return HStack(spacing: m.gutter) {
             if case .shortcutLeading = options.entryLayout {
                 shortcutColumn
@@ -282,7 +284,9 @@ private struct LegendEntryCell: View {
         let m = options.metrics
         let shortcutView = shortcutDisplay(fontSize: m.entryFont)
             .fixedSize(horizontal: true, vertical: false)
-        let labelText = Text(labelString).font(.system(size: m.entryFont))
+        let labelText = Text(labelString)
+            .font(.system(size: m.entryFont))
+            .foregroundStyle(legendLabelForeground)
         return HStack(spacing: 6) {
             if case .shortcutLeading = options.entryLayout {
                 shortcutView
