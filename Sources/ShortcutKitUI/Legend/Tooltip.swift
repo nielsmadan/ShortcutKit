@@ -1,15 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// True when `text` rendered at `fontSize` would exceed `width`. Uses the AppKit
+/// True when `text` rendered in `font` would exceed `width`. Uses the AppKit
 /// text-sizing path so it's synchronous + testable. Not pixel-identical to
 /// SwiftUI `Text` (kerning + hinting differ slightly), but close enough to gate
-/// a tooltip.
-func legendTextIsTruncated(_ text: String, fontSize: CGFloat, width: CGFloat, monospaced: Bool = false) -> Bool {
+/// a tooltip. Takes the same `NSFont` the caller renders with — measuring in a
+/// different font than the view draws is how this gate silently goes wrong.
+func legendTextIsTruncated(_ text: String, font: NSFont, width: CGFloat) -> Bool {
     guard !text.isEmpty, width > 0 else { return false }
-    let font = monospaced
-        ? legendShortcutNSFont(size: fontSize)
-        : NSFont.systemFont(ofSize: fontSize)
     let attributes: [NSAttributedString.Key: Any] = [.font: font]
     return (text as NSString).size(withAttributes: attributes).width > width
 }
@@ -94,7 +92,7 @@ struct TruncatableLabel: View {
     }
 
     let text: String
-    let fontSize: CGFloat
+    let font: NSFont
     let sizing: Sizing
 
     @State private var frameWidth: CGFloat = 0
@@ -109,14 +107,14 @@ struct TruncatableLabel: View {
             .contentShape(Rectangle())
             .tooltip(
                 text,
-                isEnabled: legendTextIsTruncated(text, fontSize: fontSize, width: frameWidth)
+                isEnabled: legendTextIsTruncated(text, font: font, width: frameWidth)
             )
     }
 
     @ViewBuilder
     private var framed: some View {
         let base = Text(text)
-            .font(.system(size: fontSize))
+            .font(Font(font))
             .lineLimit(1)
             .truncationMode(.tail)
         switch sizing {

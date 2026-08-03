@@ -141,6 +141,9 @@ public struct LegendOptions: Sendable, Hashable {
     /// `.single` column layout implicitly upgrades `.size` to `.flexible` so
     /// one-column rails breathe.
     public var labelWidth: LegendLabelWidth
+    /// Fonts and colors. Defaults to the legend's built-in look; override
+    /// individual slots to match a host app's type stack.
+    public var appearance: LegendAppearance
 
     public init(
         columns: LegendColumns = .auto(minWidth: 150),
@@ -148,7 +151,8 @@ public struct LegendOptions: Sendable, Hashable {
         size: LegendSize = .small,
         compact: Bool = false,
         shortcutStyle: ShortcutLabelStyle? = nil,
-        labelWidth: LegendLabelWidth = .size
+        labelWidth: LegendLabelWidth = .size,
+        appearance: LegendAppearance = .default
     ) {
         self.columns = columns
         self.entryLayout = entryLayout
@@ -156,6 +160,7 @@ public struct LegendOptions: Sendable, Hashable {
         self.compact = compact
         self.shortcutStyle = shortcutStyle
         self.labelWidth = labelWidth
+        self.appearance = appearance
     }
 
     public static let `default` = LegendOptions()
@@ -176,13 +181,32 @@ public struct LegendOptions: Sendable, Hashable {
 /// a flexible label grows to fill its container). Pure, so it's unit-testable and
 /// the `.fixed(n)` grid and the label cell agree on a single width.
 func resolvedCellWidth(for options: LegendOptions) -> CGFloat {
-    let m = options.metrics
+    let widths = legendColumnWidths(for: options)
     switch effectiveLabelWidth(for: options) {
     case .size, .flexible:
-        return m.cellWidth
+        return widths.shortcut + options.metrics.gutter + widths.label
     case let .fixed(width):
-        return m.shortcutWidth + m.gutter + width
+        return widths.shortcut + options.metrics.gutter + width
     }
+}
+
+/// The metric column widths scaled by any explicit ``LegendFont/size`` override, so
+/// bigger text doesn't render into columns sized for the `LegendSize` metric — the
+/// failure `cellWidth`'s adopters (who size a container from it) would inherit.
+/// Returns the metrics unchanged whenever the fonts inherit their size, which is the
+/// default, so an un-styled legend is untouched. A *face* swap at the same point size
+/// can still need a wider column; that's what `labelWidth` is for.
+func legendColumnWidths(for options: LegendOptions) -> (shortcut: CGFloat, label: CGFloat) {
+    let m = options.metrics
+    let scale = legendColumnScale(for: options)
+    return (m.shortcutWidth * scale, m.labelWidth * scale)
+}
+
+func legendColumnScale(for options: LegendOptions) -> CGFloat {
+    let m = options.metrics
+    let shortcut = options.appearance.shortcutNSFont(defaultSize: m.entryFont).pointSize
+    let label = options.appearance.labelNSFont(defaultSize: m.entryFont).pointSize
+    return max(max(shortcut, label) / m.entryFont, 1)
 }
 
 /// Resolve the effective label width for `options`. When `columns == .single`

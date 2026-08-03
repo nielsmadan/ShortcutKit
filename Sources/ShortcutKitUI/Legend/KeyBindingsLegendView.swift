@@ -12,7 +12,9 @@ import SwiftUI
 ///
 /// `LegendStyle` chooses the container (a material `.panel` or a scrolling
 /// `.sheet`); `LegendOptions` controls the entry layout — columns, cell order,
-/// size, and a `compact` flag that collapses to a dense headerless strip. The
+/// size, and a `compact` flag that collapses to a dense headerless strip — and
+/// carries the `LegendAppearance` that overrides fonts and colors to match a host's
+/// type stack. The
 /// default is a grouped table of fixed-width, aligned columns (shortcut then label,
 /// long values tail-truncated with the full text on hover). Shortcuts render with
 /// ShortcutField's `.compact` symbol labels by default in both layouts
@@ -133,6 +135,7 @@ private struct LegendGrid: View {
     let label: (KeyBindings.Entry) -> String?
 
     var body: some View {
+        let fonts = LegendResolvedFonts(options: options)
         VStack(alignment: .leading, spacing: options.metrics.sectionSpacing) {
             ForEach(bindings.groups) { group in
                 VStack(alignment: .leading, spacing: options.metrics.headerToRows) {
@@ -140,7 +143,7 @@ private struct LegendGrid: View {
                     switch options.columns {
                     case .single:
                         VStack(alignment: .leading, spacing: options.metrics.rowSpacing) {
-                            ForEach(group.entries) { cell($0) }
+                            ForEach(group.entries) { cell($0, fonts) }
                         }
                     case let .fixed(count):
                         let items: [GridItem] = {
@@ -158,7 +161,7 @@ private struct LegendGrid: View {
                             )
                         }()
                         LazyVGrid(columns: items, alignment: .leading, spacing: options.metrics.rowSpacing) {
-                            ForEach(group.entries) { cell($0) }
+                            ForEach(group.entries) { cell($0, fonts) }
                         }
                     case let .auto(minWidth):
                         FlowLayout(
@@ -166,7 +169,7 @@ private struct LegendGrid: View {
                             lineSpacing: options.metrics.rowSpacing,
                             minCellWidth: minWidth
                         ) {
-                            ForEach(group.entries) { cell($0) }
+                            ForEach(group.entries) { cell($0, fonts) }
                         }
                     }
                 }
@@ -174,8 +177,21 @@ private struct LegendGrid: View {
         }
     }
 
-    private func cell(_ entry: KeyBindings.Entry) -> some View {
-        LegendEntryCell(entry: entry, options: options, label: label, mode: .columns)
+    private func cell(_ entry: KeyBindings.Entry, _ fonts: LegendResolvedFonts) -> some View {
+        LegendEntryCell(entry: entry, options: options, fonts: fonts, label: label, mode: .columns)
+    }
+}
+
+/// The two entry fonts, resolved once per legend rather than once per cell: they
+/// depend only on `options`, so every cell would otherwise redo the same lookup —
+/// and an *unresolvable* named face costs ~26x a hit and is never cached by AppKit.
+struct LegendResolvedFonts {
+    let shortcut: NSFont
+    let label: NSFont
+
+    init(options: LegendOptions) {
+        shortcut = options.appearance.shortcutNSFont(defaultSize: options.metrics.entryFont)
+        label = options.appearance.labelNSFont(defaultSize: options.metrics.entryFont)
     }
 }
 
@@ -188,8 +204,8 @@ private struct LegendSectionHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: options.metrics.headerFont))
-                .foregroundStyle(.secondary)
+                .font(Font(options.appearance.headerNSFont(defaultSize: options.metrics.headerFont)))
+                .foregroundStyle(options.appearance.headerForeground)
                 .textCase(.uppercase)
                 .kerning(0.6)
             Divider().opacity(0.6)
@@ -205,6 +221,9 @@ private struct LegendSectionHeader: View {
 private struct LegendEntryCell: View {
     let entry: KeyBindings.Entry
     let options: LegendOptions
+    /// Resolved by the enclosing grid/strip, so the same `NSFont` instance is
+    /// rendered *and* measured and the truncation gate can't drift from the screen.
+    let fonts: LegendResolvedFonts
     let label: (KeyBindings.Entry) -> String?
     let mode: Mode
 
@@ -220,20 +239,22 @@ private struct LegendEntryCell: View {
         legendShortcutStyle(override: options.shortcutStyle)
     }
 
-    /// The shortcut portion: a symbol/abbreviation `ShortcutLabel` in `.compact`
-    /// style, otherwise the plain `displayString`. Monospaced either way, and the
-    /// emphasized half of the pair — the label beside it renders secondary.
     @ViewBuilder
-    private func shortcutDisplay(fontSize: CGFloat) -> some View {
+    private var shortcutContent: some View {
         if effectiveStyle == .compact, let primaryShortcut {
             ShortcutLabel(primaryShortcut, style: .compact)
-                .font(legendShortcutFont(size: fontSize))
-                .foregroundStyle(.primary)
         } else {
             Text(shortcut)
-                .font(legendShortcutFont(size: fontSize))
-                .foregroundStyle(.primary)
         }
+    }
+
+    /// The shortcut portion: a symbol/abbreviation `ShortcutLabel` in `.compact`
+    /// style, otherwise the plain `displayString`. The emphasized half of the pair —
+    /// the label beside it renders quieter.
+    private var shortcutDisplay: some View {
+        shortcutContent
+            .font(Font(fonts.shortcut))
+            .foregroundStyle(options.appearance.shortcutForeground)
     }
 
     var body: some View {
@@ -247,27 +268,28 @@ private struct LegendEntryCell: View {
     /// (multi-step chords in `.compact`) from spilling past its column into the
     /// gutter/label. The `.compact` shortcut relies on `ShortcutLabel`'s own
     /// per-glyph tooltips; the `.text` path gets a column-wide tooltip (gated on a
-    /// monospaced truncation measurement) since a truncated word otherwise has no
-    /// way to reveal its full value.
+    /// truncation measurement in the same font it renders) since a truncated word
+    /// otherwise has no way to reveal its full value.
     private var columnsRow: some View {
         let m = options.metrics
-        let shortcutColumn = shortcutDisplay(fontSize: m.entryFont)
+        let widths = legendColumnWidths(for: options)
+        let shortcutColumn = shortcutDisplay
             .lineLimit(1)
             .truncationMode(.tail)
-            .frame(width: m.shortcutWidth, alignment: .trailing)
+            .frame(width: widths.shortcut, alignment: .trailing)
             .clipped()
             .tooltip(
                 shortcut,
                 isEnabled: effectiveStyle == .text
-                    && legendTextIsTruncated(shortcut, fontSize: m.entryFont, width: m.shortcutWidth, monospaced: true)
+                    && legendTextIsTruncated(shortcut, font: fonts.shortcut, width: widths.shortcut)
             )
         let sizing: TruncatableLabel.Sizing = switch effectiveLabelWidth(for: options) {
-        case .size: .fixed(m.labelWidth)
+        case .size: .fixed(widths.label)
         case .flexible: .flexible
         case let .fixed(width): .fixed(width)
         }
-        let labelColumn = TruncatableLabel(text: labelString, fontSize: m.entryFont, sizing: sizing)
-            .foregroundStyle(legendLabelForeground)
+        let labelColumn = TruncatableLabel(text: labelString, font: fonts.label, sizing: sizing)
+            .foregroundStyle(options.appearance.labelForeground)
         return HStack(spacing: m.gutter) {
             if case .shortcutLeading = options.entryLayout {
                 shortcutColumn
@@ -281,12 +303,11 @@ private struct LegendEntryCell: View {
 
     /// Content-sized single-line pair for the compact strip, bounded by its container.
     private var inlineRow: some View {
-        let m = options.metrics
-        let shortcutView = shortcutDisplay(fontSize: m.entryFont)
+        let shortcutView = shortcutDisplay
             .fixedSize(horizontal: true, vertical: false)
         let labelText = Text(labelString)
-            .font(.system(size: m.entryFont))
-            .foregroundStyle(legendLabelForeground)
+            .font(Font(fonts.label))
+            .foregroundStyle(options.appearance.labelForeground)
         return HStack(spacing: 6) {
             if case .shortcutLeading = options.entryLayout {
                 shortcutView
@@ -310,10 +331,11 @@ private struct CompactStrip: View {
     let label: (KeyBindings.Entry) -> String?
 
     var body: some View {
+        let fonts = LegendResolvedFonts(options: options)
         FlowLayout(spacing: options.metrics.columnSpacing, lineSpacing: options.metrics.rowSpacing) {
             ForEach(bindings.groups) { group in
                 ForEach(group.entries) { entry in
-                    LegendEntryCell(entry: entry, options: options, label: label, mode: .inline)
+                    LegendEntryCell(entry: entry, options: options, fonts: fonts, label: label, mode: .inline)
                 }
             }
         }

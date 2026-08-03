@@ -61,6 +61,8 @@ ContentView().shortcutHintHUD(registry: model.registry)
 - ``LegendColumns``
 - ``LegendEntryLayout``
 - ``LegendSize``
+- ``LegendAppearance``
+- ``LegendFont``
 
 ### Discoverability HUD
 
