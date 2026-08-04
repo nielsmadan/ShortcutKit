@@ -233,6 +233,12 @@ private struct LegendEntryCell: View {
     private var shortcut: String { primaryShortcut?.displayString ?? "" }
     private var labelString: String { label(entry) ?? String(localized: entry.displayName) }
 
+    /// `"Label — description"` when the action carries a description, else `nil`.
+    /// Folded into the label's hover tooltip in both layouts.
+    private var descriptionTooltip: String? {
+        legendTooltipText(label: labelString, description: entry.description)
+    }
+
     /// Both layouts default to ShortcutField's `.compact` symbols;
     /// `options.shortcutStyle` overrides to verbose text.
     private var effectiveStyle: ShortcutLabelStyle {
@@ -288,8 +294,11 @@ private struct LegendEntryCell: View {
         case .flexible: .flexible
         case let .fixed(width): .fixed(width)
         }
-        let labelColumn = TruncatableLabel(text: labelString, font: fonts.label, sizing: sizing)
-            .foregroundStyle(options.appearance.labelForeground)
+        let labelColumn = TruncatableLabel(
+            text: labelString, font: fonts.label, sizing: sizing,
+            tooltipOverrideText: descriptionTooltip
+        )
+        .foregroundStyle(options.appearance.labelForeground)
         return HStack(spacing: m.gutter) {
             if case .shortcutLeading = options.entryLayout {
                 shortcutColumn
@@ -308,6 +317,7 @@ private struct LegendEntryCell: View {
         let labelText = Text(labelString)
             .font(Font(fonts.label))
             .foregroundStyle(options.appearance.labelForeground)
+            .tooltip(descriptionTooltip ?? labelString, isEnabled: descriptionTooltip != nil)
         return HStack(spacing: 6) {
             if case .shortcutLeading = options.entryLayout {
                 shortcutView

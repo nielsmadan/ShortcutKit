@@ -52,6 +52,7 @@ public struct KeyBindingsView: View {
     @ObservedObject var registry: ShortcutRegistry
     let mode: Mode
     let style: KeyBindingsStyle
+    let showsDescriptions: Bool
 
     @State private var query: String = ""
     @State private var resetAlertShown: Bool = false
@@ -60,14 +61,17 @@ public struct KeyBindingsView: View {
     /// Full mode — renders every `includeInSettings` context in the registry.
     /// `presentation` picks `.standalone` (a self-contained pane; the default) or
     /// `.embedded` (bare `Section`s for your own `Form`/`List`). `style` controls
-    /// visual density (`.regular` / `.dense`).
+    /// visual density (`.regular` / `.dense`). Set `showsDescriptions` to render each
+    /// action's `description` (when it has one) as a subtitle under its name.
     public init(
         registry: ShortcutRegistry,
         style: KeyBindingsStyle = .regular,
-        presentation: KeyBindingsPresentation = .standalone()
+        presentation: KeyBindingsPresentation = .standalone(),
+        showsDescriptions: Bool = false
     ) {
         self.registry = registry
         self.style = style
+        self.showsDescriptions = showsDescriptions
         mode = .full(presentation: presentation)
     }
 
@@ -82,11 +86,13 @@ public struct KeyBindingsView: View {
     public init(
         context: ShortcutContext<some ShortcutAction>,
         style: KeyBindingsStyle = .regular,
-        searchEnabled: Bool = false
+        searchEnabled: Bool = false,
+        showsDescriptions: Bool = false
     ) {
         let registry = attachedRegistry(for: context)
         self.registry = registry
         self.style = style
+        self.showsDescriptions = showsDescriptions
         mode = .inline(context: context, searchEnabled: searchEnabled)
     }
 
@@ -131,6 +137,8 @@ public struct KeyBindingsView: View {
     var __presentationForTest: KeyBindingsPresentation? {
         if case let .full(presentation) = mode { presentation } else { nil }
     }
+
+    var __showsDescriptionsForTest: Bool { showsDescriptions }
 
     // swiftlint:enable identifier_name
 
@@ -199,6 +207,7 @@ public struct KeyBindingsView: View {
             row: row,
             policy: ScopePolicy(registry.scope(forContextID: row.contextID)),
             style: style,
+            showsDescription: showsDescriptions,
             onSet: { registry.setShortcuts($0, contextID: row.contextID, actionID: row.actionID) },
             onClear: { registry.removeShortcut(at: $0, contextID: row.contextID, actionID: row.actionID) },
             onReset: { registry.reset(contextID: row.contextID, actionID: row.actionID) }

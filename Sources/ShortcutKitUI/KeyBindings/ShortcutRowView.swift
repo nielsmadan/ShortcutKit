@@ -16,6 +16,7 @@ struct ShortcutRowView: View {
     let row: KeyBindings.Entry
     let policy: ScopePolicy
     let style: KeyBindingsStyle
+    let showsDescription: Bool
     let onSet: ([Shortcut]) -> Void
     let onClear: (Int) -> Void
     let onReset: () -> Void
@@ -25,6 +26,7 @@ struct ShortcutRowView: View {
         row: KeyBindings.Entry,
         policy: ScopePolicy,
         style: KeyBindingsStyle,
+        showsDescription: Bool = false,
         onSet: @escaping ([Shortcut]) -> Void,
         onClear: @escaping (Int) -> Void,
         onReset: @escaping () -> Void,
@@ -33,6 +35,7 @@ struct ShortcutRowView: View {
         self.row = row
         self.policy = policy
         self.style = style
+        self.showsDescription = showsDescription
         self.onSet = onSet
         self.onClear = onClear
         self.onReset = onReset
@@ -43,9 +46,17 @@ struct ShortcutRowView: View {
         HStack(spacing: style == .dense ? 8 : 10) {
             ConflictStripeView(conflicts: row.conflicts, onJump: onJump)
                 .frame(width: 3)
-            Text(row.displayName)
-                .font(.system(size: style == .dense ? 11 : 13))
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(row.displayName)
+                    .font(.system(size: style == .dense ? 11 : 13))
+                    .lineLimit(1)
+                if showsDescription, let description = row.description {
+                    Text(description)
+                        .font(.system(size: style == .dense ? 9 : 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
             Spacer(minLength: 8)
             recorders
             resetButton
@@ -56,6 +67,13 @@ struct ShortcutRowView: View {
     // MARK: - Testable internals
 
     var bindingCount: Int { row.effectiveShortcuts.count }
+
+    /// Test hook: the resolved subtitle string this row renders, or `nil` when the
+    /// description is suppressed (flag off) or the action has none.
+    var subtitleText: String? {
+        guard showsDescription, let description = row.description else { return nil }
+        return String(localized: description)
+    }
 
     /// Test hook: appends a placeholder binding slot via `onSet`. The placeholder
     /// shortcut is arbitrary — production callers replace it via the recorder.

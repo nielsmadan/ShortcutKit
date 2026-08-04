@@ -15,6 +15,8 @@ The `0.x` line is pre-release: the public API is stabilizing toward 1.0 and may 
 - **[Core/UI]** User-controllable hint frequency: `registry.hintFrequency` / `setHintFrequency(_:)` (persisted like `hintsEnabled`, defaulted via `ShortcutRegistry(defaultHintFrequency:)`), surfaced as a picker in `ShortcutPreferencesView` and read live by the HUD.
 - **[UI]** `HintPreferencesView` — the "show hints" toggle and frequency picker as bare `Form` rows to drop inside your own `Section`, so the hint controls compose into your settings layout instead of only inside the full `ShortcutPreferencesView` pane.
 - **[UI]** `LegendOptions.appearance` — a `LegendAppearance` of per-slot fonts (`labelFont` / `shortcutFont` / `headerFont`, each a `LegendFont`) and colors (`labelColor` / `shortcutColor` / `headerColor`), so a legend can adopt a host app's type stack instead of forcing the system font. Every slot defaults to the built-in look; `LegendFont` leaves `face` and `size` `nil` to inherit, so overriding a typeface keeps `LegendSize` scaling.
+- **[UI]** `KeyBindingsView` / `ShortcutPreferencesView` gain `showsDescriptions` (default off) — render each action's `description`, for the actions that declare one, as a subtitle under its name in the settings rows.
+- **[UI]** The legend folds an action's `description` into its hover tooltip ("Name — description"), in both the column and compact layouts — detail on demand, no visual change to the row itself.
 
 ### Changed
 - **[UI]** The legend's shortcut column now renders in `Menlo` — a slashed zero and a tailed `l` keep `0`/`O` and `l`/`I` apart — and the shortcut is the emphasized half of each row (the label renders quieter), reversing the previous weighting.

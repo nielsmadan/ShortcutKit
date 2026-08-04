@@ -119,4 +119,22 @@ struct KeyBindingsViewTests {
         #expect(view.__searchEnabledForTest == true)
         _ = registry
     }
+
+    @Test func fullModeDescriptionsOffByDefault() {
+        let view = KeyBindingsView(registry: makeRegistry(contextCount: 1))
+        #expect(view.__showsDescriptionsForTest == false)
+    }
+
+    @Test func fullModeDescriptionsOptIn() {
+        let view = KeyBindingsView(registry: makeRegistry(contextCount: 1), showsDescriptions: true)
+        #expect(view.__showsDescriptionsForTest == true)
+    }
+
+    @Test func inlineModeDescriptionsOptIn() {
+        let ctx = ShortcutContext<Act>("editor")
+        let registry = ShortcutRegistry(contexts: [ctx])
+        let view = KeyBindingsView(context: ctx, showsDescriptions: true)
+        #expect(view.__showsDescriptionsForTest == true)
+        _ = registry
+    }
 }

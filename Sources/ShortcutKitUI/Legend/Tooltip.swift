@@ -12,6 +12,15 @@ func legendTextIsTruncated(_ text: String, font: NSFont, width: CGFloat) -> Bool
     return (text as NSString).size(withAttributes: attributes).width > width
 }
 
+/// The legend hover-tooltip string for an entry's label: `"Label — description"`
+/// when the action carries a `description`, else `nil` (no description → the tooltip
+/// falls back to its truncation-only behavior). `description` is adopter content, so
+/// it resolves against the adopter's bundle, not ShortcutKitUI's chrome bundle.
+func legendTooltipText(label: String, description: LocalizedStringResource?) -> String? {
+    guard let description else { return nil }
+    return "\(label) — \(String(localized: description))"
+}
+
 /// Custom hover tooltip. SwiftUI's `.help(...)` uses the macOS system tooltip
 /// which honors `NSInitialToolTipDelay` (default ~2s) and can't be tuned; this
 /// modifier renders a small overlay after a caller-supplied `delay`, gated by
@@ -47,6 +56,11 @@ struct TooltipModifier: ViewModifier {
                     Text(text)
                         .font(.system(size: 11))
                         .foregroundStyle(.primary)
+                        // Bound the width so a long description (the tooltip can now
+                        // carry an action's full `description`) wraps instead of
+                        // running a single line off the window edge.
+                        .frame(maxWidth: 320, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
                         .background(
@@ -54,7 +68,6 @@ struct TooltipModifier: ViewModifier {
                                 .fill(.regularMaterial)
                                 .shadow(radius: 2, y: 1)
                         )
-                        .fixedSize()
                         .offset(y: -22)
                         .allowsHitTesting(false)
                         .transition(.opacity)
@@ -94,6 +107,10 @@ struct TruncatableLabel: View {
     let text: String
     let font: NSFont
     let sizing: Sizing
+    /// When set, the tooltip shows this instead of `text` and is always enabled
+    /// (used to surface an action's description). `nil` keeps the truncation-only
+    /// behavior — tooltip shows `text`, and only when it's actually clipped.
+    var tooltipOverrideText: String?
 
     @State private var frameWidth: CGFloat = 0
 
@@ -106,8 +123,9 @@ struct TruncatableLabel: View {
             })
             .contentShape(Rectangle())
             .tooltip(
-                text,
-                isEnabled: legendTextIsTruncated(text, font: font, width: frameWidth)
+                tooltipOverrideText ?? text,
+                isEnabled: tooltipOverrideText != nil
+                    || legendTextIsTruncated(text, font: font, width: frameWidth)
             )
     }
 

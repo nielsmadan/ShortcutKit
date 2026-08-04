@@ -54,8 +54,11 @@ public struct ShortcutBindingEditor<Action: ShortcutAction>: View {
                     onReset: { registry.reset(contextID: context.id, actionID: action.rawValue) }
                 )
                 if showsDescription, let description = action.definition.description {
+                    // Same size/weight as KeyBindingsView's row subtitle so the same
+                    // description reads identically; unbounded here (no `lineLimit`)
+                    // since a single onboarding row can afford the full sentence.
                     Text(description)
-                        .font(.system(size: style == .dense ? 10 : 12))
+                        .font(.system(size: style == .dense ? 9 : 11))
                         .foregroundStyle(.secondary)
                 }
             }

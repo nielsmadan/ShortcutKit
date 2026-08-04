@@ -34,6 +34,13 @@ Use the default `.standalone` presentation only when the view is the **entire** 
 (it owns its own scroll, search field, and Reset-All button). For a single context,
 `KeyBindingsView(context:)`; pick density with ``KeyBindingsStyle``.
 
+Pass `showsDescriptions: true` to render each action's `description` (for the actions
+that declare one) as a subtitle under its name:
+
+```swift
+KeyBindingsView(registry: model.registry, presentation: .embedded, showsDescriptions: true)
+```
+
 When you compose the settings screen yourself, drop ``HintPreferencesView`` wherever
 you want the hint controls — it emits the "show hints" toggle and the frequency
 picker as bare `Form` rows, so you can put them in your own `Section` alongside other

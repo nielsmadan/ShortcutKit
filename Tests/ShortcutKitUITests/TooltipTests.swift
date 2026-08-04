@@ -51,4 +51,15 @@ struct TooltipTests {
         #expect(legendTextIsTruncated("Command K", font: mono, width: 1) == true)
         #expect(legendTextIsTruncated("Command K", font: mono, width: 500) == false)
     }
+
+    @Test func legendTooltipText_nilDescriptionReturnsNil() {
+        #expect(legendTooltipText(label: "Show Monitor", description: nil) == nil)
+    }
+
+    @Test func legendTooltipText_composesLabelAndDescription() {
+        #expect(
+            legendTooltipText(label: "Show Monitor", description: "Cycles through views")
+                == "Show Monitor — Cycles through views"
+        )
+    }
 }
