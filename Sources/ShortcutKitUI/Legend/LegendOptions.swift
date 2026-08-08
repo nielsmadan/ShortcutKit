@@ -56,7 +56,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
                 sectionSpacing: 16,
                 shortcutWidth: 44,
                 labelWidth: 110,
-                gutter: 8
+                gutter: 4
             )
         case .medium: LegendMetrics(
                 entryFont: 12,
@@ -67,7 +67,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
                 sectionSpacing: 19,
                 shortcutWidth: 52,
                 labelWidth: 130,
-                gutter: 9
+                gutter: 5
             )
         case .large: LegendMetrics(
                 entryFont: 14,
@@ -78,7 +78,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
                 sectionSpacing: 22,
                 shortcutWidth: 60,
                 labelWidth: 150,
-                gutter: 10
+                gutter: 6
             )
         case .extraLarge: LegendMetrics(
                 entryFont: 17,
@@ -89,7 +89,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
                 sectionSpacing: 27,
                 shortcutWidth: 72,
                 labelWidth: 180,
-                gutter: 12
+                gutter: 8
             )
         }
     }

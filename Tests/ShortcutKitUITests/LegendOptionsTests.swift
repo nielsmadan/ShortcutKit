@@ -38,6 +38,8 @@ struct LegendOptionsTests {
     @Test func columnWidthsScaleWithSize() {
         let shortcutWidths = LegendSize.allCases.map(\.metrics.shortcutWidth)
         #expect(shortcutWidths == [44, 52, 60, 72])
+        let gutters = LegendSize.allCases.map(\.metrics.gutter)
+        #expect(gutters == [4, 5, 6, 8])
         let widths = LegendSize.allCases.map(\.metrics.cellWidth)
         #expect(widths == widths.sorted()) // wider at larger sizes
         #expect(Set(widths).count == LegendSize.allCases.count) // every size distinct
