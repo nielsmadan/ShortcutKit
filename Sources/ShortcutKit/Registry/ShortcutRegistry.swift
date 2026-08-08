@@ -91,6 +91,11 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         self.defaultHintFrequency = defaultHintFrequency
         actionFired = actionFiredSubject.eraseToAnyPublisher()
 
+        // Unconditional: bindings can become multi-step at runtime via user
+        // overrides, and with no chord bound the suppressor's tracking check is
+        // never true, so this is a no-op rather than a dormant behavior change.
+        ShortcutTracking.installBeepSuppression()
+
         for context in contexts {
             attach(context: context)
         }
