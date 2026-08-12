@@ -1,8 +1,6 @@
 import Foundation
 
-/// How often the discoverability HUD shows the same hint. The app author sets a
-/// default via `ShortcutRegistry(defaultHintFrequency:)`; the user can override
-/// it through the preferences UI.
+/// How often the discoverability HUD repeats a hint for an action.
 public enum HintPolicy: Sendable, Hashable {
     /// Show every time the conditions are met.
     case always

@@ -29,9 +29,7 @@ import Testing
         #expect(try JSONDecoder().decode(Preferences.self, from: data) == prefs)
     }
 
-    // A garbage `hintFrequency` must degrade to `nil` (follow the app default), not
-    // throw — otherwise a single hand-edited typo fails the whole `RawState` load and
-    // resets every binding override. Mirrors the TOML decoder's tolerant behavior.
+    // Invalid policy text must not discard the rest of the persisted state.
     @Test func jsonMalformedHintFrequencyDecodesToNilInsteadOfThrowing() throws {
         let json = Data(#"{"hintsEnabled":true,"hintFrequency":"bogus"}"#.utf8)
         let prefs = try JSONDecoder().decode(Preferences.self, from: json)

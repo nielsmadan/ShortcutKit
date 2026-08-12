@@ -13,8 +13,7 @@ enum TOMLCoding {
     // MARK: - Whole-file encode/decode
 
     static func encode(_ state: RawState) throws -> String {
-        // Whole-file (un-namespaced) TOML omits preferences — they require a
-        // namespace (`FileStore(key:)`) to sit safely beside context tables.
+        // Preferences require a namespace to avoid colliding with context tables.
         let root = makeTable(from: state, includePreferences: false)
         return serialize(root)
     }
@@ -26,9 +25,6 @@ enum TOMLCoding {
 
     // MARK: - Namespaced (sub-tree) encode/decode
 
-    /// Decode the subtree at `keyPath`. Returns an empty `RawState` if any
-    /// segment of the path is missing — adopters who haven't customized any
-    /// shortcuts yet see an empty state, same as a missing file.
     static func decode(_ source: String, atKey keyPath: [String]) throws -> RawState {
         let root = try TOMLTable(string: source)
         guard let subtable = navigate(root, path: keyPath) else {
@@ -37,9 +33,6 @@ enum TOMLCoding {
         return try decodeTable(subtable)
     }
 
-    /// Read-modify-write: parse `existing` (or start fresh), replace the
-    /// subtree at `keyPath` with `state`'s encoding, return the full file
-    /// text. Sibling tables outside `keyPath` are preserved.
     static func encode(
         _ state: RawState,
         intoExisting existing: String?,
@@ -66,9 +59,7 @@ enum TOMLCoding {
         return current
     }
 
-    /// Set `value` at `path` inside `root`. Recurses so the assignment happens
-    /// after mutation at each level — `TOMLKit.TOMLTable`'s subscript copies
-    /// on assign, so the parent must be re-assigned after its child is built.
+    // TOMLTable children must be assigned back into their parent after mutation.
     private static func setSubtable(in root: TOMLTable, path: [String], to value: TOMLTable) {
         precondition(!path.isEmpty, "TOMLCoding.setSubtable: path must not be empty")
         if path.count == 1 {
@@ -81,9 +72,6 @@ enum TOMLCoding {
         root[head] = headTable
     }
 
-    /// Reserved root-table name for the preferences section. A context can never
-    /// be named this (registry precondition), so a table with this key is
-    /// unambiguously the preferences, not a context.
     private static let preferencesKey = "preferences"
 
     private static func makeTable(from state: RawState, includePreferences: Bool) -> TOMLTable {
@@ -119,7 +107,6 @@ enum TOMLCoding {
     private static func decodeTable(_ root: TOMLTable) throws -> RawState {
         var state = RawState()
         for contextID in root.keys {
-            // The reserved `preferences` table is the prefs section, not a context.
             if contextID == preferencesKey {
                 if let prefs = root[preferencesKey]?.table {
                     state.preferences.hintsEnabled = prefs["hints-enabled"]?.bool
@@ -200,9 +187,7 @@ enum TOMLCoding {
     }
 
     private static func serialize(_ root: TOMLTable) -> String {
-        // Omit .allowLiteralStrings so strings are emitted with double quotes,
-        // not single-quoted TOML literal strings. This keeps output hand-editable
-        // with standard double-quote conventions and lets test assertions match.
+        // Double-quoted strings keep generated TOML familiar and hand-editable.
         root.convert(to: .toml, options: [
             .allowMultilineStrings,
             .allowUnicodeStrings,

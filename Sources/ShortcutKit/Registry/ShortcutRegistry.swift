@@ -4,38 +4,26 @@ import Foundation
 import os.log
 import ShortcutField
 
-/// The hub: owns contexts, persistence, conflicts, and routing. `@MainActor`
-/// throughout (meta-spec concurrency decision). Contexts always live inside a
-/// registry; single-context apps still construct one.
+/// Owns shortcut contexts, persistence, conflict analysis, and event routing.
 @MainActor
 public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
-    // Public outputs — empty here, populated by Tasks 12 (conflicts) and 15 (table).
     @Published public private(set) var conflicts: [Conflict] = []
     @Published public private(set) var keyBindings: KeyBindings = .init()
     public let actionFired: AnyPublisher<ActionFiredEvent, Never>
 
-    /// Effective hint-visibility state: the user's override if set, else the
-    /// app author's `defaultHintsEnabled`. The HUD reads this; the preferences
-    /// UI flips it via `setHintsEnabled(_:)`.
+    /// The user's hint-visibility override, or the app default when unset.
     @Published public private(set) var hintsEnabled: Bool = true
 
     private let defaultHintsEnabled: Bool
-    /// `nil` until the user diverges from `defaultHintsEnabled`; persisted then.
     private var hintsEnabledOverride: Bool?
 
-    /// Effective hint-frequency state: the user's override if set, else the app
-    /// author's `defaultHintFrequency`. The HUD reads this live; the preferences
-    /// UI flips it via `setHintFrequency(_:)`.
+    /// The user's hint-frequency override, or the app default when unset.
     @Published public private(set) var hintFrequency: HintPolicy = .oncePerSession
 
-    /// The app author's hint-frequency default (from `init(defaultHintFrequency:)`).
-    /// Exposed so a preferences UI can always offer it as a re-selectable option,
-    /// even after the user has moved off it.
+    /// The app's default hint frequency.
     public let defaultHintFrequency: HintPolicy
-    /// `nil` until the user diverges from `defaultHintFrequency`; persisted then.
     private var hintFrequencyOverride: HintPolicy?
 
-    // Stored for Tasks 7/8/12/15 to consume.
     let contexts: [any AnyShortcutContext]
     let mutuallyExclusiveContexts: [Set<String>]
     let migrations: [ShortcutMigration]
@@ -82,8 +70,6 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         }
         self.contexts = contexts
         self.mutuallyExclusiveContexts = mutuallyExclusiveContexts
-        // Always prepend the Phase 1.5 wrap-single-bindings breadcrumb; the
-        // shape upgrade itself happens at the decoder boundary.
         self.migrations = [WrapSingleBindingsMigration.entry] + migrations
         self.store = store
         self.systemShortcutsProvider = systemShortcutsProvider
@@ -91,23 +77,19 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         self.defaultHintFrequency = defaultHintFrequency
         actionFired = actionFiredSubject.eraseToAnyPublisher()
 
-        // Unconditional: bindings can become multi-step at runtime via user
-        // overrides, and with no chord bound the suppressor's tracking check is
-        // never true, so this is a no-op rather than a dormant behavior change.
+        // Overrides can introduce multi-step bindings after initialization.
         ShortcutTracking.installBeepSuppression()
 
         for context in contexts {
             attach(context: context)
         }
 
-        // Load — log + reset on corruption.
         var loaded: RawState
         do { loaded = try store.load() } catch {
             Self.logger.error("load failed: \(String(describing: error)); resetting")
             loaded = RawState()
         }
 
-        // Apply migrations; persist only if anything changed.
         let before = loaded
         ShortcutMigrationApplier.apply(migrations, to: &loaded)
         if loaded != before {
@@ -125,32 +107,29 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         rebuildKeyBindings()
     }
 
-    /// Set the user's hint-visibility preference. Persists through the store as
-    /// an override only when it diverges from `defaultHintsEnabled` (matching how
-    /// binding overrides are stored only when customized).
+    /// Sets the user's hint-visibility preference.
+    ///
+    /// The store retains an override only while it differs from the app default.
     public func setHintsEnabled(_ value: Bool) {
         hintsEnabledOverride = (value == defaultHintsEnabled) ? nil : value
         hintsEnabled = value
         scheduleSave()
     }
 
-    /// Set the user's hint-frequency preference. Persists as an override only when
-    /// it diverges from `defaultHintFrequency`, mirroring `setHintsEnabled(_:)`.
+    /// Sets the user's hint-frequency preference.
+    ///
+    /// The store retains an override only while it differs from the app default.
     public func setHintFrequency(_ value: HintPolicy) {
         hintFrequencyOverride = (value == defaultHintFrequency) ? nil : value
         hintFrequency = value
         scheduleSave()
     }
 
-    /// Re-read the store and apply any out-of-band changes (a hand-edited config
-    /// file, a sync or restore) to the live registry: bindings, the hint
-    /// preference, conflicts, and the published `keyBindings` all refresh, and
-    /// subscribers to `shortcutsChanges(for:)` see the new values. Unsaved
-    /// in-memory overrides are discarded in favor of the store.
+    /// Reloads out-of-band store changes and refreshes bindings, hint preferences,
+    /// conflicts, `keyBindings`, and binding publishers.
     ///
-    /// Returns `true` when the store was re-read and applied, `false` when the
-    /// load failed — in which case the error is logged and the current state is
-    /// left untouched (unlike `init`, a transient read error doesn't reset state).
+    /// Unsaved in-memory overrides are discarded. On failure, logs the error,
+    /// retains the current state, and returns `false`.
     @discardableResult
     public func reload() -> Bool {
         let loaded: RawState
@@ -165,9 +144,6 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         hintFrequencyOverride = loaded.preferences.hintFrequency
         hintFrequency = hintFrequencyOverride ?? defaultHintFrequency
 
-        // Push the new bindings to every action whose effective value could have
-        // changed (the union of before/after override keys), then rebuild the
-        // live matchers and derived outputs.
         var affected: Set<ActionRef> = []
         for (contextID, perAction) in previous {
             for actionID in perAction.keys {
@@ -217,8 +193,6 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 
     // MARK: - Assertion seam
 
-    /// Test seam: replace to intercept assertion-trap messages. Production
-    /// builds use `Swift.assertionFailure`.
     nonisolated(unsafe) static var assertionFunction: @MainActor (String) -> Void = { message in
         Swift.assertionFailure(message)
     }
@@ -264,10 +238,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         keyBindings = .init(groups: groups)
     }
 
-    /// Bindings for every currently-active local context (those pushed onto the
-    /// router by `.activeShortcutContext`) plus every `.global`-scoped context.
-    /// Adopters who want a specific set use `bindings(for:)`. For a legend /
-    /// cheat-sheet, chain `.boundOnly()`.
+    /// Bindings for active local contexts and every global context.
+    ///
+    /// Chain `.boundOnly()` when unbound actions should be omitted.
     public func activeBindings() -> KeyBindings {
         var ids = Set(router.__currentStackIDs)
         for context in contexts where context.scope == .global {
@@ -399,15 +372,11 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
                     hintFrequency: hintFrequencyOverride
                 )
             ))
-        } catch {
-            // Best-effort; Task 7 adds os.Logger wiring.
-        }
+        } catch {}
     }
 
-    /// Synchronously persist any pending override changes, bypassing the 250 ms
-    /// debounce. Use when you need the on-disk state stable before a follow-up
-    /// step (an export-to-file flow, a profile switch, an explicit "Save" button).
-    /// A no-op if no save is pending.
+    /// Persists pending changes immediately, bypassing the 250 ms debounce.
+    /// Does nothing when no save is pending.
     public func flushPendingSave() {
         pendingSave?.cancel()
         pendingSave = nil
@@ -415,24 +384,19 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     }
 
     // swiftlint:disable identifier_name
-    /// Test seam — back-compat alias for `flushPendingSave()`.
     func __flushPendingSave() {
         flushPendingSave()
     }
 
-    /// Test hook: the active context IDs in router order (outer → innermost).
     var __activeContextIDs: [String] {
         router.__currentStackIDs
     }
 
-    /// Test hook: the underlying router so tests can drive `handle(_:)` directly.
     var __router: RegistryEventRouter { router }
     // swiftlint:enable identifier_name
 }
 
 // swiftlint:disable identifier_name
-/// Internal protocol the concrete `ShortcutContext<Action>` implements so the
-/// registry can wire its `registry` ref without seeing the generic parameter.
 @MainActor protocol RegistryAttachable: AnyObject {
     func __attach(registry: any RegistryOverrideSource)
     func __notifyOverrideChange(actionID: String)

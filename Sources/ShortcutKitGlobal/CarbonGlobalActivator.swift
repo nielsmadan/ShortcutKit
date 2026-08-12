@@ -2,29 +2,19 @@ import AppKit
 import Combine
 import ShortcutField
 
-/// Carbon `RegisterEventHotKey`-backed `GlobalActivator`. Walks a
-/// `ShortcutRegistry` for `.global`-scoped contexts, registers each effective
-/// binding as a system-wide hotkey, and reports per-binding outcomes through
-/// `status`.
+/// A Carbon-backed activator for global shortcut contexts.
 ///
-/// Typically one per registry. Raw Carbon registration is delegated to the
-/// process-singleton `CarbonHotKeyCenter`.
+/// Registration outcomes are reported per binding through `status`.
 @MainActor
 public final class CarbonGlobalActivator: GlobalActivator {
     public private(set) var status: [BindingID: GlobalBindingStatus] = [:]
 
     private let center = CarbonHotKeyCenter.shared
     private var registry: ShortcutRegistry?
-    /// Live registrations keyed by BindingID, so auto-sync (Task 12) can diff.
     private var registered: [BindingID: CarbonHotKey] = [:]
     private var isStarted = false
-    /// Observes `didBecomeActive` to re-verify against an updated system set.
     private var activeObserver: NSObjectProtocol?
-    /// Observes `didEndTracking` to re-verify after a menu closes, catching
-    /// hotkeys that failed to re-register in `resumeAllHotKeys()`.
     private var menuEndObserver: NSObjectProtocol?
-    /// Snapshot of the shortcut currently registered for each BindingID —
-    /// the diff baseline.
     private var currentShortcuts: [BindingID: Shortcut] = [:]
     private var bindingsSubscription: AnyCancellable?
 
@@ -75,7 +65,6 @@ public final class CarbonGlobalActivator: GlobalActivator {
 
     // MARK: - Registration
 
-    /// Re-reads global bindings and applies the delta against the live set.
     private func syncRegistrations() {
         guard let registry else { return }
         var newShortcuts: [BindingID: Shortcut] = [:]
@@ -110,9 +99,6 @@ public final class CarbonGlobalActivator: GlobalActivator {
 
     // MARK: - System-shadowing verification
 
-    /// Pure system-shadowing check. A `.registered` binding whose combo is in
-    /// the system-shortcut set is downgraded to `.shadowedBySystem`; any other
-    /// status is returned unchanged.
     static func verifiedStatus(
         current: GlobalBindingStatus,
         combo: CarbonHotKeyCombo,
@@ -122,7 +108,6 @@ public final class CarbonGlobalActivator: GlobalActivator {
         return .shadowedBySystem
     }
 
-    /// Snapshot of the live system-shortcut set as Carbon combos.
     private func systemCombos() -> Set<CarbonHotKeyCombo> {
         Set(CarbonSystemShortcuts().currentSystemShortcuts().map {
             CarbonHotKeyCombo(
@@ -132,17 +117,12 @@ public final class CarbonGlobalActivator: GlobalActivator {
         })
     }
 
-    /// Cross-checks every registered combo against the live system set,
-    /// downgrading any system-claimed binding to `.shadowedBySystem`, and
-    /// surfaces hotkeys that failed to re-register after a menu closed.
     private func verifyRegistrations() {
         let system = systemCombos()
         let menuTracking = (center.mode == .menuOpen)
         for (id, hotKey) in registered {
             guard let current = status[id] else { continue }
-            // A registered hotkey with no live Carbon ref while NOT in menu
-            // mode means a re-registration failed (e.g. resumeAllHotKeys could
-            // not reclaim the combo after the menu closed). Surface it.
+            // A nil Carbon handle outside menu mode means re-registration failed.
             if !menuTracking, hotKey.eventHotKeyRef == nil, current == .registered {
                 status[id] = .failed(reason: .reregistrationFailed)
                 continue

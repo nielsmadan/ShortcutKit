@@ -1,6 +1,3 @@
-/// Sublime-style fuzzy match: returns `nil` if the query characters can't be
-/// found in order, otherwise returns a score (higher = better) and the
-/// matched indices into the haystack. Case-insensitive.
 enum FuzzyFilter {
     struct Match {
         let score: Int

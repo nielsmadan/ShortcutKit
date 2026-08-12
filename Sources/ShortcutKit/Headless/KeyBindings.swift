@@ -1,15 +1,13 @@
 import Foundation
 import ShortcutField
 
-/// Headless snapshot of every action's effective binding state, grouped by
-/// context. The presentation-agnostic source of truth that `KeyBindingsView`,
-/// `KeyBindingsLegendView`, and any adopter-built UI render from.
+/// A presentation-independent snapshot of effective bindings grouped by context.
 ///
 /// `Equatable` but not `Hashable`: the entries carry `LocalizedStringResource`
 /// (`displayName`/`description`), which is `Equatable` but not `Hashable`. Use
 /// `Entry.id` / `Group.id` as the stable hashable key when one is needed.
 public struct KeyBindings: Sendable, Equatable {
-    /// One action's binding state.
+    /// The effective binding state for an action.
     public struct Entry: Sendable, Equatable, Identifiable {
         public let contextID: String
         public let actionID: String
@@ -18,13 +16,13 @@ public struct KeyBindings: Sendable, Equatable {
         public let kind: Shortcut.Kind
         public let effectiveShortcuts: [Shortcut]
         public let isCustomized: Bool
-        /// Conflicts touching *this* entry — correct for a per-row badge. The same
-        /// conflict appears on every entry it involves, so don't sum `conflicts`
-        /// across entries for an app-wide count; dedupe via `registry.conflicts`
-        /// (or the conflict's identity) instead.
+        /// Conflicts involving this entry.
+        ///
+        /// A conflict appears on every entry it involves; use the registry's
+        /// `conflicts` collection for an app-wide count.
         public let conflicts: [Conflict]
 
-        /// Stable identity for `ForEach` — unique across contexts.
+        /// Stable identity unique across contexts.
         public var id: String { "\(contextID).\(actionID)" }
 
         public init(
@@ -45,7 +43,7 @@ public struct KeyBindings: Sendable, Equatable {
         }
     }
 
-    /// One context's entries.
+    /// The entries belonging to one context.
     public struct Group: Sendable, Equatable, Identifiable {
         public let contextID: String
         public let displayName: LocalizedStringResource
@@ -61,9 +59,9 @@ public struct KeyBindings: Sendable, Equatable {
     public let groups: [Group]
     public init(groups: [Group] = []) { self.groups = groups }
 
-    /// Fuzzy filter — case-insensitive match on `displayName` and the binding's
-    /// `ascii` string. Entries are sorted within each group by descending score;
-    /// empty groups are dropped.
+    /// Fuzzy-filters display names and ASCII binding strings case-insensitively.
+    ///
+    /// Results are sorted by descending score and empty groups are omitted.
     public func filter(query: String) -> KeyBindings {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return self }
@@ -92,8 +90,7 @@ public struct KeyBindings: Sendable, Equatable {
         return KeyBindings(groups: filtered)
     }
 
-    /// Drop entries with no effective shortcut, then drop any group left empty.
-    /// Used by the legend / cheat-sheet, which only shows bound actions.
+    /// Returns only entries with effective shortcuts, omitting empty groups.
     public func boundOnly() -> KeyBindings {
         var result: [Group] = []
         for group in groups {

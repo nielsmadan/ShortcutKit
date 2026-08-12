@@ -19,8 +19,6 @@ enum JSONCoding {
 
     // MARK: - Namespaced (sub-tree)
 
-    /// Decode the subtree at `keyPath`. Empty `RawState` if any segment is
-    /// missing — adopters without customizations see empty state.
     static func decode(_ data: Data, atKey keyPath: [String]) throws -> RawState {
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw Error.rootNotAnObject
@@ -32,8 +30,6 @@ enum JSONCoding {
         return try JSONDecoder().decode(RawState.self, from: subtreeData)
     }
 
-    /// Read-modify-write: parse `existing` (or start fresh), replace the
-    /// subtree at `keyPath` with `state`'s encoding, return the full file Data.
     static func encode(
         _ state: RawState,
         intoExisting existing: Data?,

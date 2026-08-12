@@ -8,7 +8,6 @@ enum GlobalAction: String, ShortcutAction {
     var definition: ShortcutActionDefinition {
         switch self {
         case .activateAndConfetti:
-            // ⌃⌥⌘K — three modifiers, unlikely to collide with a system hotkey.
             .init("Activate + Confetti", Shortcut("ctrl+opt+cmd+k"))
         }
     }
@@ -19,9 +18,7 @@ final class GlobalContextModel: ObservableObject {
     let context: ShortcutContext<GlobalAction>
 
     init() {
-        // Global contexts require their dispatch handler at construction —
-        // they fire system-wide via Carbon whether or not any view is mounted,
-        // so there's no activation hook to bind the handler later.
+        // Global actions can fire without a mounted view, so they bind here.
         context = ShortcutContext<GlobalAction>(global: "global") { action, _ in
             switch action {
             case .activateAndConfetti:

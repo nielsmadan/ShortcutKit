@@ -27,27 +27,22 @@ struct HintHUDOptionsTests {
         #expect(HintHUDPlacement.cursor.alignment == .top)
     }
 
-    // MARK: - clampedToastCenter
-
     private let container = CGSize(width: 400, height: 300)
     private let toast = CGSize(width: 80, height: 20)
 
     @Test func cursorWellInsideOffsetsDownRight() {
         let center = clampedToastCenter(cursor: CGPoint(x: 100, y: 100), container: container, toast: toast)
-        // top-leading = cursor + gap(12); centre = that + half-size (40 / 10).
         #expect(center.x == 152)
         #expect(center.y == 122)
     }
 
     @Test func cursorNearRightEdgeClampsX() {
         let center = clampedToastCenter(cursor: CGPoint(x: 390, y: 100), container: container, toast: toast)
-        // maxX = 400 - 40 - 8 = 352.
         #expect(center.x == 352)
     }
 
     @Test func cursorNearBottomEdgeClampsY() {
         let center = clampedToastCenter(cursor: CGPoint(x: 100, y: 295), container: container, toast: toast)
-        // maxY = 300 - 10 - 8 = 282.
         #expect(center.y == 282)
     }
 

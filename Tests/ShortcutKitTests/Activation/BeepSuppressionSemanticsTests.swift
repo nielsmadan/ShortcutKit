@@ -4,13 +4,7 @@ import ShortcutField
 @testable import ShortcutKit
 import Testing
 
-/// Pins the beep-suppression contract wired up in `ShortcutRegistry.init`.
-///
-/// A press beeps when the event reaches the responder chain (nobody consumed it)
-/// and the suppressor does not squelch it (`ShortcutTracking.isActive` false).
-/// For a single matcher that reduces to: **beeps exactly when the result is
-/// `.ignored`** — `.fired` consumes the event, `.advanced` sets tracking.
-/// Serialized because `ShortcutTracking` is process-wide state.
+// Serialized because ShortcutTracking is process-wide state.
 @MainActor
 @Suite("BeepSuppressionSemantics", .serialized) struct BeepSuppressionSemanticsTests {
     private func keyDown(_ keyCode: Int, _ modifiers: NSEvent.ModifierFlags) -> NSEvent {
@@ -25,7 +19,6 @@ import Testing
         return false
     }
 
-    // SeqAction: .save = "cmd+s", .openProject = "cmd+k cmd+o", .closeProject = "cmd+k cmd+w"
     private func makeMatcher() -> ContextMatcher<SeqAction> {
         let ctx = ShortcutContext<SeqAction>("editor")
         ctx.__setActiveHandler { _, _ in }
@@ -44,7 +37,6 @@ import Testing
         let matcher = makeMatcher()
         let result = matcher.handle(keyDown(kVK_ANSI_K, .command))
         #expect(beeps(result) == false)
-        // The prefix event is NOT consumed, so suppression is what silences it.
         #expect(result == .advanced(consumeEvent: false))
         #expect(ShortcutTracking.isActive)
         matcher.reset()

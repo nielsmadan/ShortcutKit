@@ -45,8 +45,6 @@ final class SidebarContextModel: ObservableObject {
         }
     }
 
-    /// Move the selection by `delta` positions, clamped to the items' bounds.
-    /// If nothing is selected, jumps to the first (delta > 0) or last (delta < 0).
     func moveSelection(by delta: Int) {
         guard !items.isEmpty else { return }
         let currentIndex = items.firstIndex { $0.id == selectedID }

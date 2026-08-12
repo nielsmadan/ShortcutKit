@@ -1,9 +1,7 @@
 import CoreFoundation
 import Foundation
 
-/// Coalesces continuous-shortcut fires into one dispatch per (context, action)
-/// per run-loop pass. Backed by a `CFRunLoopObserver` on `.beforeWaiting`
-/// in `.commonModes`. Frame-rate independent and pays no cost when idle.
+/// Coalesces continuous shortcut events by action once per run-loop pass.
 @MainActor
 final class ContinuousCoalescer {
     private struct Key: Hashable { let contextID: String; let actionID: String }
@@ -13,8 +11,7 @@ final class ContinuousCoalescer {
     }
 
     private var pending: [Key: Pending] = [:]
-    // `nonisolated(unsafe)` so `deinit` can read it without crossing actor boundaries.
-    // Written only once in `installObserver()` before any concurrent access can occur.
+    // Written once before use; `nonisolated(unsafe)` permits cleanup from `deinit`.
     private nonisolated(unsafe) var observer: CFRunLoopObserver?
 
     init() {
@@ -22,16 +19,13 @@ final class ContinuousCoalescer {
     }
 
     deinit {
-        // `CFRunLoopRemoveObserver` is thread-safe; safe from a nonisolated deinit.
+        // CFRunLoopRemoveObserver is thread-safe from a nonisolated deinitializer.
         if let observer {
             CFRunLoopRemoveObserver(CFRunLoopGetMain(), observer, .commonModes)
         }
     }
 
-    /// Accumulate one continuous-shortcut event. If a previous event for the
-    /// same (context, action) is pending in this run-loop pass, its
-    /// `dispatch` closure is preserved and magnitudes are summed; otherwise
-    /// the new `dispatch` is stored.
+    /// Accumulates magnitudes for an action until the current run-loop pass ends.
     func accumulate(
         contextID: String,
         actionID: String,
@@ -41,8 +35,6 @@ final class ContinuousCoalescer {
         let key = Key(contextID: contextID, actionID: actionID)
         if pending[key] != nil {
             pending[key]!.accumulatedMagnitude += magnitude
-            // Always use the latest dispatch closure so the most-recent call site's
-            // capture context (e.g. the one that holds the `received` variable) wins.
             pending[key]!.dispatch = dispatch
         } else {
             pending[key] = Pending(accumulatedMagnitude: magnitude, dispatch: dispatch)
@@ -50,8 +42,6 @@ final class ContinuousCoalescer {
     }
 
     // swiftlint:disable identifier_name
-    /// Test hook: synchronously drain pending dispatches. Production code
-    /// drives this from the run-loop observer.
     func __flush() {
         let snapshot = pending
         pending.removeAll(keepingCapacity: true)

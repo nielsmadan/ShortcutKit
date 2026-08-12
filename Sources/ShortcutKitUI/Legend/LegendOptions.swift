@@ -1,30 +1,21 @@
 import ShortcutField
 import SwiftUI
 
-/// How many columns of entries the (non-compact) legend lays out. Each entry has
-/// aligned shortcut and label columns sized from `LegendSize`; fixed column-count
-/// grids distribute spare width across their labels.
+/// Column layout for a non-compact legend.
 public enum LegendColumns: Sendable, Hashable {
-    /// One column — a vertical list. Ideal for a narrow docked rail.
+    /// One vertical column.
     case single
     /// A fixed number of columns.
     case fixed(Int)
-    /// As many cells as fit, wrapping to new rows. The default. `minWidth` is
-    /// the per-cell floor — cells narrower than that are padded to `minWidth`
-    /// before wrap placement, so callers can enforce a design rhythm.
+    /// As many columns as fit, with a minimum cell width.
     case auto(minWidth: CGFloat)
 }
 
-/// Horizontal sizing of the label column. `LegendSize` metrics remain the
-/// default minimum; `.size` fills available space in single- and fixed-column
-/// layouts while auto-wrapping cells stay content-sized. `.flexible` and
-/// `.fixed(_)` let adopters override for rails, grids, or design-specific widths.
-/// Cases mirror `GridItem.Size`'s vocabulary (`fixed / flexible`) so SwiftUI
-/// callers see familiar names.
+/// Horizontal sizing for legend labels.
 public enum LegendLabelWidth: Sendable, Hashable {
-    /// Use `LegendSize.metrics.labelWidth` as the default width or minimum. Default.
+    /// Use the ``LegendSize`` width as a minimum, filling single and fixed-column layouts.
     case size
-    /// Fill available horizontal space (`.frame(maxWidth: .infinity)`).
+    /// Fill the available horizontal space.
     case flexible
     /// Explicit width.
     case fixed(CGFloat)
@@ -32,14 +23,13 @@ public enum LegendLabelWidth: Sendable, Hashable {
 
 /// Order of the shortcut and the label within a legend cell.
 public enum LegendEntryLayout: Sendable, Hashable {
-    /// `⇧⌘L  Toggle Legend` — shortcut first. Compact; good for grids.
+    /// Shortcut first, for example `⇧⌘L  Toggle Legend`.
     case shortcutLeading
-    /// `Toggle Legend ……… ⇧⌘L` — label first, shortcut trailing.
+    /// Label first, for example `Toggle Legend  ⇧⌘L`.
     case labelLeading
 }
 
-/// Overall legend scale. Drives the entry/header font sizes and all the spacing
-/// derived from them, so one knob resizes the whole legend coherently.
+/// Overall scale for legend fonts, columns, and spacing.
 public enum LegendSize: Sendable, Hashable, CaseIterable {
     case small
     case medium
@@ -96,9 +86,6 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
     }
 }
 
-/// Resolved point sizes / spacings for a `LegendSize`. `headerToRows` (header to
-/// its own rows) is deliberately smaller than `sectionSpacing` (gap between
-/// groups), so each header visually hugs the rows it labels.
 struct LegendMetrics: Sendable, Hashable {
     let entryFont: CGFloat
     let headerFont: CGFloat
@@ -106,43 +93,28 @@ struct LegendMetrics: Sendable, Hashable {
     let columnSpacing: CGFloat
     let headerToRows: CGFloat
     let sectionSpacing: CGFloat
-    /// Fixed width of the shortcut column (right-aligned, tail-truncated).
     let shortcutWidth: CGFloat
-    /// Fixed width of the (wider) label column (left-aligned, tail-truncated).
     let labelWidth: CGFloat
-    /// Gap between the shortcut and label columns within a cell.
     let gutter: CGFloat
 
-    /// Total fixed width of one grouped legend cell (both columns + gutter).
     var cellWidth: CGFloat { shortcutWidth + gutter + labelWidth }
 }
 
-/// Layout knobs for `KeyBindingsLegendView`. The default is a grouped table of
-/// fixed-width, aligned columns (shortcut then label) that wraps to fit. Tune the
-/// column count, cell order, and overall size; pass per-action label overrides via
-/// the view's `label:` closure (kept separate so this stays `Sendable`).
+/// Layout and appearance options for ``KeyBindingsLegendView``.
 public struct LegendOptions: Sendable, Hashable {
     /// Column behavior. Default `.auto(minWidth: 150)`. Ignored when `compact`.
     public var columns: LegendColumns
     /// Shortcut-vs-label order in each cell. Default `.shortcutLeading`.
     public var entryLayout: LegendEntryLayout
-    /// Overall scale (font + spacing). Default `.small` (compact).
+    /// Overall font and spacing scale. Default `.small`.
     public var size: LegendSize
-    /// Collapse to the densest form: one continuous wrap of every entry, with no
-    /// section headers and content-width cells (no column alignment). For a thin
-    /// strip — a status bar, toolbar, or footer. Default `false` (grouped grid).
+    /// Show a headerless, content-width strip instead of a grouped grid. Default `false`.
     public var compact: Bool
-    /// How the shortcut portion of each entry renders. `nil` (the default) uses
-    /// ShortcutField's ``ShortcutField/ShortcutLabelStyle/compact`` SF-symbol labels
-    /// in both layouts — gestures/scroll become icons, mouse clicks abbreviations,
-    /// each with a hover tooltip. Set ``ShortcutField/ShortcutLabelStyle/text`` to
-    /// force verbose words instead.
+    /// Shortcut rendering style. `nil` uses ``ShortcutField/ShortcutLabelStyle/compact``.
     public var shortcutStyle: ShortcutLabelStyle?
-    /// Label column width. Default `.size` uses the `LegendSize` metric as a
-    /// minimum and fills spare width in single- and fixed-column layouts.
+    /// Label width. Default `.size` fills spare width in single- and fixed-column layouts.
     public var labelWidth: LegendLabelWidth
-    /// Fonts and colors. Defaults to the legend's built-in look; override
-    /// individual slots to match a host app's type stack.
+    /// Fonts and colors. Each field defaults to the built-in appearance.
     public var appearance: LegendAppearance
 
     public init(
@@ -165,21 +137,13 @@ public struct LegendOptions: Sendable, Hashable {
 
     public static let `default` = LegendOptions()
 
-    /// Resolved font sizes and spacings for `size`.
     var metrics: LegendMetrics { size.metrics }
 
-    /// The resolved width of one grouped legend cell for these options — the sum
-    /// of the shortcut column, gutter, and the *effective* label width (which may
-    /// be a `.fixed(_)` override, not the `LegendSize` metric). Exposed so a host
-    /// can size a container (e.g. a docked rail) to the legend without re-deriving
-    /// the internal metrics. `.flexible` labels report the metric width as a floor.
+    /// Minimum width of a grouped entry cell, including its shortcut, gutter, and label.
+    /// Flexible labels report their minimum width.
     public var cellWidth: CGFloat { resolvedCellWidth(for: self) }
 }
 
-/// Width of one grouped legend cell for `options`, honoring a `.fixed(_)` label
-/// override. `.flexible` reports the metric cell width (a sensible minimum, since
-/// a flexible label grows to fill its container). Pure, so it's unit-testable and
-/// the `.fixed(n)` grid and the label cell agree on a single width.
 func resolvedCellWidth(for options: LegendOptions) -> CGFloat {
     let widths = legendColumnWidths(for: options)
     switch effectiveLabelWidth(for: options) {
@@ -190,12 +154,6 @@ func resolvedCellWidth(for options: LegendOptions) -> CGFloat {
     }
 }
 
-/// The metric column widths scaled by any explicit ``LegendFont/size`` override, so
-/// bigger text doesn't render into columns sized for the `LegendSize` metric — the
-/// failure `cellWidth`'s adopters (who size a container from it) would inherit.
-/// Returns the metrics unchanged whenever the fonts inherit their size, which is the
-/// default, so an un-styled legend is untouched. A *face* swap at the same point size
-/// can still need a wider column; that's what `labelWidth` is for.
 func legendColumnWidths(for options: LegendOptions) -> (shortcut: CGFloat, label: CGFloat) {
     let m = options.metrics
     let scale = legendColumnScale(for: options)
@@ -209,11 +167,6 @@ func legendColumnScale(for options: LegendOptions) -> CGFloat {
     return max(max(shortcut, label) / m.entryFont, 1)
 }
 
-/// Resolve the effective label width for `options`. Single- and fixed-column
-/// layouts distribute available width by default; auto-wrapping layouts keep
-/// content-sized cells so their wrap points remain predictable. Explicit
-/// overrides pass through.
-/// Pure, so the smart-default rule is unit-testable.
 func effectiveLabelWidth(for options: LegendOptions) -> LegendLabelWidth {
     guard options.labelWidth == .size else { return options.labelWidth }
     switch options.columns {
@@ -224,17 +177,10 @@ func effectiveLabelWidth(for options: LegendOptions) -> LegendLabelWidth {
     }
 }
 
-/// Resolve the shortcut label style for a legend cell: an explicit `override`
-/// wins, otherwise both layouts default to ShortcutField's `.compact` symbols.
-/// Pure, so the default rule is unit-testable.
 func legendShortcutStyle(override: ShortcutLabelStyle?) -> ShortcutLabelStyle {
     override ?? .compact
 }
 
-/// `count` fixed-width `GridItem`s for a `LazyVGrid` of fixed-size legend cells.
-/// `count` is clamped to at least one. Factored out so the clamping is unit-testable.
-/// (`.single` renders as a `VStack` and `.auto` flows via `legendFlowLayout`, so this
-/// backs only the `.fixed(n)` arrangement.)
 func legendGridItems(count: Int, cellWidth: CGFloat, spacing: CGFloat) -> [GridItem] {
     Array(
         repeating: GridItem(.fixed(cellWidth), spacing: spacing, alignment: .topLeading),
@@ -242,10 +188,6 @@ func legendGridItems(count: Int, cellWidth: CGFloat, spacing: CGFloat) -> [GridI
     )
 }
 
-/// `count` flexible `GridItem`s (minimum `minCellWidth`, no max) for a
-/// `LazyVGrid` whose cells should grow to fill the container. Used when the
-/// resolved label width is `.flexible` under a `.fixed(n)` column layout.
-/// `count` clamps to at least one, matching `legendGridItems`.
 func legendFlexibleGridItems(count: Int, minCellWidth: CGFloat, spacing: CGFloat) -> [GridItem] {
     Array(
         repeating: GridItem(.flexible(minimum: minCellWidth), spacing: spacing, alignment: .topLeading),
@@ -253,12 +195,6 @@ func legendFlexibleGridItems(count: Int, minCellWidth: CGFloat, spacing: CGFloat
     )
 }
 
-/// Wrapping flow placement: positions cells left-to-right and wraps to a new row
-/// when the next cell would exceed `maxWidth`. Returns each cell's origin and
-/// constrained size plus the total content size. Any cell narrower than
-/// `minCellWidth` is padded up to that floor before placement — that's how
-/// `LegendColumns.auto(minWidth:)` enforces a
-/// per-cell design rhythm. Pure, so the legend's `Layout` can be unit-tested.
 func legendFlowLayout(
     sizes: [CGSize],
     maxWidth: CGFloat,

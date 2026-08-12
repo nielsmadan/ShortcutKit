@@ -3,11 +3,6 @@ import ShortcutKit
 import ShortcutKitUI
 import SwiftUI
 
-/// The example app's Settings scene. Beyond the Native/Dense comparison of
-/// `KeyBindingsView`, the tabs double as an in-app showcase of every
-/// ShortcutKitUI surface: the drop-in preferences pane, the legend styles, the
-/// discoverability HUD options, the single-action editor, and a developer
-/// Diagnostics panel.
 @MainActor
 struct ExampleSettingsView: View {
     var body: some View {
@@ -49,8 +44,6 @@ private struct StyledSettingsTab: View {
         .safeAreaInset(edge: .top, spacing: 0) { displaySection }
     }
 
-    /// Juggler-style "Display" group plus the layout/search controls, pinned
-    /// above the scrolling bindings list.
     private var displaySection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Display")
@@ -229,9 +222,6 @@ private struct HUDPlaygroundView: View {
     }
 }
 
-/// Applies the discoverability HUD with the playground's chosen options, picking
-/// the built-in or custom toast. A conditional modifier needs distinct branches
-/// because the two `shortcutHintHUD` overloads return different view types.
 @MainActor
 private struct PlaygroundHUD: ViewModifier {
     let custom: Bool

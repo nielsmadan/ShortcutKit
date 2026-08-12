@@ -1,15 +1,8 @@
 import ShortcutField
 
-/// The user's overrides, keyed by context ID and action ID. Carries no version
-/// or library metadata — the on-disk content is the state (see spec §5.3).
+/// User preferences persisted alongside binding overrides.
 ///
-/// Phase 1.5: each action maps to an array of bindings (`[Shortcut]`). Phase 1
-/// on-disk data wrote a single scalar `Shortcut`; the JSON/TOML decoders
-/// transparently upgrade that legacy shape to a single-element array on read.
-/// Library-owned user preferences, persisted alongside `overrides` through the
-/// same `ShortcutBindingsStore`. A field is `nil` when the user hasn't diverged
-/// from the app author's default, so the section is only written when customized
-/// (mirroring how binding overrides are stored only when overridden).
+/// A `nil` value follows the app default and is omitted from persistence.
 public struct Preferences: Sendable, Equatable, Codable {
     /// User's hint-visibility choice, or `nil` to follow the app default.
     public var hintsEnabled: Bool?
@@ -26,10 +19,7 @@ public struct Preferences: Sendable, Equatable, Codable {
 
     private enum CodingKeys: String, CodingKey { case hintsEnabled, hintFrequency }
 
-    // Custom decode so an unrecognized `hintFrequency` string degrades to `nil`
-    // (follow the app default) rather than throwing — a bad preference must never
-    // fail the whole `RawState` load and reset every binding override. This mirrors
-    // the TOML decoder's tolerant `flatMap(HintPolicy.init(persistedString:))`.
+    // Invalid hint preferences must not prevent binding overrides from loading.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         hintsEnabled = try container.decodeIfPresent(Bool.self, forKey: .hintsEnabled)
@@ -38,6 +28,10 @@ public struct Preferences: Sendable, Equatable, Codable {
     }
 }
 
+/// Persisted binding overrides and ShortcutKit preferences.
+///
+/// Overrides are keyed by context and action persistence IDs. Decoding accepts
+/// the legacy single-shortcut value and upgrades it to a one-element array.
 public struct RawState: Sendable, Equatable {
     public var overrides: [String: [String: [Shortcut]]]
     public var preferences: Preferences
@@ -64,15 +58,13 @@ extension RawState: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(overrides, forKey: .overrides)
-        // Only persist the preferences section when something diverges from default.
         if !preferences.isDefault {
             try container.encode(preferences, forKey: .preferences)
         }
     }
 }
 
-/// Internal Decodable adapter: accepts either a single `Shortcut` (legacy
-/// Phase 1 shape) or a `[Shortcut]` (Phase 1.5 shape) per binding value.
+/// Decodes current shortcut arrays and the legacy single-shortcut representation.
 enum ShortcutOrArray: Decodable {
     case scalar(Shortcut)
     case array([Shortcut])
@@ -106,13 +98,10 @@ public extension RawState {
         overrides[contextID].map { Array($0.keys) } ?? []
     }
 
-    /// Read or write the bindings for one action. Setting `nil` (or an empty array)
-    /// removes the override; the surrounding context entry is pruned if it becomes
-    /// empty so `overrides` stays canonical (no zombie empty dictionaries).
+    /// Reads or writes one action's bindings.
     ///
-    /// Designed for `.custom` migrations and custom `ShortcutBindingsStore`s — the
-    /// raw triple-nested `overrides` dictionary is still available, but this is
-    /// the supported path.
+    /// Setting `nil` or an empty array removes the override and prunes an empty
+    /// context. This is the supported mutation path for custom migrations and stores.
     subscript(context contextID: String, action actionID: String) -> [Shortcut]? {
         get { overrides[contextID]?[actionID] }
         set {
@@ -134,9 +123,7 @@ public extension RawState {
 }
 
 extension RawState: CustomDebugStringConvertible {
-    /// A readable, TOML-ish dump for bug reports and logging: each context, its
-    /// overridden actions, and the binding display strings, plus any non-default
-    /// preferences. Sorted for stable output.
+    /// A stable, human-readable summary for diagnostics.
     public var debugDescription: String {
         var lines: [String] = []
         for contextID in overrides.keys.sorted() {
@@ -170,9 +157,8 @@ extension RawState: CustomDebugStringConvertible {
 }
 
 public extension ShortcutBindingsStore {
-    /// Remove all persisted ShortcutKit state. The default saves an empty
-    /// `RawState` — for a namespaced `FileStore`, that clears the library's subtree
-    /// while preserving sibling tables. Conformers with a cheaper wipe (e.g.
-    /// `UserDefaultsStore`, which removes its key) override this.
+    /// Removes all persisted ShortcutKit state.
+    ///
+    /// The default saves an empty state, preserving sibling data in namespaced stores.
     func clear() throws { try save(RawState()) }
 }

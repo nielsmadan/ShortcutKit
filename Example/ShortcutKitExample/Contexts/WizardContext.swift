@@ -24,7 +24,6 @@ final class WizardContextModel: ObservableObject {
     var pageCount: Int { 3 }
 
     init() {
-        // includeInSettings: false — wizard context is hidden from the Settings picker.
         context = ShortcutContext<WizardAction>("wizard", includeInSettings: false)
     }
 

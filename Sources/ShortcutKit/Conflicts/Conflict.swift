@@ -18,8 +18,7 @@ public enum Conflict: Sendable, Hashable {
         case continuousInGlobal
     }
 
-    /// `.warning < .error`, so adopters can `conflicts.map(\.severity).max()`
-    /// to find the worst severity in a set.
+    /// Conflict severity ordered from `warning` to `error`.
     public enum Severity: Sendable, Hashable, Comparable {
         case warning
         case error
@@ -44,9 +43,7 @@ public enum Conflict: Sendable, Hashable {
 }
 
 public extension Conflict {
-    /// Walks the `Occurrence`s referenced by this conflict, regardless of
-    /// associated-value shape. Used by callers (e.g. `KeyBindingsView`) that
-    /// need to map conflicts back to context IDs.
+    /// Every binding occurrence involved in the conflict.
     var occurrences: [Occurrence] {
         switch self {
         case let .duplicate(occurrences):
@@ -65,7 +62,7 @@ public extension Conflict {
     }
 }
 
-/// One occurrence in a conflict — a (context, action, shortcut) triple.
+/// A context, action, and shortcut involved in a conflict.
 public struct Occurrence: Sendable, Hashable {
     public let contextID: String
     public let actionID: String

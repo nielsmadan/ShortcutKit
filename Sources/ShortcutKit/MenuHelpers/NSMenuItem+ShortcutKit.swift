@@ -2,9 +2,6 @@ import AppKit
 import Combine
 import ShortcutField
 
-/// Internal `NSMenuItem` subclass that re-reads its key equivalent whenever
-/// the bound action's effective shortcut changes. Retains a Combine
-/// subscription for the item's lifetime.
 @MainActor
 final class ShortcutKitMenuItem<A: ShortcutAction>: NSMenuItem {
     private let actionValue: A
@@ -48,12 +45,10 @@ final class ShortcutKitMenuItem<A: ShortcutAction>: NSMenuItem {
 }
 
 public extension NSMenuItem {
-    /// Build a menu item wired to dispatch `action` through `context`. The
-    /// `keyEquivalent` and modifier mask follow the action's current effective
-    /// shortcut when it's a single-step keyboard discrete binding; otherwise
-    /// the item still works as a clickable entry with no displayed shortcut.
-    /// The displayed key equivalent updates automatically when the binding
-    /// changes.
+    /// Creates a menu item that dispatches `action` through `context`.
+    ///
+    /// Its key equivalent tracks a single-step keyboard binding. Other binding
+    /// types produce a clickable menu item without a displayed shortcut.
     @MainActor
     static func shortcutKitItem<A>(
         _ action: A,

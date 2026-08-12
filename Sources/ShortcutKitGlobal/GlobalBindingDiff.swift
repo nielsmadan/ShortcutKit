@@ -1,8 +1,5 @@
 import ShortcutField
 
-/// Pure diff between two snapshots of global bindings, keyed by `BindingID`.
-/// A binding whose shortcut changed appears in *both* `toRemove` and `toAdd`
-/// (unregister the stale Carbon hotkey, register the new one).
 enum GlobalBindingDiff {
     struct Result: Equatable {
         var toRemove: [BindingID]

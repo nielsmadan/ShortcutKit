@@ -2,14 +2,13 @@ import Combine
 import Foundation
 import ShortcutField
 
-/// Activation scope for a context. `.local` contexts only fire while activated
-/// via `.activeShortcutContext`; `.global` contexts are always candidates for
-/// system-wide hotkey registration (Phase 3 consumes this).
+/// Activation scope for a context.
+///
+/// Local contexts fire only while activated with `.activeShortcutContext`.
+/// Global contexts are candidates for system-wide hotkey registration.
 public enum ContextScope: Sendable, Hashable { case local, global }
 
-/// Type-erased context so a registry can hold a heterogeneous list. Public for
-/// the registry's `contexts:` parameter; the package-internal surface drives
-/// activation and override notifications (see same-package extensions).
+/// A type-erased shortcut context accepted by `ShortcutRegistry`.
 @MainActor public protocol AnyShortcutContext: AnyObject {
     var id: String { get }
     var scope: ContextScope { get }
@@ -21,10 +20,6 @@ public enum ContextScope: Sendable, Hashable { case local, global }
     var displayName: LocalizedStringResource { get }
 }
 
-/// Title-cases a context `id` for display when no explicit `displayName` is
-/// set. Splits on `.` so a dotted id like `canvas.shared` becomes
-/// `Canvas / Shared`; the id is the stable persistence key, so adopters
-/// shouldn't bake display strings into it.
 func deriveContextDisplayName(fromID id: String) -> String {
     id.split(separator: ".")
         .map { segment -> String in
@@ -35,54 +30,35 @@ func deriveContextDisplayName(fromID id: String) -> String {
         .joined(separator: " / ")
 }
 
-/// A named group of actions with a single dispatch closure.
+/// A named group of actions with a shared dispatch closure.
 ///
-/// At construction time the context is standalone — `shortcut(for:)` returns
-/// each action's default, `isCustomized` is `false`. Adding it to a
-/// `ShortcutRegistry` (Task 5) wires the override path; the registry calls
-/// `__attach(registry:)` and `__notifyOverrideChange(actionID:)` through
-/// internal helpers in this file.
+/// Before the context is added to a registry, lookups return declared defaults
+/// and `isCustomized(_:)` returns `false`.
 @MainActor
 public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
-    /// Stable persistence key for this context. Immutable (`let`): overrides are
-    /// stored under this id forever, so renaming it would orphan persisted data —
-    /// go through a declared migration instead. Not user-facing; see `displayName`.
+    /// Stable persistence key. Rename it only through a declared migration.
     public let id: String
 
-    /// Activation scope, fixed at construction (`.local` via `init(_:)`, `.global`
-    /// via `init(global:dispatch:)`). Immutable (`let`): scope determines the
-    /// activation mechanism and allowed grammar, so it can't change after the
-    /// context is built.
+    /// Activation scope, fixed at construction.
     public let scope: ContextScope
 
-    /// Whether `KeyBindingsView`'s settings UI lists this context. Read at render
-    /// time but **not** `@Published`: mutating it at runtime won't refresh a live
-    /// `KeyBindingsView` picker. Treat it as a construction-time choice; if you
-    /// need it to flip reactively, drive visibility from your own observable state.
+    /// Whether `KeyBindingsView` lists this context.
+    ///
+    /// This value is not published; treat it as a construction-time choice.
     public var includeInSettings: Bool
 
-    /// Explicit adopter-set name, or `nil` to fall back to a title-cased `id`.
     private let displayNameOverride: LocalizedStringResource?
 
     public var displayName: LocalizedStringResource {
         displayNameOverride ?? LocalizedStringResource(stringLiteral: deriveContextDisplayName(fromID: id))
     }
 
-    /// `.global` contexts set this at init (required — system-wide hotkeys
-    /// must work whether or not any view is mounted). `.local` contexts leave
-    /// it `nil` and supply their handler at `.activeShortcutContext(_:dispatch:)`
-    /// time.
     private let globalDispatchClosure: (@MainActor (Action, ShortcutDispatch) -> Void)?
 
-    /// The currently-active handler set by `.activeShortcutContext(_:dispatch:)`.
-    /// Set on view appear, cleared on view disappear. Only meaningful for `.local`
-    /// contexts; `.global` contexts ignore this and use `globalDispatchClosure`.
     private var activeHandler: (@MainActor (Action, ShortcutDispatch) -> Void)?
 
-    /// One subject per observed action, holding the full bindings array.
     private var changeSubjects: [String: CurrentValueSubject<[Shortcut], Never>] = [:]
 
-    // Set by the registry when this context is added. Not exposed publicly.
     weak var registry: (any RegistryOverrideSource)?
 
     /// Local context. Handler is supplied at `.activeShortcutContext(_:dispatch:)`;
@@ -119,18 +95,13 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     // MARK: - Invocation
 
-    /// Adopter-driven dispatch. Invokes the handler with the kind that matches
-    /// the action's declared kind (`.discrete` for discrete actions,
-    /// `.continuous(magnitude: 1.0)` for continuous ones — "fire once"
-    /// programmatic semantics), then emits `actionFired` with `source: .programmatic`.
-    /// No-op if no handler is currently bound (local context not activated; global
-    /// context without dispatch — though the latter is unreachable by construction).
+    /// Dispatches an action programmatically and emits an `actionFired` event.
     ///
-    /// Note for continuous actions: a real gesture streams many ticks with varying
-    /// magnitudes (and a terminal `.continuous(magnitude: 0)`); `dispatch(_:)` sends
-    /// exactly one tick at magnitude `1.0`. It exists for tests and macro/replay,
-    /// not to simulate a live gesture — production continuous input arrives through
-    /// the matcher path, not here.
+    /// This is a no-op when no local handler is active. Discrete actions receive
+    /// `.discrete`; continuous actions receive one tick at magnitude `1.0`.
+    ///
+    /// This does not simulate a continuous gesture stream, including its terminal
+    /// zero-magnitude event.
     public func dispatch(_ action: Action) {
         let dispatchKind: ShortcutDispatch = switch action.definition.kind {
         case .discrete: .discrete
@@ -142,26 +113,19 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         ))
     }
 
-    /// Adopter-driven notify — the **record-only** counterpart to `dispatch(_:)`:
-    /// emits `actionFired` (observers and the hint HUD see it) but does *not* run
-    /// the handler. Use it when the side effect already happened another way and
-    /// you only want to record that the action fired.
+    /// Emits an `actionFired` event without invoking the action's handler.
     public func notify(_ action: Action) {
         registry?.recordActionFired(.init(
             contextID: id, actionID: action.rawValue, source: .programmatic
         ))
     }
 
-    /// Route to whichever handler is currently in scope: a view-bound
-    /// `activeHandler` for `.local` contexts, or the construction-time
-    /// `globalDispatchClosure` for `.global`. No-op if neither is set.
     private func invokeHandler(_ action: Action, kind: ShortcutDispatch) {
         if let handler = activeHandler {
             handler(action, kind)
         } else if let handler = globalDispatchClosure {
             handler(action, kind)
         }
-        // else: shortcut fired but no handler bound — silent no-op.
     }
 
     // MARK: - Lookup
@@ -219,11 +183,6 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     // MARK: - Internal hooks (called by the registry)
 
-    /// Called by `ContextMatcher` after a matcher-driven match. Invokes the
-    /// currently-bound handler with the supplied `kind` and emits `actionFired`
-    /// with `source: .shortcut`. The matcher is only on the stack when the
-    /// context is activated, so for `.local` contexts a handler is guaranteed
-    /// present here. `.global` contexts always have one.
     func dispatchFromMatcher(_ action: Action, kind: ShortcutDispatch) {
         invokeHandler(action, kind: kind)
         registry?.recordActionFired(.init(
@@ -233,22 +192,16 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     // swiftlint:disable identifier_name
 
-    /// Test seam + internal modifier hook — set the view-bound handler that
-    /// `.activeShortcutContext(_:dispatch:)` provides.
     func __setActiveHandler(_ handler: @escaping @MainActor (Action, ShortcutDispatch) -> Void) {
         activeHandler = handler
     }
 
-    /// Test seam + internal modifier hook — clear the view-bound handler.
     func __clearActiveHandler() {
         activeHandler = nil
     }
 
     // swiftlint:enable identifier_name
 
-    /// Called by the registry when an override changes for this context.
-    /// Pushes the new effective bindings array through `shortcutsChanges(for:)`
-    /// (and via derivation, `shortcutChanges(for:)`).
     func notifyOverrideChange(actionID: String) {
         guard let subject = changeSubjects[actionID] else { return }
         guard let action = Action.allCases.first(where: { $0.rawValue == actionID })
@@ -257,9 +210,6 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     }
 }
 
-/// Internal abstraction the registry conforms to so `ShortcutContext` can
-/// look up overrides without a concrete reference to `ShortcutRegistry`.
-/// Declared here so test doubles can stand in for the registry.
 @MainActor protocol RegistryOverrideSource: AnyObject {
     func overrides(contextID: String, actionID: String) -> [Shortcut]?
     func setShortcuts(_ shortcuts: [Shortcut], contextID: String, actionID: String)
@@ -270,7 +220,6 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     func deactivateContext(id: String)
 }
 
-/// Internal: same-module hook called by `.activeShortcutContext`.
 @MainActor protocol ContextActivation: AnyObject {
     // swiftlint:disable identifier_name
     func __activate()
@@ -319,9 +268,6 @@ extension ShortcutContext: RegistryAttachable {
         dispatchFromMatcher(action, kind: .discrete)
     }
 
-    // String-keyed programmatic dispatch/notify behind the registry-level
-    // `dispatch(_ ref:)` / `notify(_ ref:)`. Reuse the typed `dispatch`/`notify`
-    // (so `source: .programmatic`); return `false` for an unknown actionID.
     // swiftlint:disable:next identifier_name
     func __dispatchProgrammatic(actionID: String) -> Bool {
         guard let action = Action.allCases.first(where: { $0.rawValue == actionID })
@@ -358,10 +304,6 @@ extension ShortcutContext: RegistryAttachable {
 }
 
 package extension ShortcutContext {
-    /// Typed back-reference to the registry this context was attached to, if any.
-    /// Used by `ShortcutKitUI` inline mode to invoke the type-erased override
-    /// helpers (`setShortcuts(_:contextID:actionID:)` etc.) without requiring
-    /// adopters to pass the registry alongside the context.
     var attachedRegistry: ShortcutRegistry? {
         registry as? ShortcutRegistry
     }

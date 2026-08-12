@@ -67,8 +67,8 @@ import Testing
         var events: [ActionFiredEvent] = []
         let cancellable = registry.actionFired.sink { events.append($0) }
 
-        registry.dispatch(contextID: "nope", actionID: "save") // unknown context
-        registry.dispatch(contextID: "editor", actionID: "nope") // unknown action
+        registry.dispatch(contextID: "nope", actionID: "save")
+        registry.dispatch(contextID: "editor", actionID: "nope")
         registry.notify(contextID: "nope", actionID: "save")
 
         #expect(ran == false)

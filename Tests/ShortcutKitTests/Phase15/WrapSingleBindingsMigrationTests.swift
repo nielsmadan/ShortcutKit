@@ -5,14 +5,13 @@ import Testing
 
 @MainActor
 @Suite("WrapSingleBindingsMigration") struct WrapSingleBindingsMigrationTests {
-    /// The Phase 1 on-disk JSON shape: each per-action value is a single
-    /// `Shortcut` object (Codable keyed form), not an array.
+    // Legacy JSON stores each action's shortcut as a scalar.
     private static let legacyScalarJSON = Data("""
     {"overrides":{"editor":{"save":{"kind":"discrete","discrete":{"steps":\
     [{"keyCode":1,"modifiers":1048576,"type":"key"}]}}}}}
     """.utf8)
 
-    /// The Phase 1.5 on-disk shape: per-action value is an array of Shortcut.
+    // Current JSON stores each action's shortcuts as an array.
     private static let newArrayJSON = Data("""
     {"overrides":{"editor":{"save":[\
     {"kind":"discrete","discrete":{"steps":[{"keyCode":1,"modifiers":1048576,"type":"key"}]}},\

@@ -13,7 +13,6 @@ struct CanvasView: View {
                 .font(.title)
                 .foregroundStyle(.secondary)
 
-            // Render canvas objects positioned absolutely.
             ForEach(canvasModel.objects) { obj in
                 objectView(obj)
                     .position(obj.position)

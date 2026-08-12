@@ -15,8 +15,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/nielsmadan/ShortcutField", from: "2.3.0"),
         .package(url: "https://github.com/LebJe/TOMLKit", from: "0.6.0"),
-        // Command plugin for `swift package generate-documentation` (local DocC
-        // preview / static hosting). Not linked into the library products.
+        // Enables `swift package generate-documentation`; not linked into the libraries.
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
     ],
     targets: [

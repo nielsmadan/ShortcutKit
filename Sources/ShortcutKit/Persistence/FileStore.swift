@@ -3,19 +3,9 @@ import os.log
 
 /// Human-editable persistence backed by a file on disk.
 ///
-/// Three independent capabilities:
-///
-/// 1. **Prioritized search**: pass `urls` instead of `url` to look at several
-///    locations in order on load (e.g. user config, then a shipped default).
-///    Saves always go to `urls[0]`.
-///
-/// 2. **Namespace key**: pass `key` to embed ShortcutKit's data under a
-///    top-level subtree of the file, leaving sibling tables for the adopter's
-///    own settings. Supports dotted paths (`"config.shortcuts"` → nested
-///    `[config.shortcuts]`). Saves preserve sibling tables via read-modify-write.
-///
-/// 3. **`createIfMissing`**: write an empty file at `urls[0]` at init if no
-///    file in `urls` exists. Makes the file discoverable from day one.
+/// Loads the first existing URL and saves to `urls[0]`. A dotted `key` embeds
+/// state in a subtree while preserving sibling tables. `createIfMissing` writes
+/// an empty file at `urls[0]` when none of the candidate files exists.
 ///
 /// Concurrent writers: the library issues atomic single-process writes. If
 /// the adopter also writes to the same file from outside the library, they
@@ -34,11 +24,9 @@ public final class FileStore: ShortcutBindingsStore {
         category: "filestore"
     )
 
-    /// Designated init.
     /// - Parameter urls: load search order (first → last); saves go to `urls[0]`.
     /// - Parameter format: `.toml` (default) or `.json`.
-    /// - Parameter key: optional dotted-path subtree key. `nil` means whole-file
-    ///   ownership (today's default).
+    /// - Parameter key: optional dotted-path subtree key. `nil` means whole-file ownership.
     /// - Parameter createIfMissing: if `true`, writes an empty file at `urls[0]`
     ///   at init time when no file in `urls` exists.
     public init(
@@ -65,7 +53,7 @@ public final class FileStore: ShortcutBindingsStore {
         }
     }
 
-    /// Convenience for a single URL.
+    /// Creates a store backed by a single file URL.
     public convenience init(
         url: URL,
         format: Format = .toml,
@@ -125,7 +113,6 @@ public final class FileStore: ShortcutBindingsStore {
         }
     }
 
-    /// First URL in `urls` whose file actually exists on disk.
     private var existingFileURL: URL? {
         urls.first(where: { FileManager.default.fileExists(atPath: $0.path) })
     }

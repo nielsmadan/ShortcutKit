@@ -3,7 +3,7 @@ import ShortcutField
 
 /// Stores `RawState` as a single JSON `Data` blob under a stable key.
 /// Machine-format only — not for human editing. For human-editable storage,
-/// use `FileStore` (Task 6).
+/// use `FileStore`.
 public final class UserDefaultsStore: ShortcutBindingsStore {
     public static let defaultKey = "shortcutkit.overrides"
 
@@ -27,9 +27,7 @@ public final class UserDefaultsStore: ShortcutBindingsStore {
         defaults.set(data, forKey: key)
     }
 
-    /// Remove all persisted ShortcutKit state (overrides + preferences) under this
-    /// store's key. The next `load()` returns an empty `RawState`, so a registry
-    /// re-reads its declared defaults.
+    /// Removes all ShortcutKit state stored under this store's key.
     public func clear() {
         defaults.removeObject(forKey: key)
     }

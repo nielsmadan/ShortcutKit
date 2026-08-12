@@ -46,10 +46,9 @@ import Testing
         let store = isolatedStore()
         let registry = ShortcutRegistry(contexts: [ShortcutContext<Act>("editor")], store: store)
         registry.setHintsEnabled(false)
-        registry.setHintsEnabled(true) // back to the default
+        registry.setHintsEnabled(true)
         registry.flushPendingSave()
 
-        // Nothing diverges from default → no preferences persisted.
         #expect(try store.load().preferences.isDefault)
     }
 
@@ -99,7 +98,7 @@ import Testing
         let store = isolatedStore()
         let registry = ShortcutRegistry(contexts: [ShortcutContext<Act>("editor")], store: store)
         registry.setHintFrequency(.always)
-        registry.setHintFrequency(.oncePerSession) // back to the default
+        registry.setHintFrequency(.oncePerSession)
         registry.flushPendingSave()
         #expect(try store.load().preferences.hintFrequency == nil)
     }
@@ -119,7 +118,6 @@ import Testing
         #expect(try store.load().preferences.hintFrequency == .oncePerSession)
         #expect(makeRegistry().hintFrequency == .oncePerSession)
 
-        // Associated-value equality: setting back to the exact default timeout clears.
         registry.setHintFrequency(.timeout(30))
         registry.flushPendingSave()
         #expect(try store.load().preferences.hintFrequency == nil)

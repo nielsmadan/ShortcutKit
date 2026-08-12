@@ -5,10 +5,7 @@ import ShortcutKit
 
 // MARK: - Per-mode action enums
 
-/// Tools in the select mode. Each per-mode action enum is intentionally
-/// distinct so each mode advertises its own bindings in Settings and so
-/// keys can overlap between modes without conflicting (e.g. `1`/`2`/`3` in
-/// fill vs stroke).
+// Separate action types let bindings overlap across modes.
 enum SelectModeAction: String, ShortcutAction {
     case lasso, wand, move
 
@@ -50,7 +47,6 @@ enum TextModeAction: String, ShortcutAction {
 
     var definition: ShortcutActionDefinition {
         switch self {
-        // Avoid collisions with shared actions on `r`/`t`/`e`.
         case .serif: .init("Serif", Shortcut("s"))
         case .sans: .init("Sans", Shortcut("a"))
         case .mono: .init("Mono", Shortcut("o"))
@@ -78,11 +74,9 @@ final class CanvasModeContextModel: ObservableObject {
     @Published var statusLEDPulse = 0
     @Published var rotation: Double = 0
 
-    // Canvas object model.
     @Published var objects: [CanvasObject] = []
     @Published var selectedObjectID: UUID?
 
-    // Per-mode tool state (just for display/inspection).
     @Published var lastSelectTool: SelectModeAction = .lasso
     @Published var currentFillIndex: Int = 0
     @Published var currentStrokeIndex: Int = 1 // 0=thin, 1=medium, 2=thick
@@ -194,9 +188,6 @@ final class CanvasModeContextModel: ObservableObject {
 
     // MARK: - Mode → context routing
 
-    /// Returns the per-mode context as a heterogeneous `any AnyShortcutContext`
-    /// so the caller can apply `.activeShortcutContext(_:)` regardless of which
-    /// concrete `Action` type backs the current mode.
     func modeContext(for mode: CanvasMode) -> any AnyShortcutContext {
         switch mode {
         case .select: selectContext
@@ -207,15 +198,10 @@ final class CanvasModeContextModel: ObservableObject {
         }
     }
 
-    /// Per-mode context IDs in declaration order. Used by the legend and the
-    /// context-wiring mutex set.
     var allModeContextIDs: [String] {
         [selectContext.id, fillContext.id, strokeContext.id, textContext.id, shapeContext.id]
     }
 
-    /// The selection-driven context that should currently be active, or `nil`
-    /// when nothing matching is selected. Returned as the existential so the
-    /// view can apply the activation modifier without branching on type.
     var selectionContext: (any AnyShortcutContext)? {
         guard let selected = selectedObject else { return nil }
         return selected.isShape ? shapeSelectedContext : textSelectedContext
@@ -229,7 +215,6 @@ final class CanvasModeContextModel: ObservableObject {
     // MARK: - Object mutation
 
     private func addObject(_ kind: CanvasObject.Kind) {
-        // Stagger new objects diagonally so they're visible rather than stacked.
         let n = objects.count
         let offsetX = 80 + Double(n % 8) * 60
         let offsetY = 80 + Double(n % 6) * 60
@@ -244,7 +229,6 @@ final class CanvasModeContextModel: ObservableObject {
               let idx = objects.firstIndex(where: { $0.id == id })
         else { return }
         objects.remove(at: idx)
-        // Re-select neighbour if any.
         if objects.isEmpty {
             selectedObjectID = nil
         } else {

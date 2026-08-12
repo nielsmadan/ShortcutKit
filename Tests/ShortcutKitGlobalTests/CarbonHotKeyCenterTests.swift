@@ -7,9 +7,9 @@ import Testing
     @Test("register returns a hotkey and unregister clears the table")
     func registerUnregisterLifecycle() {
         let center = CarbonHotKeyCenter.shared
-        center.unregisterAll() // isolate from other tests
+        center.unregisterAll()
 
-        // F19 (kVK_F19 = 0x50) — extremely unlikely to be a live system hotkey.
+        // Function keys minimize collisions with live system hotkeys.
         let combo = CarbonHotKeyCombo(keyCode: UInt32(kVK_F19), carbonModifiers: 0)
         let hotKey = center.register(combo: combo, onKeyDown: {})
         #expect(hotKey != nil)
@@ -51,16 +51,16 @@ import Testing
     func nestedMenuTracking() {
         let center = CarbonHotKeyCenter.shared
         center.unregisterAll()
-        center.handleMenuTrackingChange(isOpen: false) // reset depth to 0
+        center.handleMenuTrackingChange(isOpen: false)
         #expect(center.mode == .normal)
 
-        center.handleMenuTrackingChange(isOpen: true) // menu opens
+        center.handleMenuTrackingChange(isOpen: true)
         #expect(center.mode == .menuOpen)
-        center.handleMenuTrackingChange(isOpen: true) // submenu opens
+        center.handleMenuTrackingChange(isOpen: true)
         #expect(center.mode == .menuOpen)
-        center.handleMenuTrackingChange(isOpen: false) // submenu closes
-        #expect(center.mode == .menuOpen) // still open — parent tracking
-        center.handleMenuTrackingChange(isOpen: false) // parent closes
+        center.handleMenuTrackingChange(isOpen: false)
+        #expect(center.mode == .menuOpen)
+        center.handleMenuTrackingChange(isOpen: false)
         #expect(center.mode == .normal)
     }
 }

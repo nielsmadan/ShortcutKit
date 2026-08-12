@@ -1,8 +1,7 @@
 import Foundation
 import ShortcutField
 
-/// Stable identifier for a single binding (one shortcut on one action in one context).
-/// Used by `GlobalActivator` implementations to track per-binding registration status.
+/// Stable identifier for one shortcut binding.
 public struct BindingID: Sendable, Hashable {
     public let contextID: String
     public let actionID: String
@@ -14,12 +13,11 @@ public struct BindingID: Sendable, Hashable {
         self.bindingIndex = bindingIndex
     }
 
-    /// The `(context, action)` pair this binding belongs to, dropping the slot index.
+    /// The action reference without the binding index.
     public var ref: ActionRef { ActionRef(contextID: contextID, actionID: actionID) }
 }
 
-/// One effective global binding: its `BindingID` and the shortcut registered
-/// for it. Returned by `ShortcutRegistry.globalBindings()`.
+/// An effective shortcut eligible for global registration.
 public struct GlobalBinding: Sendable, Hashable {
     public let id: BindingID
     public let shortcut: Shortcut
@@ -36,9 +34,7 @@ public enum GlobalBindingStatus: Sendable, Equatable {
     case shadowedBySystem
     case unsupportedTrigger
 
-    /// Why a global registration failed. Closed set so adopters can branch on
-    /// the cause (the `Equatable` conformance is meaningful, unlike a free-form
-    /// `String`).
+    /// Why global registration failed.
     public enum FailureReason: Sendable, Equatable {
         /// `RegisterEventHotKey` rejected the combo at registration time
         /// (often already claimed by another app).
@@ -49,9 +45,7 @@ public enum GlobalBindingStatus: Sendable, Equatable {
     }
 }
 
-/// Protocol implemented by Phase 3's `ShortcutKitGlobal` to register `.global`-scoped
-/// shortcut contexts with the system. Core declares the protocol; no Carbon dependency
-/// lives here.
+/// Registers `.global` shortcut contexts with the system.
 @MainActor
 public protocol GlobalActivator: AnyObject {
     func start(_ registry: ShortcutRegistry) throws

@@ -18,11 +18,7 @@ import Testing
         return NSEvent(cgEvent: cg)!
     }
 
-    /// Overriding the binding at runtime must rebuild the live matcher so the
-    /// new shortcut fires and the old one stops matching. Pre-fix, the matcher
-    /// was frozen at registry-init time and overrides only affected persistence
-    /// and the headless table — a real bug surfaced via the sensitivity slider
-    /// in the example app's continuous-rotate row.
+    // Runtime overrides must rebuild the live matcher, not only persisted state.
     @Test("override change rebuilds matcher")
     func overrideRebuildsMatcher() throws {
         var fired = 0
@@ -39,11 +35,9 @@ import Testing
             return
         }
 
-        // Old default no longer matches.
         _ = matcher.handle(keyDown(kVK_ANSI_S, .command))
         #expect(fired == 0)
 
-        // New override fires.
         _ = matcher.handle(keyDown(kVK_ANSI_S, .option))
         #expect(fired == 1)
     }

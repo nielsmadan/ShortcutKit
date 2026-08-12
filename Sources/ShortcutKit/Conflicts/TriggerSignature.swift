@@ -1,10 +1,7 @@
 import AppKit
 import ShortcutField
 
-/// The `(kind, modifiers)` an event must have to fire a shortcut from idle.
-/// Reduces discrete and continuous shortcuts to a comparable key so cross-kind
-/// overlap (e.g. discrete `scroll-up + ⌘` vs continuous `scroll-up + ⌘`) can
-/// be detected with one pass.
+/// A comparable trigger key shared by discrete and continuous shortcuts.
 struct TriggerSignature: Hashable {
     let kind: DiscreteShortcut.Kind
     let modifiers: NSEvent.ModifierFlags

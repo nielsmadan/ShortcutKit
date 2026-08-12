@@ -20,8 +20,6 @@ enum AppAction: String, ShortcutAction {
         case .fireConfetti: .init("Fire Confetti", Shortcut("cmd+shift+f"))
         case .openInspector: .init("Show Inspector", Shortcut("cmd+i"))
         case .newProject: .init("New Project…", Shortcut("cmd+n"))
-        // Chord shortcuts + long descriptions — exercise the legend's tail-
-        // truncation + hover-tooltip behavior at every LegendSize.
         case .openShortcutCheatsheet:
             .init("Open Full Keyboard Shortcut Reference Cheatsheet", Shortcut("cmd+k cmd+r"))
         case .toggleDiagnosticsOverlay:

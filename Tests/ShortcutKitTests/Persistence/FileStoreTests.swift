@@ -68,8 +68,6 @@ import Testing
         #expect(loaded.overrides.isEmpty)
     }
 
-    // MARK: - Prioritized URLs
-
     @Test("load uses the first existing URL in the urls list")
     func prioritizedLoad() throws {
         let userURL = tempURL("toml")
@@ -77,11 +75,9 @@ import Testing
         let defaultState = RawState(overrides: ["editor": ["save": ["cmd+d"]]])
         try FileStore(url: defaultURL).save(defaultState)
 
-        // User URL doesn't exist yet; the default is the fallback.
         let store = FileStore(urls: [userURL, defaultURL])
         #expect(try store.load() == defaultState)
 
-        // After saving, user URL wins.
         let userState = RawState(overrides: ["editor": ["save": ["cmd+u"]]])
         try store.save(userState)
         #expect(try store.load() == userState)
@@ -97,19 +93,14 @@ import Testing
         try store.save(RawState(overrides: ["editor": ["save": ["cmd+s"]]]))
 
         #expect(FileManager.default.fileExists(atPath: userURL.path))
-        // Default file is unchanged.
         let unchanged = try FileStore(url: defaultURL).load()
         #expect(unchanged.overrides == ["x": ["y": ["a"]]])
     }
 
     @Test("empty urls precondition trap rejected by init")
     func emptyURLsRejected() {
-        // We can't easily test precondition traps in Swift Testing, but the
-        // call site below would trap if `urls: []` were accepted.
-        // Verified via doc and code review.
+        // Swift Testing cannot exercise a precondition trap in-process.
     }
-
-    // MARK: - createIfMissing
 
     @Test("createIfMissing writes an empty file when none exists")
     func createIfMissingBootstraps() throws {
@@ -129,12 +120,9 @@ import Testing
         #expect(try FileStore(url: url).load() == original)
     }
 
-    // MARK: - Namespace key
-
     @Test("TOML namespace key round-trips and preserves sibling tables")
     func tomlNamespaceRoundTrip() throws {
         let url = tempURL("toml")
-        // Hand-author a file with adopter-owned sibling tables.
         try """
         [general]
         theme = "dark"
@@ -147,10 +135,8 @@ import Testing
         let state = sampleState()
         try store.save(state)
 
-        // Library data round-trips.
         #expect(try store.load() == state)
 
-        // Adopter's sibling tables are still present.
         let text = try String(contentsOf: url, encoding: .utf8)
         #expect(text.contains("theme = \"dark\""))
         #expect(text.contains("remember_position = true"))
@@ -177,7 +163,6 @@ import Testing
         #expect(try store.load() == state)
 
         let text = try String(contentsOf: url, encoding: .utf8)
-        // TOML emits a nested table header at the deeper level.
         #expect(text.contains("[config.shortcuts."))
     }
 
@@ -213,8 +198,6 @@ import Testing
         #expect(loaded.overrides.isEmpty)
     }
 
-    // MARK: - Preferences
-
     private func stateWithPref() -> RawState {
         var s = sampleState()
         s.preferences.hintsEnabled = false
@@ -233,7 +216,7 @@ import Testing
     @Test("default preferences are not written to JSON")
     func jsonDefaultPreferencesOmitted() throws {
         let url = tempURL("json")
-        try FileStore(url: url, format: .json).save(sampleState()) // prefs default
+        try FileStore(url: url, format: .json).save(sampleState())
         let text = try String(contentsOf: url, encoding: .utf8)
         #expect(text.contains("preferences") == false)
     }
@@ -277,17 +260,15 @@ import Testing
     @Test("un-namespaced TOML persists overrides but drops preferences")
     func tomlNoKeyDropsPreferences() throws {
         let url = tempURL("toml")
-        let store = FileStore(url: url, format: .toml) // no key
+        let store = FileStore(url: url, format: .toml)
         try store.save(stateWithPref())
 
         let reloaded = try store.load()
-        #expect(reloaded.overrides == sampleState().overrides) // bindings kept
-        #expect(reloaded.preferences.isDefault) // prefs dropped
+        #expect(reloaded.overrides == sampleState().overrides)
+        #expect(reloaded.preferences.isDefault)
         let text = try String(contentsOf: url, encoding: .utf8)
         #expect(text.contains("preferences") == false)
     }
-
-    // MARK: - clear() (protocol default)
 
     @Test("clear() empties the library's data and preserves sibling tables")
     func clearPreservesSiblings() throws {
@@ -300,10 +281,10 @@ import Testing
         try store.save(sampleState())
         #expect(try store.load().overrides.isEmpty == false)
 
-        try store.clear() // protocol default: save an empty RawState
+        try store.clear()
 
         #expect(try store.load().overrides.isEmpty)
         let text = try String(contentsOf: url, encoding: .utf8)
-        #expect(text.contains("theme = \"dark\"")) // adopter's sibling survives
+        #expect(text.contains("theme = \"dark\""))
     }
 }

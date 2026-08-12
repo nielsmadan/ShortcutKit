@@ -1,25 +1,16 @@
 import SwiftUI
 
-/// Where the discoverability toast appears within the view the
-/// `.shortcutHintHUD(...)` modifier is attached to. The nine fixed anchors map to
-/// the corners/edges/centre of that view (typically the window content area); the
-/// toast is inset slightly from the edge.
+/// Placement of a shortcut hint within the modified view.
 public enum HintHUDPlacement: Sendable, Hashable {
     case topLeading, top, topTrailing
     case leading, center, trailing
     case bottomLeading, bottom, bottomTrailing
 
-    /// Anchored to the mouse pointer, clamped so the toast stays inside the view.
-    /// Suited to the common case where the hint fires right after a mouse click on
-    /// a button or menu — the tip appears next to where you just acted. Falls back
-    /// to `.top` when the pointer is outside the view at fire time (e.g. a
-    /// programmatic fire with the mouse parked in another window).
+    /// At the pointer, clamped inside the view. Falls back to `.top` when unavailable.
     case cursor
 }
 
 extension HintHUDPlacement {
-    /// SwiftUI alignment for the fixed anchors; `.cursor` reuses `.top` as its
-    /// out-of-bounds fallback alignment.
     var alignment: Alignment {
         switch self {
         case .topLeading: .topLeading
@@ -36,15 +27,11 @@ extension HintHUDPlacement {
     }
 }
 
-/// The HUD's display knobs — toast placement and per-toast duration — passed via
-/// the modifier's `options:` parameter. A `Sendable` value (a struct, not an enum)
-/// because it bundles several independent knobs; contrast the single-axis
-/// `KeyBindingsStyle` / `LegendStyle` variant enums passed via `style:`.
+/// Placement and duration options for the shortcut hint HUD.
 public struct HintHUDOptions: Sendable, Hashable {
     /// Where the toast appears. Default `.topTrailing`.
     public var placement: HintHUDPlacement
-    /// How long a single toast stays visible before fading. Default 2 seconds.
-    /// Distinct from `HintPolicy`, which bounds how often a hint may *recur*.
+    /// How long a toast remains visible. Default two seconds.
     public var duration: Duration
 
     public init(placement: HintHUDPlacement = .topTrailing, duration: Duration = .seconds(2)) {
@@ -55,10 +42,8 @@ public struct HintHUDOptions: Sendable, Hashable {
     public static let `default` = HintHUDOptions()
 }
 
-/// The data behind one hint, handed to a custom toast builder (and reusable for
-/// adopters rendering the cue their own way). `text` is the fully-localized
-/// "Tip: <action> is bound to <shortcut>" string the built-in toast shows;
-/// `actionName` and `shortcut` are the components, for custom layouts.
+/// Localized content supplied to a custom shortcut-hint view.
+/// `text` is the built-in message; `actionName` and `shortcut` support custom layouts.
 public struct HintToastContext: Sendable, Hashable {
     public let actionName: String
     public let shortcut: String

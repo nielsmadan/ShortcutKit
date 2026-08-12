@@ -8,10 +8,8 @@ struct LegendAppearanceTests {
     private let systemFamily = NSFont.systemFont(ofSize: 12).familyName
     private let monoSystemFamily = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular).familyName
 
-    // MARK: - Slot defaults
-
     @Test func defaultShortcutFaceIsTheLegendMonospace() {
-        // Family, not `fontName` — "Menlo" resolves to the PostScript "Menlo-Regular".
+        // NSFont.fontName is the PostScript name, not the family.
         let font = LegendAppearance.default.shortcutNSFont(defaultSize: 12)
         #expect(font.familyName == legendDefaultShortcutFontName)
         #expect(font.pointSize == 12)
@@ -22,8 +20,6 @@ struct LegendAppearanceTests {
         #expect(LegendAppearance.default.headerNSFont(defaultSize: 9).familyName == systemFamily)
         #expect(LegendAppearance.default.headerNSFont(defaultSize: 9).pointSize == 9)
     }
-
-    // MARK: - Size
 
     @Test func nilSizeInheritsTheLegendSizeMetric() {
         for metric in [CGFloat(10), 12, 14, 17] {
@@ -42,9 +38,7 @@ struct LegendAppearanceTests {
     }
 
     @Test func unusableSizesAreDiscardedRatherThanPassedToAppKit() {
-        // AppKit silently substitutes its OWN default (13pt system / 12pt Menlo) for a
-        // non-positive size, and aborts the process on a non-finite one — so neither may
-        // reach it. Both must read back as nil and fall through to the metric.
+        // AppKit substitutes defaults for non-positive sizes and aborts on non-finite sizes.
         for bad in [CGFloat(0), -12, .nan, .infinity, -.infinity] {
             #expect(LegendFont(size: bad).size == nil)
             var appearance = LegendAppearance.default
@@ -62,16 +56,13 @@ struct LegendAppearanceTests {
     }
 
     @Test func nanSizeCannotBreakEquality() {
-        // A stored NaN would make `LegendOptions != itself` (nan != nan), defeating the
-        // SwiftUI diffing that `appearanceParticipatesInOptionsEquality` depends on.
+        // NaN would break equality and SwiftUI diffing.
         let font = LegendFont(size: .nan)
         #expect(font == font)
         var options = LegendOptions()
         options.appearance.labelFont = LegendFont(size: .nan)
         #expect(options == options)
     }
-
-    // MARK: - Faces
 
     @Test func namedFaceResolvesWhenInstalled() {
         var appearance = LegendAppearance.default
@@ -82,8 +73,6 @@ struct LegendAppearanceTests {
     }
 
     @Test func missingShortcutFaceFallsBackToTheSlotsBuiltInMonospace() {
-        // Pin the family, not just `isFixedPitch` — Menlo is fixed-pitch too, so an
-        // `isFixedPitch` assertion alone can't tell a correct fallback from a wrong one.
         var appearance = LegendAppearance.default
         appearance.shortcutFont = LegendFont(face: .named("NoSuchFontXYZ"))
         let font = appearance.shortcutNSFont(defaultSize: 12)
@@ -100,8 +89,6 @@ struct LegendAppearanceTests {
     }
 
     @Test func monospacedSystemFaceIsHonoredNotFallenBackTo() {
-        // Distinguishing this from the fallback path needs the family: both are
-        // fixed-pitch, and the fallback yields Menlo.
         var appearance = LegendAppearance.default
         appearance.shortcutFont = LegendFont(face: .monospacedSystem())
         let font = appearance.shortcutNSFont(defaultSize: 12)
@@ -110,8 +97,6 @@ struct LegendAppearanceTests {
     }
 
     @Test func systemFaceOnTheShortcutSlotIsProportional() {
-        // Documented trade, pinned so it stays deliberate: `.system` opts the shortcut
-        // column out of the monospace, and the column stops lining up.
         var appearance = LegendAppearance.default
         appearance.shortcutFont = LegendFont(face: .system())
         let font = appearance.shortcutNSFont(defaultSize: 12)
@@ -119,12 +104,7 @@ struct LegendAppearanceTests {
         #expect(font.familyName == systemFamily)
     }
 
-    // MARK: - Weight
-
     @Test func weightIsHonoredOnEverySlotThatAcceptsIt() {
-        // Weight lives on the Face cases that can honor it, so it can no longer be set
-        // on a named face and silently dropped. Both system faces must apply it, on the
-        // shortcut slot as well as the label slot.
         var appearance = LegendAppearance.default
         appearance.labelFont = LegendFont(face: .system(weight: .bold))
         appearance.shortcutFont = LegendFont(face: .monospacedSystem(weight: .bold))
@@ -134,12 +114,8 @@ struct LegendAppearanceTests {
         #expect(boldShortcut.fontName != NSFont.monospacedSystemFont(ofSize: 12, weight: .regular).fontName)
     }
 
-    // MARK: - Colors
-
     @Test func defaultForegroundsAreStableAcrossAccesses() {
-        // `AnyShapeStyle` boxes into a class and isn't Equatable, so a freshly boxed
-        // value per access makes SwiftUI's modifier comparison fail every body pass.
-        // The no-override path must hand back the same box.
+        // Stable box identity prevents SwiftUI from treating every body pass as a change.
         #expect(MemoryLayout<AnyShapeStyle>.size == 8, "box-identity probe assumes a single reference word")
         let appearance = LegendAppearance.default
         #expect(boxIdentity(appearance.shortcutForeground) == boxIdentity(appearance.shortcutForeground))
@@ -168,11 +144,7 @@ struct LegendAppearanceTests {
         withUnsafeBytes(of: style) { $0.load(as: UInt.self) }
     }
 
-    // MARK: - Geometry
-
     @Test func columnWidthsTrackAnExplicitFontSize() {
-        // `cellWidth` is public and adopters size containers from it, so it must not
-        // report metric-sized columns for a legend rendering at a larger font.
         var options = LegendOptions(size: .small)
         let base = options.cellWidth
         options.appearance.labelFont = LegendFont(size: options.metrics.entryFont * 2)
@@ -189,22 +161,16 @@ struct LegendAppearanceTests {
     }
 
     @Test func columnWidthsNeverShrinkBelowTheMetric() {
-        // A smaller explicit font must not narrow the columns — the shortcut column is
-        // sized for glyph content, not just point size.
         var options = LegendOptions(size: .large)
         options.appearance.labelFont = LegendFont(size: 4)
         #expect(legendColumnScale(for: options) == 1)
     }
-
-    // MARK: - Options integration
 
     @Test func optionsDefaultToTheBuiltInAppearance() {
         #expect(LegendOptions.default.appearance == .default)
     }
 
     @Test func appearanceParticipatesInOptionsEquality() {
-        // `LegendOptions` is Hashable and feeds SwiftUI's diffing, so an appearance
-        // change has to register as a change.
         var tweaked = LegendOptions()
         tweaked.appearance.labelColor = .red
         #expect(tweaked != LegendOptions.default)

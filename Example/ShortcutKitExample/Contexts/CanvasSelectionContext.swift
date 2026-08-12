@@ -1,10 +1,6 @@
 import Foundation
 import ShortcutKit
 
-/// Active when a shape (rectangle/ellipse) is selected. The `=` and `-` keys
-/// resize the shape and `f` cycles through the fill palette — the same
-/// chord can be bound here and in `TextSelectedAction` because only one of
-/// the two contexts is active at a time (Photoshop-style mode-by-selection).
 enum ShapeSelectedAction: String, ShortcutAction {
     case sizeUp
     case sizeDown
@@ -19,7 +15,6 @@ enum ShapeSelectedAction: String, ShortcutAction {
     }
 }
 
-/// Active when a text object is selected.
 enum TextSelectedAction: String, ShortcutAction {
     case fontSizeUp
     case fontSizeDown

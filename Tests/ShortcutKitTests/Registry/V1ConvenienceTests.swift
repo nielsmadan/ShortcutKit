@@ -17,8 +17,6 @@ import Testing
         return UserDefaultsStore(defaults: defaults)
     }
 
-    // MARK: - reload()
-
     @Test("reload() applies out-of-band store changes to bindings and prefs")
     func reloadAppliesExternalState() throws {
         let store = isolatedStore()
@@ -26,13 +24,12 @@ import Testing
         #expect(registry.keyBindings.groups.first?.entries.first?.effectiveShortcuts == [Shortcut("cmd+s")])
         #expect(registry.hintsEnabled == true)
 
-        // Another writer edits the store directly (hand-edited file / sync).
         var external = RawState()
         external[context: "editor", action: "save"] = [Shortcut("cmd+shift+s")]
         external.preferences.hintsEnabled = false
         try store.save(external)
 
-        #expect(registry.reload()) // returns true on a successful re-read
+        #expect(registry.reload())
 
         let entry = registry.keyBindings.groups.first?.entries.first
         #expect(entry?.effectiveShortcuts == [Shortcut("cmd+shift+s")])
@@ -57,8 +54,6 @@ import Testing
         _ = cancellable
     }
 
-    // MARK: - ActionFiredEvent: Hashable
-
     @Test("ActionFiredEvent is Hashable (dedups in a Set)")
     func actionFiredEventDedups() {
         let a = ActionFiredEvent(contextID: "editor", actionID: "save", source: .shortcut)
@@ -66,8 +61,6 @@ import Testing
         let c = ActionFiredEvent(contextID: "editor", actionID: "save", source: .programmatic)
         #expect(Set([a, b, c]).count == 2)
     }
-
-    // MARK: - UserDefaultsStore.clear()
 
     @Test("clear() wipes persisted state")
     func clearWipesStore() throws {
@@ -77,8 +70,6 @@ import Testing
         store.clear()
         #expect(try store.load().overrides.isEmpty)
     }
-
-    // MARK: - RawState.debugDescription
 
     @Test("debugDescription renders contexts, actions, and preferences")
     func debugDescriptionReadable() {
@@ -91,8 +82,6 @@ import Testing
         #expect(dump.contains("hints-enabled = false"))
         #expect(RawState().debugDescription == "(no overrides)")
     }
-
-    // MARK: - SystemHotKey(_ shortcut:)
 
     @Test("SystemHotKey(shortcut) maps a single-key discrete shortcut")
     func systemHotKeyFromShortcut() {

@@ -1,37 +1,23 @@
 import AppKit
 import SwiftUI
 
-/// Menlo, not the system monospace: it slashes `0` and tails lowercase `l`, so
-/// `0`/`O` and `l`/`I` stay apart in a key legend, and it's the only macOS-bundled
-/// monospace with real ⌘⇧⌥⌃⌫⏎↩⇥ glyphs — the others fall back per-glyph and break
-/// the advance grid.
+/// Menlo distinguishes ambiguous characters and contains the legend's key glyphs.
 let legendDefaultShortcutFontName = "Menlo"
 
 /// One font slot in the legend.
 ///
-/// A value type rather than an `NSFont` for two reasons: ``LegendOptions`` must stay
-/// `Sendable` (neither `NSFont` nor `NSFontDescriptor` is), and the legend needs to
-/// both *render* the font and *measure* it — the columns are fixed-width and the
-/// hover tooltips are gated on a truncation measurement, and SwiftUI's `Font` is
-/// opaque (it converts from `NSFont` but never back).
-///
-/// Both fields are `nil` by default and `nil` means "inherit", so overriding one
-/// thing keeps the rest:
+/// `nil` fields inherit the slot's built-in value, so options can be overridden independently:
 /// ```swift
-/// LegendFont(face: .named("Inter"))          // host's face, legend's size
+/// LegendFont(face: .named("Inter"))
 /// ```
 public struct LegendFont: Sendable, Hashable {
-    /// Which typeface fills the slot. Weight lives on the cases that can honor it —
-    /// a named face carries its own, so name the weighted variant.
+    /// Typeface used by the slot.
     public enum Face: Sendable, Hashable {
-        /// The system font. Proportional: on ``LegendAppearance/shortcutFont`` this
-        /// replaces the monospace, and key glyphs stop lining up between rows.
+        /// The proportional system font; shortcut glyphs will not align between rows.
         case system(weight: NSFont.Weight = .regular)
-        /// The system monospace (SF Mono). Note it lacks `↩` and `⇥` glyphs, which
-        /// then fall back per-glyph and break the shortcut column's advance grid.
+        /// The system monospace font; unsupported key glyphs may use fallback fonts.
         case monospacedSystem(weight: NSFont.Weight = .regular)
-        /// A PostScript or family name, e.g. `"Inter"` or `"Inter-SemiBold"`. Falls
-        /// back to the slot's built-in face when the font isn't installed.
+        /// A PostScript or family name. Missing fonts fall back to the slot default.
         case named(String)
     }
 
@@ -39,13 +25,8 @@ public struct LegendFont: Sendable, Hashable {
     /// label and header, `Menlo` for the shortcut column.
     public var face: Face?
 
-    /// Point size. `nil` (the default) keeps the ``LegendSize`` metric, so `size`
-    /// still scales the whole legend coherently.
-    ///
-    /// Note an explicit size does *not* re-derive the fixed column widths from
-    /// scratch — they scale with it proportionally, which keeps the columns sane but
-    /// is not a measurement. Prefer ``LegendSize`` when you just want a bigger legend.
-    /// Non-finite and non-positive values are discarded and read back as `nil`.
+    /// Point size. `nil` inherits ``LegendSize``; invalid values are stored as `nil`.
+    /// Explicit sizes scale column widths proportionally.
     public var size: CGFloat? {
         get { rawSize }
         set { rawSize = Self.sanitized(newValue) }
@@ -58,23 +39,16 @@ public struct LegendFont: Sendable, Hashable {
         rawSize = Self.sanitized(size)
     }
 
-    /// A non-finite size reaches AppKit text layout and aborts the process; a
-    /// non-positive one makes AppKit substitute *its* default (13pt/12pt) rather than
-    /// the legend's metric. `.nan` additionally breaks `Hashable` (`nan != nan`),
-    /// which would make `LegendOptions` unequal to itself and defeat SwiftUI diffing.
     private static func sanitized(_ size: CGFloat?) -> CGFloat? {
         guard let size, size.isFinite, size > 0 else { return nil }
         return size
     }
 
-    /// The slot's built-in font, unchanged.
+    /// The built-in font for this slot.
     public static let `default` = LegendFont()
 }
 
 extension LegendFont {
-    /// Which built-in face a slot falls back to — both when `face` is `nil` and when
-    /// a named face isn't installed. Two cases rather than a `Face`, so a call site
-    /// can't ask for a fallback the resolver doesn't implement.
     enum Slot {
         case proportional
         case monospaced
@@ -104,40 +78,22 @@ extension LegendFont {
     }
 }
 
-/// Fonts and colors for ``KeyBindingsLegendView``, so a legend can adopt a host
-/// app's type stack instead of forcing the system font.
+/// Fonts and colors for ``KeyBindingsLegendView``.
 ///
-/// Every field defaults to the legend's built-in look, so override only what differs:
-/// ```swift
-/// var options = LegendOptions()
-/// options.appearance.labelFont = LegendFont(face: .named("Inter"))
-/// ```
-///
-/// This covers restyling, not restructuring. For a legend laid out differently than
-/// the shortcut/label pair, read the data from Core (`shortcuts(for:)`,
-/// `displayStrings(for:)`) and build the view yourself.
-///
-/// The legend is fixed-size by design — it does not scale with Dynamic Type, because
-/// the columns are measured with the same font they render and a scaled render
-/// against an unscaled measurement mis-fires the truncation tooltips. Use
-/// ``LegendSize`` (or ``LegendFont/size``) to resize it.
+/// Fields inherit the built-in appearance. The legend does not use Dynamic Type;
+/// resize it with ``LegendSize`` or ``LegendFont/size``.
 public struct LegendAppearance: Sendable, Hashable {
     /// Entry label — the action's name. Pairs with ``labelColor``.
     public var labelFont: LegendFont
-    /// The shortcut column. Monospaced by default so key glyphs line up between rows;
-    /// a proportional face here (including ``LegendFont/Face/system(weight:)``) gives
-    /// that up.
+    /// Shortcut column, monospaced by default.
     public var shortcutFont: LegendFont
-    /// Group headers (uppercased, above the rule).
+    /// Group headers.
     public var headerFont: LegendFont
-    /// `nil` keeps the built-in `.primary` — the shortcut is the emphasized half
-    /// of the pair. An explicit `Color` is flat, so it forfeits the hierarchical
-    /// vibrancy treatment inside the ``LegendStyle/panel`` material.
+    /// Shortcut color. `nil` preserves the built-in hierarchical style.
     public var shortcutColor: Color?
-    /// `nil` keeps the built-in 75%-primary, between the shortcut and the header.
+    /// Label color. `nil` preserves the built-in style.
     public var labelColor: Color?
-    /// `nil` keeps the built-in `.secondary`. Flat overrides forfeit vibrancy, as
-    /// with ``shortcutColor``.
+    /// Header color. `nil` preserves the built-in hierarchical style.
     public var headerColor: Color?
 
     public init(
@@ -160,9 +116,6 @@ public struct LegendAppearance: Sendable, Hashable {
 }
 
 extension LegendAppearance {
-    /// Slot and resolver are paired here rather than at each call site, so a caller
-    /// can't resolve the header through the monospaced slot and get a plausible-
-    /// looking wrong font.
     func labelNSFont(defaultSize: CGFloat) -> NSFont {
         labelFont.nsFont(slot: .proportional, defaultSize: defaultSize)
     }
@@ -177,12 +130,7 @@ extension LegendAppearance {
 }
 
 extension LegendAppearance {
-    /// Hoisted so the no-override path hands SwiftUI the *same* box every render —
-    /// `AnyShapeStyle` boxes into a class and isn't `Equatable`, so a fresh one per
-    /// access makes `_ForegroundStyleModifier` compare unequal on every body pass.
-    /// The shortcut/header defaults stay hierarchical (`.primary` / `.secondary`) to
-    /// keep their vibrancy treatment inside the `.panel` material; the label default
-    /// is deliberately a flat `Color` — 75% primary — and does not get it.
+    // Reuse the boxed defaults so SwiftUI sees stable style identities across renders.
     static let defaultShortcutForeground = AnyShapeStyle(.primary)
     static let defaultLabelForeground = AnyShapeStyle(Color.primary.opacity(0.75))
     static let defaultHeaderForeground = AnyShapeStyle(.secondary)

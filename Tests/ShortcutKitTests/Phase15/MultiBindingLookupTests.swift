@@ -34,7 +34,6 @@ struct MultiBindingLookupTests {
 
     @Test func currentOccurrencesIncludesAllBindings() {
         let ctx = ShortcutContext<Act>("editor")
-        // Two defaults -> two occurrences (no overrides set).
         #expect(ctx.__currentOccurrences().count == 2)
     }
 }

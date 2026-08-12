@@ -58,7 +58,6 @@ struct ConflictCasesTests {
         let dups = reg.conflicts.compactMap { c -> [Occurrence]? in
             if case let .duplicate(o) = c { return o } else { return nil }
         }
-        // ctrl+s collides across .a (second binding) and .b → 2 occurrences in one duplicate
         #expect(dups.first?.count == 2)
     }
 }

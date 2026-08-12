@@ -16,7 +16,6 @@ public extension View {
     }
 }
 
-/// Internal: re-applies `.keyboardShortcut(...)` as the bound shortcut changes.
 struct ShortcutKitKeyboardShortcutModifier<A: ShortcutAction>: ViewModifier {
     let action: A
     let context: ShortcutContext<A>
@@ -37,7 +36,6 @@ struct ShortcutKitKeyboardShortcutModifier<A: ShortcutAction>: ViewModifier {
     }
 }
 
-/// Helpers for resolving SwiftUI keyboard equivalents from ShortcutKit bindings.
 enum ShortcutKitHelpers {
     @MainActor
     static func resolveKeyboardEquivalent<A: ShortcutAction>(

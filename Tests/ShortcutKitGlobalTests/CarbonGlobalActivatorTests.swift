@@ -8,7 +8,7 @@ import Testing
 @Suite("CarbonGlobalActivator") struct CarbonGlobalActivatorTests {
     enum GlobalAct: String, ShortcutAction {
         case ping
-        // F18 — almost never a live system hotkey.
+        // Function keys minimize collisions with live system hotkeys.
         var definition: ShortcutActionDefinition {
             .init("Ping", Shortcut.discrete(DiscreteShortcut(keyCode: UInt16(kVK_F18), modifiers: [])))
         }
@@ -36,10 +36,7 @@ import Testing
 
     @Test("chord in a global context reports .unsupportedTrigger")
     func chordUnsupported() throws {
-        // A multi-step shortcut declared as a default in a global context is an
-        // error-severity conflict (`multiStepInGlobal`). Core trips
-        // `assertionFunction` for that; suppress it so the registry builds and
-        // the binding reaches the activator, which reports `.unsupportedTrigger`.
+        // Suppress Core's conflict assertion so the invalid binding reaches the activator.
         let prior = ShortcutRegistry.assertionFunction
         ShortcutRegistry.assertionFunction = { _ in }
         defer { ShortcutRegistry.assertionFunction = prior }
@@ -111,7 +108,6 @@ import Testing
         defer { activator.stop() }
 
         let id = BindingID(contextID: "global", actionID: "ping", bindingIndex: 0)
-        // F19 — another rarely-bound key.
         ctx.setShortcuts(
             [Shortcut.discrete(DiscreteShortcut(keyCode: UInt16(kVK_F19), modifiers: []))],
             for: .ping

@@ -2,8 +2,7 @@ import Foundation
 import os.log
 import ShortcutField
 
-/// A (context, action) pair — the persistence-side identifier of one action.
-/// Used by `ShortcutMigration` cases that move bindings across contexts.
+/// The stable persistence identifiers for an action.
 public struct ActionRef: Sendable, Hashable {
     public let contextID: String
     public let actionID: String
@@ -14,8 +13,9 @@ public struct ActionRef: Sendable, Hashable {
     }
 }
 
-/// One migration step. Append to the registry's `migrations:` list; never
-/// reorder, modify, or delete a shipped entry (spec §5.3).
+/// A persistence migration applied idempotently in declaration order.
+///
+/// Append new migrations; never reorder, modify, or remove a shipped entry.
 public enum ShortcutMigration: Sendable {
     case renameAction(context: String, from: String, to: String)
     case moveAction(from: ActionRef, to: ActionRef)
@@ -24,8 +24,6 @@ public enum ShortcutMigration: Sendable {
     case custom(@MainActor @Sendable (inout RawState) throws -> Void)
 }
 
-/// Internal applier. Runs every migration in order, idempotently. `.custom`
-/// errors are caught and logged; state advances as far as it can.
 @MainActor
 enum ShortcutMigrationApplier {
     private static let logger = Logger(
@@ -83,7 +81,6 @@ enum ShortcutMigrationApplier {
             guard let fromPerAction = state.overrides[from] else { return }
             var merged = state.overrides[to] ?? [:]
             for (action, value) in fromPerAction {
-                // Source wins on collision.
                 merged[action] = value
             }
             state.overrides[to] = merged

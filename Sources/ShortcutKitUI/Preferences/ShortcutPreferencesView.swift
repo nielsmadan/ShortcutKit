@@ -1,10 +1,7 @@
 import ShortcutKit
 import SwiftUI
 
-/// Drop-in Settings-tab view: the General preferences (via ``HintPreferencesView``)
-/// and the shortcut lists, in a native grouped `Form`. Composes `KeyBindingsView`
-/// in its `.embedded` presentation so everything shares one scroll and the system
-/// grouped styling.
+/// A drop-in Settings view containing hint preferences and shortcut bindings.
 @MainActor
 public struct ShortcutPreferencesView: View {
     @ObservedObject public var registry: ShortcutRegistry
@@ -13,12 +10,8 @@ public struct ShortcutPreferencesView: View {
     private let showsDescriptions: Bool
     @State private var resetAlertShown = false
 
-    /// `style` is the app author's density choice (consumer apps `.regular`,
-    /// power-user apps `.dense`) — not a user setting. `showsHintToggle` controls
-    /// whether the "Show shortcut hints" toggle is offered at all; `showsDescriptions`
-    /// renders each action's `description` (when it has one) as a subtitle. The hint
-    /// preference persists through the registry's store (set the registry's
-    /// `defaultHintsEnabled` for the off-by-default case).
+    /// `showsHintToggle` includes the hint preference; `showsDescriptions` includes
+    /// action descriptions below their names.
     public init(
         registry: ShortcutRegistry,
         style: KeyBindingsStyle = .regular,
@@ -44,9 +37,6 @@ public struct ShortcutPreferencesView: View {
                 registry: registry, style: style, presentation: .embedded,
                 showsDescriptions: showsDescriptions
             )
-            // `.embedded` leaves Reset-All to the host; this drop-in provides it.
-            // (A search field, if wanted, is likewise the host's to add — e.g.
-            // `.searchable` on this Form.)
             Section {
                 Button(uiString("Reset All…"), role: .destructive) { resetAlertShown = true }
             }

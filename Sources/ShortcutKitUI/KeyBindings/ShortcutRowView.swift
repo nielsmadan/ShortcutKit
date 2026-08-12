@@ -2,15 +2,6 @@ import ShortcutField
 import ShortcutKit
 import SwiftUI
 
-/// A single row in the bindings table.
-///
-/// Layout: label + `Spacer()` + N `ScopedShortcutRecorder`s (one per existing
-/// binding) + per-binding clear (`xmark.circle`) + optional add (`plus`) +
-/// per-row reset (`arrow.uturn.backward`).
-///
-/// The leading stripe is a thin colored bar reflecting the worst conflict
-/// severity on this row. T11 replaces this placeholder with the real
-/// `ConflictStripeView` (popover-on-tap behavior).
 @MainActor
 struct ShortcutRowView: View {
     let row: KeyBindings.Entry
@@ -64,21 +55,13 @@ struct ShortcutRowView: View {
         .padding(.vertical, style == .dense ? 1 : 10)
     }
 
-    // MARK: - Testable internals
-
     var bindingCount: Int { row.effectiveShortcuts.count }
 
-    /// Test hook: the resolved subtitle string this row renders, or `nil` when the
-    /// description is suppressed (flag off) or the action has none.
     var subtitleText: String? {
         guard showsDescription, let description = row.description else { return nil }
         return String(localized: description)
     }
 
-    /// Test hook: appends a placeholder binding slot via `onSet`. The placeholder
-    /// shortcut is arbitrary — production callers replace it via the recorder.
-    /// `Shortcut("")` would trap (empty ascii throws), so `space` is used as a
-    /// parseable, harmless sentinel.
     func appendEmptyBinding() {
         onSet(row.effectiveShortcuts + [Shortcut("space")])
     }
@@ -88,8 +71,6 @@ struct ShortcutRowView: View {
     @ViewBuilder
     private var recorders: some View {
         if style == .dense {
-            // Two fixed slots: primary + alternative. Empty slot lets the
-            // user record an alternative on the same row.
             ScopedShortcutRecorder(shortcut: slotBinding(at: 0), policy: policy, style: style)
             ScopedShortcutRecorder(shortcut: slotBinding(at: 1), policy: policy, style: style)
         } else {
@@ -109,11 +90,6 @@ struct ShortcutRowView: View {
             .opacity(row.isCustomized ? 1 : 0)
     }
 
-    /// Binding for a fixed-position recorder slot — used by the dense layout
-    /// where each row always shows Primary + Alternative columns. Reading
-    /// returns the binding at `idx` or `nil` if the row has fewer bindings;
-    /// writing appends or replaces and trims an empty Alternative back to
-    /// just a Primary.
     private func slotBinding(at idx: Int) -> Binding<Shortcut?> {
         Binding(
             get: {

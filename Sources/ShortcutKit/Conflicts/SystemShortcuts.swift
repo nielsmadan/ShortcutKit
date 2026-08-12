@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import ShortcutField
 
-/// One enabled system symbolic hotkey — what `CopySymbolicHotKeys()` returns.
+/// An enabled macOS symbolic hotkey.
 ///
 /// `Hashable` is written by hand because `NSEvent.ModifierFlags` conforms to
 /// `OptionSet` + `Equatable` but not `Hashable`, so synthesis can't derive it.
@@ -26,10 +26,9 @@ public struct SystemHotKey: Hashable, Sendable {
 }
 
 public extension SystemHotKey {
-    /// Build an entry from a single-key discrete `Shortcut`, so a custom
-    /// `SystemShortcutsProvider` can suppress a conflict by shortcut rather than
-    /// raw keycode. Returns `nil` for shortcuts with no single-key representation
-    /// (continuous gestures, multi-step chords, or a non-key step).
+    /// Creates an entry from a single-key discrete shortcut.
+    ///
+    /// Returns `nil` for continuous, multi-step, or non-key shortcuts.
     init?(_ shortcut: Shortcut) {
         guard case let .discrete(discrete) = shortcut,
               discrete.steps.count == 1,
@@ -40,9 +39,7 @@ public extension SystemHotKey {
     }
 }
 
-/// Source of the live system-hotkey set. The default `CarbonSystemShortcuts`
-/// reads what the user has configured in System Settings. Adopters who need
-/// to suppress specific entries can wrap it.
+/// Provides the current set of macOS symbolic hotkeys.
 @MainActor
 public protocol SystemShortcutsProvider {
     func currentSystemShortcuts() -> Set<SystemHotKey>
@@ -66,11 +63,7 @@ public final class CarbonSystemShortcuts: SystemShortcutsProvider {
                   let code = entry[kHISymbolicHotKeyCode as String] as? Int,
                   let mods = entry[kHISymbolicHotKeyModifiers as String] as? Int
             else { continue }
-            // CopySymbolicHotKeys sometimes reports enabled-but-unassigned entries
-            // with modifiers == 0. macOS effectively has no bare-key system
-            // hotkeys (accessibility/VoiceOver navigation aside), so filtering
-            // these removes the false positives that otherwise flag adopters'
-            // bare-letter bindings as systemShared conflicts.
+            // Carbon reports some enabled but unassigned entries with no modifiers.
             let flags = Self.nsModifiers(fromCarbon: UInt32(mods))
             guard !flags.isEmpty else { continue }
             result.insert(.init(keyCode: UInt16(code), modifiers: flags))

@@ -2,19 +2,6 @@ import ShortcutField
 import ShortcutKit
 import SwiftUI
 
-/// Wraps the appropriate ShortcutField recorder for the bound shortcut's kind
-/// and refuses commits that violate the scope policy.
-///
-/// - Discrete shortcuts (and empty state) render `ShortcutRecorderView`.
-/// - Continuous shortcuts render `ContinuousShortcutRecorderView`, which
-///   includes a sensitivity slider.
-///
-/// On rejection (scope policy violation) the underlying binding is not updated
-/// and an inline reason message is shown until the next valid commit clears it.
-/// Internal recorder cell. The public entry points are `KeyBindingsView`
-/// (whole table) and `ShortcutBindingEditor` (single action); both compose
-/// this. It wraps ShortcutField's discrete/continuous recorder for the bound
-/// shortcut's kind and refuses scope-policy violations inline.
 @MainActor
 struct ScopedShortcutRecorder: View {
     @Binding var shortcut: Shortcut?
@@ -22,12 +9,7 @@ struct ScopedShortcutRecorder: View {
     let style: KeyBindingsStyle
     @State private var rejection: ScopePolicy.RejectReason?
 
-    /// Width of the embedded recorder field. Smaller in `.dense` so two
-    /// recorders side-by-side don't push labels off the row. These widths
-    /// are also pushed down into ShortcutField's `.minimumWidth(_:)` so the
-    /// underlying NSSearchField actually honors them (without that, the
-    /// AppKit view renders at its intrinsic placeholder width and overflows
-    /// into the next column).
+    // ShortcutField needs both its minimum and SwiftUI frame constrained.
     static let discreteWidth: (regular: CGFloat, dense: CGFloat) = (110, 85)
     static let continuousWidth: (regular: CGFloat, dense: CGFloat) = (130, 100)
 
@@ -103,7 +85,6 @@ struct ScopedShortcutRecorder: View {
 }
 
 extension ScopePolicy.RejectReason {
-    /// User-visible explanation shown below the recorder when a commit is refused.
     var userMessage: String {
         switch self {
         case .multiStepInGlobal: "Global shortcuts can't be chords"

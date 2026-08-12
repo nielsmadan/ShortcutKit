@@ -56,18 +56,16 @@ struct KeyBindingsViewTests {
     @Test func embeddedPresentationOptIn() {
         let view = KeyBindingsView(registry: makeRegistry(contextCount: 2), presentation: .embedded)
         #expect(view.__presentationForTest == .embedded)
-        #expect(view.__modeIsFull) // embedded is still full mode, just container-agnostic
+        #expect(view.__modeIsFull)
     }
 
     @Test func embeddedIgnoresSearchAndLayout() {
-        // `.embedded` carries no search/layout — the hooks report the neutral values.
         let view = KeyBindingsView(registry: makeRegistry(contextCount: 2), presentation: .embedded)
         #expect(view.__searchEnabledForTest == false)
         #expect(view.__contextLayoutForTest == nil)
     }
 
     @Test func test_DocExample_settingsEmbedded() {
-        // Mirrors the embedded-in-Form example in UIGettingStarted.md.
         let registry = makeRegistry(contextCount: 2)
         _ = Form {
             KeyBindingsView(registry: registry, presentation: .embedded)
@@ -76,7 +74,6 @@ struct KeyBindingsViewTests {
     }
 
     @Test func test_DocExample_hintPreferencesInForm() {
-        // Mirrors the compose-your-own-settings example in UIGettingStarted.md.
         let registry = makeRegistry(contextCount: 2)
         _ = Form {
             Section("Display") {

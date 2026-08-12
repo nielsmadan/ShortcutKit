@@ -12,8 +12,6 @@ enum ContextWiring {
     static let global = GlobalContextModel()
     static let conflictDemo = ConflictDemoContextModel()
 
-    /// The Carbon-backed global hotkey activator. Call `startGlobalActivator()`
-    /// once at app launch.
     static let globalActivator = CarbonGlobalActivator()
 
     private static var globalActivatorStarted = false
@@ -29,8 +27,6 @@ enum ContextWiring {
     }
 
     static let shared: ShortcutRegistry = {
-        // Per-mode contexts: heterogeneous (each has its own Action type) but
-        // collected through the existential `any AnyShortcutContext`.
         let modeContexts: [any AnyShortcutContext] = [
             canvas.selectContext,
             canvas.fillContext,
@@ -40,8 +36,6 @@ enum ContextWiring {
         ]
         let modeIDs = Set(modeContexts.map(\.id))
 
-        // Selection-driven contexts (only one is active at a time, gated by the
-        // selected object's kind).
         let selectionContexts: [any AnyShortcutContext] = [
             canvas.shapeSelectedContext,
             canvas.textSelectedContext,
@@ -60,10 +54,7 @@ enum ContextWiring {
 
         let allContexts = nonModeContexts + modeContexts + selectionContexts
 
-        // Mutex sets:
-        //   1. The five canvas modes (only one mode active at a time).
-        //   2. Shape-selected vs text-selected (only one selection type).
-        //   3. Wizard masks everything else when active.
+        // The wizard masks every canvas mode and selection context.
         let wizardVsAll: Set<String> = Set([
             "wizard", "app", "sidebar", "inspector", canvas.sharedContext.id,
         ])
@@ -75,8 +66,7 @@ enum ContextWiring {
             mutuallyExclusiveContexts: [modeIDs, selectionIDs, wizardVsAll],
             defaultHintFrequency: .always
         )
-        // Defaults are conflict-free; create the demo conflicts the way a user
-        // would, via overrides, so the conflict UI has something to show.
+        // Default-level conflicts trap, so the demo creates user overrides instead.
         conflictDemo.seedConflicts()
         return registry
     }()
@@ -84,12 +74,6 @@ enum ContextWiring {
 
 // MARK: - Conflict demo
 
-/// Actions whose *defaults* are conflict-free — shipping colliding defaults would
-/// trip ShortcutKit's developer guard (`checkDefaultLevelConflicts`) and trap. The
-/// conflicts are instead created at runtime via `seedConflicts()`, exactly as an
-/// end user would by re-binding two actions to the same key. That populates the
-/// Settings tables and Diagnostics tab with real `duplicate` and `shadowedByGlobal`
-/// badges, and "Clear stored overrides" makes them disappear.
 enum ConflictDemoAction: String, ShortcutAction {
     case dupeA
     case dupeB
@@ -112,17 +96,10 @@ final class ConflictDemoContextModel {
         context = ShortcutContext<ConflictDemoAction>("conflict.demo", displayName: "Conflict Demo")
     }
 
-    /// Apply user-style overrides that collide on purpose: `dupeB` onto `dupeA`'s
-    /// binding (a `duplicate` conflict), and `shadowed` onto the global hotkey
-    /// (a `shadowedByGlobal` conflict, since the OS intercepts the global first).
-    /// Called once after the registry is wired, so the conflict analyzer surfaces
-    /// them. Idempotent — re-running sets the same overrides.
     func seedConflicts() {
         context.setShortcuts([Shortcut("cmd+ctrl+1")], for: .dupeB)
         context.setShortcuts([Shortcut("ctrl+opt+cmd+k")], for: .shadowed)
     }
 
-    // Demo-only: the bindings exist to produce conflicts, not to do work. The
-    // context isn't activated by any view, so these never fire.
     func handle(_: ConflictDemoAction, _: ShortcutDispatch) {}
 }

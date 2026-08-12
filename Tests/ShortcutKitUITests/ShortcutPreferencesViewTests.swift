@@ -20,8 +20,6 @@ struct ShortcutPreferencesViewTests {
     @Test func hintToggleRoutesThroughRegistry() {
         let ctx = ShortcutContext<Act>("editor")
         let reg = ShortcutRegistry(contexts: [ctx])
-        // The pane's toggle reads/writes registry.hintsEnabled (persisted through
-        // the store), not @AppStorage.
         #expect(reg.hintsEnabled == true)
         reg.setHintsEnabled(false)
         #expect(reg.hintsEnabled == false)
@@ -30,7 +28,6 @@ struct ShortcutPreferencesViewTests {
     @Test func hintPreferencesViewBindsRegistry() {
         let ctx = ShortcutContext<Act>("editor")
         let reg = ShortcutRegistry(contexts: [ctx])
-        // The hint controls are constructible standalone, bound to the registry.
         #expect(HintPreferencesView(registry: reg).registry === reg)
     }
 }

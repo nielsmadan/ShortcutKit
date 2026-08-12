@@ -1,8 +1,5 @@
 import Carbon.HIToolbox
 
-/// Bi-directional character ↔ virtual-keycode table for the common menu set.
-/// Used by `MenuShortcutWalker` (character → keyCode) and the menu helpers
-/// (keyCode → character).
 enum MenuKeyMapping {
     static func keyCode(for character: String) -> UInt16? {
         characterToKeyCode[character.lowercased()]

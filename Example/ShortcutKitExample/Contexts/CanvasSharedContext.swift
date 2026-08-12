@@ -1,8 +1,6 @@
 import Foundation
 import ShortcutKit
 
-/// Actions that work on the canvas regardless of which mode is active:
-/// rotation gestures and add/select/delete commands over canvas objects.
 enum CanvasSharedAction: String, ShortcutAction {
     case rotateRight
     case rotateLeft

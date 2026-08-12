@@ -1,11 +1,9 @@
 import AppKit
 
-/// A local `NSEvent` monitor that only delivers events while the main run loop
-/// is in a given mode. Used for the menu-mode raw-key fallback: the standard
-/// local monitor is silent while an `NSMenu` tracks, because tracking runs the
-/// run loop in `.eventTracking`.
+/// Delivers local events while the main run loop is in a specified mode.
 ///
-/// The handler returns the event to let it through, or `nil` to consume it.
+/// This supports menu tracking, where standard local event monitors are silent.
+/// The handler returns an event to pass it through or `nil` to consume it.
 @MainActor
 final class RunLoopLocalEventMonitor {
     private let mask: NSEvent.EventTypeMask
@@ -25,8 +23,6 @@ final class RunLoopLocalEventMonitor {
 
     func start() {
         guard observer == nil else { return }
-        // beforeWaiting fires once per run-loop pass while in `mode`; drain the
-        // app's event queue for matching events and route them to `handler`.
         let observer = CFRunLoopObserverCreateWithHandler(
             kCFAllocatorDefault,
             CFRunLoopActivity.beforeWaiting.rawValue,
@@ -56,7 +52,7 @@ final class RunLoopLocalEventMonitor {
     private func drain() {
         while let event = NSApp.nextEvent(
             matching: mask,
-            until: nil, // non-blocking poll
+            until: nil,
             inMode: mode,
             dequeue: true
         ) {

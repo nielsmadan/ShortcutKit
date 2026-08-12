@@ -1,8 +1,9 @@
 import Foundation
 import ShortcutField
 
-/// One declared action in an adopter's app. The raw `String` value is the
-/// stable persistence ID — never change it; rename via `ShortcutMigration`.
+/// A shortcut action whose raw value is its stable persistence ID.
+///
+/// Rename raw values only through a `ShortcutMigration`.
 public protocol ShortcutAction:
     CaseIterable, Sendable,
     RawRepresentable where RawValue == String
@@ -10,19 +11,14 @@ public protocol ShortcutAction:
     var definition: ShortcutActionDefinition { get }
 }
 
-/// Per-action metadata: display name, optional description, kind, and
-/// zero-or-more default shortcuts.
-///
-/// `displayName` and `description` use `LocalizedStringResource` so adopters
-/// who localize get language-switch reactivity at render time. String literals
-/// keep working — `LocalizedStringResource` is `ExpressibleByStringLiteral`.
+/// Display metadata, kind, and default shortcuts for an action.
 public struct ShortcutActionDefinition: Sendable {
     public let displayName: LocalizedStringResource
     public let description: LocalizedStringResource?
     public let kind: Shortcut.Kind
     public let defaultShortcuts: [Shortcut]
 
-    /// Primary init. `kind` is inferred from the first default; falls back to
+    /// Creates a definition, inferring `kind` from the first default or using
     /// `.discrete` when `defaults` is empty.
     ///
     /// Traps at definition time if `defaults` mixes discrete and continuous

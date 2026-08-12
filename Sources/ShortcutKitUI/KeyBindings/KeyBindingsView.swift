@@ -2,44 +2,26 @@ import ShortcutField
 import ShortcutKit
 import SwiftUI
 
-/// How `KeyBindingsView` full mode lays out multiple contexts.
+/// Multi-context layout used by ``KeyBindingsView``.
 public enum ContextLayout: Sendable, Hashable {
-    /// Every context stacked as its own section — one long scroll.
+    /// Stack every context in one scroll view.
     case stacked
-    /// A context selector (segmented for a few contexts, a dropdown for many)
-    /// with only the chosen context's rows shown below. Suited to apps with
-    /// many contexts where stacking would scroll endlessly.
+    /// Show one context selected by a segmented control or menu.
     case picker
 }
 
-/// How full-mode `KeyBindingsView` is contained. The self-contained pane's
-/// options (`search`, `layout`) live on the `.standalone` case so they can't be
-/// set on an `.embedded` view, where they don't apply.
+/// Container for a multi-context ``KeyBindingsView``.
 public enum KeyBindingsPresentation: Sendable, Hashable {
-    /// A self-contained pane that owns its scroll, a grouped card, an optional
-    /// search field, and the "Reset All…" button. Use it as the whole content of
-    /// a Settings tab. `search` toggles the search field; `layout` stacks every
-    /// context (`.stacked`) or shows a context selector (`.picker`).
+    /// A complete pane with scrolling, optional search, and Reset All.
     case standalone(search: Bool = true, layout: ContextLayout = .stacked)
-    /// Form/List section content: one SwiftUI `Section` per context — no scroll,
-    /// card, search, or Reset-All. Place it inside your own `Form`/`List` so it
-    /// inherits native grouped styling and the host's single scroll. Search and
-    /// Reset-All are the host's to provide.
+    /// Sections for a host `Form` or `List`, without scrolling, search, or Reset All.
     case embedded
 }
 
 /// The top-level settings view for shortcut customisation.
 ///
-/// Full mode (`init(registry:style:presentation:)`) renders one section per
-/// registry context (filtered to `includeInSettings == true`). ``KeyBindingsPresentation``
-/// decides containment: `.standalone` (default) is a self-contained pane for a
-/// whole Settings tab; `.embedded` emits bare `Section`s to drop into your own
-/// `Form`/`List` — prefer it whenever the view is one part of a larger pane.
-///
-/// Inline mode (`init(context:style:searchEnabled:)`) renders only the rows for
-/// the given context — no section header, no toolbar, search optional (default
-/// OFF). For a *single action* rather than a whole context, use
-/// `ShortcutBindingEditor`. Side effects route to the context's attached registry.
+/// Initialize with a registry for every context included in settings, or with one
+/// attached context for an inline list. Use ``ShortcutBindingEditor`` for one action.
 @MainActor
 public struct KeyBindingsView: View {
     enum Mode {
@@ -47,8 +29,6 @@ public struct KeyBindingsView: View {
         case inline(context: any AnyShortcutContext, searchEnabled: Bool)
     }
 
-    /// Observed so `@Published` changes (`keyBindings`, `conflicts`, …)
-    /// re-render the rows when overrides change at runtime.
     @ObservedObject var registry: ShortcutRegistry
     let mode: Mode
     let style: KeyBindingsStyle
@@ -58,11 +38,8 @@ public struct KeyBindingsView: View {
     @State private var resetAlertShown: Bool = false
     @State private var selectedContextID: String = ""
 
-    /// Full mode — renders every `includeInSettings` context in the registry.
-    /// `presentation` picks `.standalone` (a self-contained pane; the default) or
-    /// `.embedded` (bare `Section`s for your own `Form`/`List`). `style` controls
-    /// visual density (`.regular` / `.dense`). Set `showsDescriptions` to render each
-    /// action's `description` (when it has one) as a subtitle under its name.
+    /// Creates a view for every registry context included in settings.
+    /// `showsDescriptions` displays action descriptions below their names.
     public init(
         registry: ShortcutRegistry,
         style: KeyBindingsStyle = .regular,
@@ -75,14 +52,8 @@ public struct KeyBindingsView: View {
         mode = .full(presentation: presentation)
     }
 
-    /// Inline single-context init. The context must already be attached to a
-    /// `ShortcutRegistry` (i.e. constructed and passed via
-    /// `ShortcutRegistry(contexts:)`) before instantiating this view, so the
-    /// view can route writes through that registry.
-    ///
-    /// `searchEnabled` defaults to `false` here — opposite of the full-mode
-    /// initializer — because inline views embed inside an adopter tab whose
-    /// chrome typically already handles its own search/filtering.
+    /// Creates an inline list for one context attached to a ``ShortcutRegistry``.
+    /// Search is disabled by default.
     public init(
         context: ShortcutContext<some ShortcutAction>,
         style: KeyBindingsStyle = .regular,
@@ -110,8 +81,6 @@ public struct KeyBindingsView: View {
         }
     }
 
-    // MARK: - Testability hooks (internal)
-
     // swiftlint:disable identifier_name
     var __modeIsFull: Bool {
         if case .full = mode { true } else { false }
@@ -133,7 +102,6 @@ public struct KeyBindingsView: View {
         }
     }
 
-    /// The full-mode presentation, or `nil` in inline mode.
     var __presentationForTest: KeyBindingsPresentation? {
         if case let .full(presentation) = mode { presentation } else { nil }
     }
@@ -149,9 +117,7 @@ public struct KeyBindingsView: View {
         registry: ShortcutRegistry, searchEnabled: Bool, layout: ContextLayout
     ) -> some View {
         ScrollView {
-            // Lazy so off-screen context cards — each holding several
-            // `NSViewRepresentable` recorders that are costly to realize — aren't
-            // built until they scroll near the viewport.
+            // Recorder-backed rows are expensive, so realize them lazily.
             LazyVStack(alignment: .leading, spacing: style == .dense ? 12 : 22) {
                 if searchEnabled {
                     HStack(spacing: 10) {
@@ -182,9 +148,6 @@ public struct KeyBindingsView: View {
 
     // MARK: - Embedded mode body
 
-    /// Form/List section content: one `Section` per non-empty `includeInSettings`
-    /// context, with no scroll view, no card, no search / Reset-All. The enclosing
-    /// `Form`/`List` supplies the grouped styling and the single scroll.
     @ViewBuilder
     private func embeddedBody(registry: ShortcutRegistry) -> some View {
         ForEach(visibleGroups(registry).filter { !$0.entries.isEmpty }, id: \.id) { group in
@@ -199,7 +162,6 @@ public struct KeyBindingsView: View {
         }
     }
 
-    /// One binding row wired to the registry.
     private func shortcutRow(
         _ row: KeyBindings.Entry, registry: ShortcutRegistry
     ) -> some View {
@@ -214,9 +176,6 @@ public struct KeyBindingsView: View {
         )
     }
 
-    /// Context selector + the selected context's rows. The picker itself
-    /// (segmented vs. dropdown) and its conflict dots come from
-    /// `ContextPickerView`.
     @ViewBuilder
     private func pickerContent(registry: ShortcutRegistry) -> some View {
         let groups = visibleGroups(registry)
@@ -231,14 +190,10 @@ public struct KeyBindingsView: View {
             conflictedIDs: registry.contextIDsWithConflicts()
         )
         if let group = groups.first(where: { $0.contextID == selection.wrappedValue }) {
-            // No section header — the picker already names the context.
             rowsCard(entries: SearchField.filter(group.entries, query: query), registry: registry)
         }
     }
 
-    /// Column header for the dense layout: aligns the labels above the two
-    /// recorder slots (Primary / Alternative) and leaves a placeholder over
-    /// the trailing reset-button column so the headers don't drift right.
     private var denseColumnHeader: some View {
         HStack(spacing: 8) {
             Spacer()
@@ -248,8 +203,6 @@ public struct KeyBindingsView: View {
             Text(uiString("Alternative"))
                 .frame(width: ScopedShortcutRecorder.discreteWidth.dense,
                        alignment: .center)
-            // Reserve room for the reset icon column to keep header centred
-            // above the recorders rather than spreading.
             Color.clear.frame(width: 16, height: 1)
         }
         .font(.system(size: 10, weight: .semibold))
@@ -275,7 +228,6 @@ public struct KeyBindingsView: View {
         )
     }
 
-    /// Groups to render in full mode, filtered to `includeInSettings`.
     private func visibleGroups(_ registry: ShortcutRegistry) -> [KeyBindings.Group] {
         let allowed = Set(registry.allContexts.filter(\.includeInSettings).map(\.id))
         return registry.keyBindings.groups.filter { allowed.contains($0.contextID) }

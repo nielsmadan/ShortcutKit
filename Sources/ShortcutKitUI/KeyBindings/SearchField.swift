@@ -12,7 +12,6 @@ struct SearchField: View {
             .textFieldStyle(.roundedBorder)
     }
 
-    /// Headless filter: match on action label OR any binding's display string. Case-insensitive.
     static func filter(_ entries: [KeyBindings.Entry], query: String) -> [KeyBindings.Entry] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return entries }

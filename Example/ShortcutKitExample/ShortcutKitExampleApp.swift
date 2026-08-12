@@ -16,10 +16,6 @@ struct ShortcutKitExampleApp: App {
             RootBridge(appModel: appModel)
         }
         .commands {
-            // Menu items whose key equivalents come from the registry's live
-            // bindings via the `.shortcut(_:in:)` helper — re-binding in Settings
-            // updates these automatically. The button action dispatches the same
-            // action the in-app shortcut would.
             CommandMenu("Actions") {
                 Button("Toggle Legend") { ContextWiring.app.context.dispatch(.toggleLegend) }
                     .shortcut(.toggleLegend, in: ContextWiring.app.context)
@@ -41,9 +37,6 @@ struct ShortcutKitExampleApp: App {
     }
 }
 
-/// Wraps MainWindowView so the signal-driven `openWindow` and `openSettings`
-/// environment values (which are only available inside a Scene's content
-/// view) can react to AppContext shortcut dispatches.
 @MainActor
 private struct RootBridge: View {
     @ObservedObject var appModel: AppContextModel

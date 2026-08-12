@@ -1,13 +1,6 @@
 import ShortcutField
 import ShortcutKit
 
-/// UI-side gate that mirrors `ConflictAnalyzer.detectUnsupportedInScope`.
-///
-/// `ScopedShortcutRecorder` consults this policy before committing a candidate
-/// binding so the violation is refused inline rather than surfacing later as a
-/// `.unsupportedInScope` conflict. The same gates run at the data layer — defense
-/// in depth: if a violating shortcut sneaks in via persistence or migration it
-/// still gets flagged at runtime.
 enum ScopePolicy: Sendable, Hashable {
     case local
     case global
@@ -22,7 +15,6 @@ enum ScopePolicy: Sendable, Hashable {
         case continuousInGlobal
     }
 
-    /// Bridges `ContextScope` from Core into a UI-side policy.
     init(_ scope: ContextScope) {
         switch scope {
         case .local: self = .local

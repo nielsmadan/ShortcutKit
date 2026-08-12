@@ -47,7 +47,6 @@ struct ConfettiOverlay: View {
         }
         particles.append(contentsOf: fresh)
 
-        // Animate fresh particles to end positions + fade out.
         for index in particles.indices.suffix(fresh.count) {
             let target = particles[index].end
             withAnimation(.easeOut(duration: 0.6)) {
@@ -56,7 +55,6 @@ struct ConfettiOverlay: View {
             }
         }
 
-        // Clean up after the animation completes.
         Task {
             try? await Task.sleep(for: .seconds(0.7))
             particles.removeAll { $0.opacity == 0 }

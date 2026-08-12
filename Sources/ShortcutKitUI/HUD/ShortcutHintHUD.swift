@@ -2,19 +2,6 @@ import Combine
 import ShortcutKit
 import SwiftUI
 
-/// View modifier backing `View.shortcutHintHUD(...)`. Observes a registry's
-/// `actionFired` publisher and surfaces a transient
-/// "Tip: <action> is bound to <shortcut>" toast when an action fires via a
-/// non-shortcut path AND has at least one effective binding.
-///
-/// Suppression is governed by:
-///   - `registry.hintFrequency` (how often the same hint may recur; default from
-///     `ShortcutRegistry(defaultHintFrequency:)`, user-overridable)
-///   - `registry.hintsEnabled` (the user preference, persisted through the
-///     registry's store; default from `ShortcutRegistry(defaultHintsEnabled:)`)
-///
-/// `HintHUDOptions` controls placement + per-toast duration; the `toast` builder
-/// renders each hint (the default overload supplies the built-in `HintToast`).
 @MainActor
 struct ShortcutHintHUD<Toast: View>: ViewModifier {
     @ObservedObject var registry: ShortcutRegistry
@@ -23,12 +10,8 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
 
     @State private var gate: HintPolicyGate
     @State private var current: HintToastContext?
-    /// Pointer location captured at fire time (only for `.cursor` placement).
     @State private var currentCursor: CGPoint?
-    /// Measured size of the rendered toast, used to clamp cursor placement.
     @State private var toastSize: CGSize = .zero
-    /// Last in-bounds pointer location. A reference box so `onContinuousHover`
-    /// updates don't invalidate the body on every mouse move.
     @State private var tracker = CursorTracker()
 
     init(
@@ -92,11 +75,9 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
         else { return }
         guard gate.shouldShow(actionID: event.actionID, policy: registry.hintFrequency) else { return }
         gate.markShown(actionID: event.actionID)
-        // displayName is adopter content — resolve it against the adopter's bundle.
+        // Adopter content and library chrome belong to different localization bundles.
         let name = String(localized: entry.displayName)
         let shortcut = firstBinding.displayString
-        // The template is ShortcutKit chrome — resolve against the package bundle.
-        // Translators get "Tip: %@ is bound to %@".
         let text = uiString("Tip: \(name) is bound to \(shortcut)")
         let context = HintToastContext(actionName: name, shortcut: shortcut, text: text)
         withAnimation(.easeOut(duration: 0.2)) {
@@ -105,8 +86,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
         }
         Task {
             try? await Task.sleep(for: options.duration)
-            // Guard ensures the timer doesn't clear a newer hint that has since
-            // replaced the one we set.
+            // Do not let an older timer dismiss its replacement.
             if current == context {
                 withAnimation(.easeIn(duration: 0.3)) { current = nil }
             }
@@ -122,11 +102,8 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
 }
 
 public extension View {
-    /// Attach the discoverability HUD with the built-in toast. Gated by
-    /// `registry.hintsEnabled` and paced by `registry.hintFrequency` (both user
-    /// preferences persisted through the registry's store; set their defaults via
-    /// `ShortcutRegistry(defaultHintsEnabled:defaultHintFrequency:)`). `options`
-    /// controls placement and per-toast duration.
+    /// Adds the built-in shortcut hint HUD.
+    /// Hints follow the registry's persisted enabled and frequency preferences.
     func shortcutHintHUD(
         registry: ShortcutRegistry,
         options: HintHUDOptions = .default
@@ -136,10 +113,8 @@ public extension View {
         })
     }
 
-    /// Attach the discoverability HUD with a custom toast. The builder receives a
-    /// `HintToastContext` (localized text plus the action name and shortcut
-    /// components) and returns the view to show; everything else (gating, pacing,
-    /// placement, duration) behaves as the built-in variant.
+    /// Adds a shortcut hint HUD rendered by `toast`.
+    /// Gating, frequency, placement, and duration match the built-in variant.
     func shortcutHintHUD(
         registry: ShortcutRegistry,
         options: HintHUDOptions = .default,
@@ -149,16 +124,11 @@ public extension View {
     }
 }
 
-/// Reference box so high-frequency `onContinuousHover` updates don't invalidate
-/// the SwiftUI body — the point is read only when a hint fires.
 @MainActor
 final class CursorTracker {
     var point: CGPoint?
 }
 
-/// Centre position for a cursor-anchored toast: offset down-right of the pointer
-/// by a small gap, then clamped so the toast's box stays inside the container.
-/// Containers too small to fit the toast fall back to the container centre.
 func clampedToastCenter(
     cursor: CGPoint,
     container: CGSize,
@@ -182,10 +152,6 @@ private struct ToastSizeKey: PreferenceKey {
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
 }
 
-/// The built-in hint toast. Inverts the app's theme — dark text on a light pill
-/// in a dark app, light-on-dark in a light app — so the cue reads as a distinct
-/// overlay rather than blending into the window chrome (the Superhuman style).
-/// Adopters who want a different look pass their own via the custom-toast overload.
 private struct HintToast: View {
     let text: String
     @Environment(\.colorScheme) private var colorScheme

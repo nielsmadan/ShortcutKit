@@ -11,7 +11,7 @@ struct ConflictUIComponentsTests {
     }
 
     @Test func stripeColorErrorIsRed() {
-        let err = Conflict.duplicate(occurrences: [occ("a"), occ("b")]) // same-context dup is .error
+        let err = Conflict.duplicate(occurrences: [occ("a"), occ("b")])
         #expect(ConflictStripeView.color(for: [err]) == .red)
     }
 

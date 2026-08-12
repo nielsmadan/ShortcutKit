@@ -1,4 +1,4 @@
-/// The dispatch flavour passed to a context's closure.
+/// The event delivered to a shortcut context's handler.
 public enum ShortcutDispatch: Sendable, Equatable {
     /// A discrete action fired once.
     case discrete
@@ -8,11 +8,11 @@ public enum ShortcutDispatch: Sendable, Equatable {
     case continuous(magnitude: Double)
 }
 
-/// Emitted on `actionFired` whenever an action runs — adopter-driven or matcher-driven.
+/// Describes an action reported through `ShortcutRegistry.actionFired`.
 public struct ActionFiredEvent: Sendable, Hashable {
     /// What caused this action to fire.
     public enum Source: Sendable, Hashable {
-        /// The matcher fired from a real shortcut event.
+        /// A shortcut event matched the action.
         case shortcut
         /// An adopter called `dispatch(_:)` or `notify(_:)` programmatically.
         case programmatic

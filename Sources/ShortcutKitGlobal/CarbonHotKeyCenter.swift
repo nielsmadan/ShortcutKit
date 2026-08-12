@@ -1,9 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// Process-singleton coordinating all global hotkey registrations: owns the
-/// one shared Carbon `InstallEventHandler`, allocates `EventHotKeyID` ids, and
-/// routes `kEventHotKeyPressed` to the matching `CarbonHotKey`.
+/// Coordinates the process's Carbon hotkey registrations and event handler.
 ///
 /// While one of the app's NSMenus is tracking, Carbon hotkeys are paused and a
 /// `RunLoopLocalEventMonitor` matches raw key events instead (menu mode).
@@ -11,8 +9,7 @@ import Carbon.HIToolbox
 final class CarbonHotKeyCenter {
     static let shared = CarbonHotKeyCenter()
 
-    /// Identifies this app's hotkey events in the shared dispatcher. ASCII
-    /// "SHKT" — distinct from other libraries' signatures.
+    /// ASCII `SHKT`, identifying this library's events in Carbon's dispatcher.
     let signature: UInt32 = 0x5348_4B54
 
     private var hotKeys: [UInt32: CarbonHotKey] = [:]
@@ -26,12 +23,8 @@ final class CarbonHotKeyCenter {
         ),
     ]
 
-    /// Hotkey delivery mode.
     enum Mode: Equatable {
-        /// Carbon hotkeys registered and live.
         case normal
-        /// One of the app's NSMenus is tracking — Carbon hotkeys are paused;
-        /// the raw-key monitor matches combos instead.
         case menuOpen
     }
 
@@ -52,12 +45,8 @@ final class CarbonHotKeyCenter {
 
     private init() {}
 
-    /// Number of live registrations. Test/diagnostic accessor.
     var registeredCount: Int { hotKeys.count }
 
-    /// Registers a global hotkey for `combo`. Returns the `CarbonHotKey`
-    /// handle, or `nil` if `RegisterEventHotKey` failed (e.g. the combo is
-    /// already registered by this process).
     func register(
         combo: CarbonHotKeyCombo,
         onKeyDown: @escaping () -> Void
@@ -68,9 +57,6 @@ final class CarbonHotKeyCenter {
         nextID += 1
         let hotKey = CarbonHotKey(id: id, combo: combo, onKeyDown: onKeyDown)
         if mode == .menuOpen {
-            // A menu is tracking — stay paused; the raw-key monitor matches
-            // this hotkey via the `hotKeys` table. resumeAllHotKeys() performs
-            // the real Carbon registration when the menu closes.
             hotKeys[id] = hotKey
             return hotKey
         }
@@ -80,7 +66,6 @@ final class CarbonHotKeyCenter {
         return hotKey
     }
 
-    /// Unregisters a single hotkey.
     func unregister(_ hotKey: CarbonHotKey) {
         if let ref = hotKey.eventHotKeyRef {
             UnregisterEventHotKey(ref)
@@ -89,7 +74,6 @@ final class CarbonHotKeyCenter {
         hotKeys.removeValue(forKey: hotKey.id)
     }
 
-    /// Unregisters every hotkey. Used by `stop()` and tests.
     func unregisterAll() {
         for hotKey in hotKeys.values {
             if let ref = hotKey.eventHotKeyRef {
@@ -118,10 +102,6 @@ final class CarbonHotKeyCenter {
         menuObservers = [begin, end]
     }
 
-    /// Adjusts the menu-tracking depth and updates `mode`. NSMenu posts
-    /// begin/end notifications per menu; nested submenus increment/decrement
-    /// the depth, so Carbon hotkeys stay paused until the *last* menu closes.
-    /// Internal (not `private`) so tests can drive it without a live menu.
     func handleMenuTrackingChange(isOpen: Bool) {
         if isOpen {
             menuTrackingDepth += 1
@@ -156,8 +136,6 @@ final class CarbonHotKeyCenter {
         }
     }
 
-    /// Matches a raw `.keyDown` against the registered combos (menu mode).
-    /// Returns `true` if a hotkey fired (so the event is consumed).
     private func handleRawKeyDown(_ event: NSEvent) -> Bool {
         let keyCode = UInt32(event.keyCode)
         let carbonMods = CarbonModifiers.carbon(from: event.modifierFlags)
@@ -199,8 +177,6 @@ final class CarbonHotKeyCenter {
         eventHandler = handler
     }
 
-    /// Called by the C trampoline (already on the main thread) for a
-    /// `kEventHotKeyPressed` event.
     fileprivate func handleHotKeyEvent(_ event: EventRef) -> OSStatus {
         var hotKeyID = EventHotKeyID()
         let status = GetEventParameter(
@@ -221,9 +197,7 @@ final class CarbonHotKeyCenter {
     }
 }
 
-/// C trampoline for the Carbon event handler. `kEventHotKeyPressed` is
-/// delivered on the main thread; assert that and hop into the `@MainActor`
-/// center via `assumeIsolated` — no `Task` dispatch.
+/// Bridges Carbon's main-thread callback into the actor-isolated center.
 private func carbonHotKeyEventHandler(
     _: EventHandlerCallRef?,
     event: EventRef?,

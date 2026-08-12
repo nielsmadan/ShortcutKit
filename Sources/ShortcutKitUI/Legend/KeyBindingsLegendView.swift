@@ -1,34 +1,16 @@
 import ShortcutKit
 import SwiftUI
 
-/// A read-only legend / cheat-sheet of bound shortcuts. Only bound actions
-/// appear (unbound entries are dropped via `KeyBindings.boundOnly()`), and each
-/// entry shows its **primary** binding — an action bound to several shortcuts
-/// shows only the first, to keep the legend compact.
+/// A read-only legend of bound shortcuts.
 ///
-/// Entries render in the action enum's `Action.allCases` declaration order,
-/// grouped by context (the registry's context order). Reorder the enum cases to
-/// reorder the legend.
+/// Actions are grouped by context in declaration order and show only their primary
+/// binding. Unbound actions are omitted.
 ///
-/// `LegendStyle` chooses the container (a material `.panel` or a scrolling
-/// `.sheet`); `LegendOptions` controls the entry layout — columns, cell order,
-/// size, and a `compact` flag that collapses to a dense headerless strip — and
-/// carries the `LegendAppearance` that overrides fonts and colors to match a host's
-/// type stack. The
-/// default is a grouped table of aligned columns (shortcut then label, long values
-/// tail-truncated with the full text on hover). Fixed column-count grids distribute
-/// spare width across their label columns. Shortcuts render with
-/// ShortcutField's `.compact` symbol labels by default in both layouts
-/// (gestures/scroll as icons, mouse clicks abbreviated, each with a hover tooltip);
-/// set `options.shortcutStyle = .text` for verbose words. Pass a `label` closure to
-/// show a different (e.g. shorter) text for an entry than its `displayName`; return
-/// `nil` to fall back to it.
+/// ``LegendStyle`` controls the container and ``LegendOptions`` controls layout and
+/// appearance. The `label` closure can replace an entry's display name; return `nil`
+/// to use the original name.
 ///
-/// Two ways to feed it:
-/// - `init(registry:style:contextIDs:options:label:)` — observes the registry
-///   and updates live as bindings change. Renders the currently-active contexts,
-///   or `contextIDs` if given.
-/// - `init(bindings:style:options:label:)` — a fixed snapshot you compute.
+/// Initialize with a registry for live updates or with `KeyBindings` for a fixed snapshot.
 @MainActor
 public struct KeyBindingsLegendView: View {
     private enum Backing {
@@ -82,7 +64,6 @@ public struct KeyBindingsLegendView: View {
     }
 }
 
-/// Observes the registry and recomputes the legend on every binding change.
 private struct LiveLegend: View {
     @ObservedObject var registry: ShortcutRegistry
     let contextIDs: Set<String>?
@@ -97,9 +78,6 @@ private struct LiveLegend: View {
     }
 }
 
-/// Wraps the entry content (grouped grid or compact strip, per `options.compact`)
-/// in the container chosen by `style`: a material card (`.panel`) or a scrolling,
-/// chrome-free region (`.sheet`).
 private struct LegendBody: View {
     let bindings: KeyBindings
     let style: LegendStyle
@@ -125,11 +103,6 @@ private struct LegendBody: View {
     }
 }
 
-/// Grouped table of entries. **Content-sized** — no forced height — so the legend
-/// is only as tall as its entries. Each group is a section header hugging its rows,
-/// and the entries are fixed-width cells (so the shortcut / label columns line up)
-/// arranged per `options.columns`: a `VStack` for `.single`, a `LazyVGrid` of fixed
-/// columns for `.fixed(n)`, or a wrapping `FlowLayout` for `.auto`.
 private struct LegendGrid: View {
     let bindings: KeyBindings
     let options: LegendOptions
@@ -183,9 +156,7 @@ private struct LegendGrid: View {
     }
 }
 
-/// The two entry fonts, resolved once per legend rather than once per cell: they
-/// depend only on `options`, so every cell would otherwise redo the same lookup —
-/// and an *unresolvable* named face costs ~26x a hit and is never cached by AppKit.
+// AppKit does not cache failed font lookups.
 struct LegendResolvedFonts {
     let shortcut: NSFont
     let label: NSFont
@@ -196,8 +167,6 @@ struct LegendResolvedFonts {
     }
 }
 
-/// A section title: uppercased, tracked, and underscored by a thin rule so it
-/// reads as a header distinct from the (sentence-case) entries beneath it.
 private struct LegendSectionHeader: View {
     let title: LocalizedStringResource
     let options: LegendOptions
@@ -214,16 +183,9 @@ private struct LegendSectionHeader: View {
     }
 }
 
-/// One legend entry, shortcut + label in `options.entryLayout` order at the size's
-/// entry font. `.columns` renders each as a fixed-width column (shortcut trailing,
-/// label leading), single-line and tail-truncated, with the full value on hover —
-/// so entries line up into a table. `.inline` is the compact strip's content-sized,
-/// single-line pair, truncated only when one entry exceeds the available width.
 private struct LegendEntryCell: View {
     let entry: KeyBindings.Entry
     let options: LegendOptions
-    /// Resolved by the enclosing grid/strip, so the same `NSFont` instance is
-    /// rendered *and* measured and the truncation gate can't drift from the screen.
     let fonts: LegendResolvedFonts
     let label: (KeyBindings.Entry) -> String?
     let mode: Mode
@@ -234,14 +196,10 @@ private struct LegendEntryCell: View {
     private var shortcut: String { primaryShortcut?.displayString ?? "" }
     private var labelString: String { label(entry) ?? String(localized: entry.displayName) }
 
-    /// `"Label — description"` when the action carries a description, else `nil`.
-    /// Folded into the label's hover tooltip in both layouts.
     private var descriptionTooltip: String? {
         legendTooltipText(label: labelString, description: entry.description)
     }
 
-    /// Both layouts default to ShortcutField's `.compact` symbols;
-    /// `options.shortcutStyle` overrides to verbose text.
     private var effectiveStyle: ShortcutLabelStyle {
         legendShortcutStyle(override: options.shortcutStyle)
     }
@@ -255,9 +213,6 @@ private struct LegendEntryCell: View {
         }
     }
 
-    /// The shortcut portion: a symbol/abbreviation `ShortcutLabel` in `.compact`
-    /// style, otherwise the plain `displayString`. The emphasized half of the pair —
-    /// the label beside it renders quieter.
     private var shortcutDisplay: some View {
         shortcutContent
             .font(Font(fonts.shortcut))
@@ -271,12 +226,6 @@ private struct LegendEntryCell: View {
         }
     }
 
-    /// Fixed-width, tail-truncated columns. `.clipped()` keeps a wide shortcut
-    /// (multi-step chords in `.compact`) from spilling past its column into the
-    /// gutter/label. The `.compact` shortcut relies on `ShortcutLabel`'s own
-    /// per-glyph tooltips; the `.text` path gets a column-wide tooltip (gated on a
-    /// truncation measurement in the same font it renders) since a truncated word
-    /// otherwise has no way to reveal its full value.
     private var columnsRow: some View {
         let m = options.metrics
         let widths = legendColumnWidths(for: options)
@@ -311,7 +260,6 @@ private struct LegendEntryCell: View {
         }
     }
 
-    /// Content-sized single-line pair for the compact strip, bounded by its container.
     private var inlineRow: some View {
         let shortcutView = shortcutDisplay
             .fixedSize(horizontal: true, vertical: false)
@@ -333,9 +281,6 @@ private struct LegendEntryCell: View {
     }
 }
 
-/// The densest form (`options.compact`): one continuous wrap of every entry,
-/// no section headers, content-width cells (no column alignment). For a thin
-/// strip. The enclosing `LegendBody` container adds the padding / chrome.
 private struct CompactStrip: View {
     let bindings: KeyBindings
     let options: LegendOptions
@@ -354,9 +299,6 @@ private struct CompactStrip: View {
     }
 }
 
-/// Wrapping flow: places its subviews left-to-right and wraps to a new line when
-/// the next would overflow the available width — so the legend reflows instead of
-/// stretching or scrolling off-screen. Placement math lives in `legendFlowLayout`.
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 12
     var lineSpacing: CGFloat = 4

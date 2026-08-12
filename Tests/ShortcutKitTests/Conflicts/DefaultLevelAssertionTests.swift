@@ -6,7 +6,6 @@ import Testing
 enum BuggyAct: String, ShortcutAction {
     case save, alsoSave
     var definition: ShortcutActionDefinition {
-        // BUG: two defaults bound to cmd+s — same context → .error severity.
         switch self {
         case .save: .init("Save", "cmd+s")
         case .alsoSave: .init("Also Save", "cmd+s")
