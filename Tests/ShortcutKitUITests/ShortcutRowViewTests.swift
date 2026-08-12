@@ -40,6 +40,18 @@ struct ShortcutRowViewTests {
         #expect(received?.first == Shortcut("cmd+s"))
     }
 
+    @Test func alternativeSlotCannotCreateDuplicatePrimary() {
+        #expect(settingShortcut(Shortcut("cmd+s"), at: 1, in: []) == nil)
+    }
+
+    @Test func alternativeSlotAppendsAfterPrimary() {
+        #expect(settingShortcut(
+            Shortcut("ctrl+s"),
+            at: 1,
+            in: [Shortcut("cmd+s")]
+        ) == [Shortcut("cmd+s"), Shortcut("ctrl+s")])
+    }
+
     private func entry(description: LocalizedStringResource?) -> KeyBindings.Entry {
         KeyBindings.Entry(
             contextID: "editor", actionID: "save", displayName: "Save",

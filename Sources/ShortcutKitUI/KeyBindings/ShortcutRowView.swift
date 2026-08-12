@@ -73,6 +73,7 @@ struct ShortcutRowView: View {
         if style == .dense {
             ScopedShortcutRecorder(shortcut: slotBinding(at: 0), policy: policy, style: style)
             ScopedShortcutRecorder(shortcut: slotBinding(at: 1), policy: policy, style: style)
+                .disabled(row.effectiveShortcuts.isEmpty)
         } else {
             ForEach(Array(row.effectiveShortcuts.enumerated()), id: \.offset) { idx, shortcut in
                 ScopedShortcutRecorder(
@@ -96,15 +97,10 @@ struct ShortcutRowView: View {
                 idx < row.effectiveShortcuts.count ? row.effectiveShortcuts[idx] : nil
             },
             set: { new in
-                var copy = row.effectiveShortcuts
+                let copy = row.effectiveShortcuts
                 if let new {
-                    if idx < copy.count { copy[idx] = new } else {
-                        while copy.count < idx {
-                            copy.append(new)
-                        }
-                        copy.append(new)
-                    }
-                    onSet(copy)
+                    guard let updated = settingShortcut(new, at: idx, in: copy) else { return }
+                    onSet(updated)
                 } else if idx < copy.count {
                     onClear(idx)
                 }
@@ -126,4 +122,15 @@ struct ShortcutRowView: View {
             }
         )
     }
+}
+
+func settingShortcut(_ shortcut: Shortcut, at index: Int, in shortcuts: [Shortcut]) -> [Shortcut]? {
+    guard index >= 0, index <= shortcuts.count else { return nil }
+    var updated = shortcuts
+    if index == updated.count {
+        updated.append(shortcut)
+    } else {
+        updated[index] = shortcut
+    }
+    return updated
 }
