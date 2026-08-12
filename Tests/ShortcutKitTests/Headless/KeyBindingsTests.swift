@@ -14,6 +14,21 @@ enum TableAct: String, ShortcutAction {
     }
 }
 
+private enum DottedContextAction: String, ShortcutAction {
+    case colliding = "c"
+    var definition: ShortcutActionDefinition { .init("Colliding", "cmd+s") }
+}
+
+private enum DottedActionIDAction: String, ShortcutAction {
+    case unrelated = "b.c"
+    var definition: ShortcutActionDefinition { .init("Unrelated", "cmd+k") }
+}
+
+private enum DuplicateAction: String, ShortcutAction {
+    case duplicate
+    var definition: ShortcutActionDefinition { .init("Duplicate", "cmd+s") }
+}
+
 @MainActor
 @Suite("KeyBindings") struct KeyBindingsTests {
     private func isolatedStore() -> UserDefaultsStore {
@@ -82,5 +97,26 @@ enum TableAct: String, ShortcutAction {
         let legend = registry.bindings(for: ["editor"]).boundOnly()
         #expect(legend.groups.map(\.contextID) == ["editor"])
         #expect(legend.groups[0].entries.count == 3)
+    }
+
+    @Test("conflict indexing keeps dotted context and action IDs distinct")
+    func conflictIndexUsesStructuredIdentity() {
+        let prior = ShortcutRegistry.assertionFunction
+        ShortcutRegistry.assertionFunction = { _ in }
+        defer { ShortcutRegistry.assertionFunction = prior }
+        let dottedContext = ShortcutContext<DottedContextAction>("a.b")
+        let dottedAction = ShortcutContext<DottedActionIDAction>("a")
+        let duplicate = ShortcutContext<DuplicateAction>("other")
+        let registry = ShortcutRegistry(
+            contexts: [dottedContext, dottedAction, duplicate],
+            store: isolatedStore()
+        )
+
+        let entries = registry.keyBindings.groups.flatMap(\.entries)
+        let colliding = entries.first { $0.contextID == "a.b" && $0.actionID == "c" }
+        let unrelated = entries.first { $0.contextID == "a" && $0.actionID == "b.c" }
+
+        #expect(colliding?.conflicts.count == 1)
+        #expect(unrelated?.conflicts.isEmpty == true)
     }
 }

@@ -234,12 +234,12 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     }
 
     func rebuildKeyBindings() {
-        let byAction = conflictsByActionFQN()
+        let byAction = conflictsByActionRef()
         var groups: [KeyBindings.Group] = []
         for context in contexts {
             guard let p = context as? RegistryAttachable else { continue }
             let entries = p.__currentEntries { actionID in
-                byAction["\(context.id).\(actionID)"] ?? []
+                byAction[ActionRef(contextID: context.id, actionID: actionID)] ?? []
             }
             groups.append(.init(
                 contextID: context.id, displayName: context.displayName, entries: entries
@@ -263,11 +263,11 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     /// unbound actions; chain `.boundOnly()` for a legend.
     public func bindings(for contextIDs: Set<String>) -> KeyBindings {
         var groups: [KeyBindings.Group] = []
-        let byAction = conflictsByActionFQN()
+        let byAction = conflictsByActionRef()
         for context in contexts where contextIDs.contains(context.id) {
             guard let p = context as? RegistryAttachable else { continue }
             let entries = p.__currentEntries { actionID in
-                byAction["\(context.id).\(actionID)"] ?? []
+                byAction[ActionRef(contextID: context.id, actionID: actionID)] ?? []
             }
             groups.append(.init(
                 contextID: context.id, displayName: context.displayName, entries: entries
@@ -276,31 +276,17 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         return KeyBindings(groups: groups)
     }
 
-    private func conflictsByActionFQN() -> [String: [Conflict]] {
-        var result: [String: [Conflict]] = [:]
+    private func conflictsByActionRef() -> [ActionRef: [Conflict]] {
+        var result: [ActionRef: [Conflict]] = [:]
         for conflict in conflicts {
-            for fqn in touchedActionFQNs(in: conflict) {
-                result[fqn, default: []].append(conflict)
+            let refs = Set(conflict.occurrences.map {
+                ActionRef(contextID: $0.contextID, actionID: $0.actionID)
+            })
+            for ref in refs {
+                result[ref, default: []].append(conflict)
             }
         }
         return result
-    }
-
-    private func touchedActionFQNs(in conflict: Conflict) -> [String] {
-        switch conflict {
-        case let .duplicate(occurrences):
-            occurrences.map { "\($0.contextID).\($0.actionID)" }
-        case let .unreachablePrefix(blocker, blocked):
-            ["\(blocker.contextID).\(blocker.actionID)", "\(blocked.contextID).\(blocked.actionID)"]
-        case let .systemShared(action):
-            ["\(action.contextID).\(action.actionID)"]
-        case let .menuCollision(action, _):
-            ["\(action.contextID).\(action.actionID)"]
-        case let .shadowedByGlobal(local, global):
-            ["\(local.contextID).\(local.actionID)", "\(global.contextID).\(global.actionID)"]
-        case let .unsupportedInScope(occurrence, _):
-            ["\(occurrence.contextID).\(occurrence.actionID)"]
-        }
     }
 
     public func menuCollisions(in menu: NSMenu? = NSApp.mainMenu) -> [Conflict] {
