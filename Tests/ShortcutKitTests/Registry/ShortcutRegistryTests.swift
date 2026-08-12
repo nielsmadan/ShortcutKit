@@ -102,6 +102,22 @@ private final class RecordingStore: ShortcutBindingsStore {
         #expect(ctx.isCustomized(.quit) == false)
     }
 
+    @Test("reset all publishes one derived key-binding snapshot")
+    func resetAllBatchesDerivedStateRefresh() {
+        let context = ShortcutContext<DemoAction>("editor")
+        let registry = ShortcutRegistry(contexts: [context], store: isolatedStore())
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
+        registry.setShortcuts(["cmd+shift+q"], contextID: "editor", actionID: "quit")
+        var snapshots = 0
+        let token = registry.$keyBindings.dropFirst().sink { _ in snapshots += 1 }
+
+        registry.resetAll()
+
+        #expect(snapshots == 1)
+        #expect(registry.keyBindings.groups[0].entries.allSatisfy { !$0.isCustomized })
+        _ = token
+    }
+
     @Test("setOverride emits via shortcutsChanges(for:)")
     func shortcutChangesEmits() {
         let ctx = ShortcutContext<DemoAction>("editor")

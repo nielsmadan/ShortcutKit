@@ -5,17 +5,16 @@ public extension ShortcutRegistry {
     func resetAll() {
         let snapshot = overrides
         overrides.removeAll()
-        for (contextID, perAction) in snapshot {
-            for actionID in perAction.keys {
-                notifyChange(contextID: contextID, actionID: actionID)
-            }
+        let refs = snapshot.flatMap { contextID, perAction in
+            perAction.keys.map { ActionRef(contextID: contextID, actionID: $0) }
         }
+        notifyChanges(refs)
         scheduleSave()
     }
 
     package func setShortcuts(_ shortcuts: [Shortcut], contextID: String, actionID: String) {
         overrides[contextID, default: [:]][actionID] = shortcuts
-        notifyChange(contextID: contextID, actionID: actionID)
+        notifyChanges([ActionRef(contextID: contextID, actionID: actionID)])
         scheduleSave()
     }
 
@@ -31,7 +30,7 @@ public extension ShortcutRegistry {
         } else {
             overrides[contextID, default: [:]][actionID] = current
         }
-        notifyChange(contextID: contextID, actionID: actionID)
+        notifyChanges([ActionRef(contextID: contextID, actionID: actionID)])
         scheduleSave()
     }
 
@@ -41,16 +40,14 @@ public extension ShortcutRegistry {
         if overrides[contextID]?.isEmpty == true {
             overrides.removeValue(forKey: contextID)
         }
-        notifyChange(contextID: contextID, actionID: actionID)
+        notifyChanges([ActionRef(contextID: contextID, actionID: actionID)])
         scheduleSave()
     }
 
     package func resetAll(contextID: String) {
         guard let perAction = overrides[contextID] else { return }
         overrides.removeValue(forKey: contextID)
-        for actionID in perAction.keys {
-            notifyChange(contextID: contextID, actionID: actionID)
-        }
+        notifyChanges(perAction.keys.map { ActionRef(contextID: contextID, actionID: $0) })
         scheduleSave()
     }
 
@@ -70,14 +67,21 @@ public extension ShortcutRegistry {
 
     package var allContexts: [AnyShortcutContext] { contexts }
 
-    private func notifyChange(contextID: String, actionID: String) {
-        guard let context = contexts.first(where: { $0.id == contextID }) else { return }
-        (context as? RegistryAttachable)?.__notifyOverrideChange(actionID: actionID)
-        matchers[contextID]?.rebuild()
-        for matcher in activeMatchers.values where matcher.contextID == contextID {
+    private func notifyChanges(_ refs: some Sequence<ActionRef>) {
+        let refs = Array(refs)
+        guard !refs.isEmpty else { return }
+        let contextsByID = Dictionary(uniqueKeysWithValues: contexts.map { ($0.id, $0) })
+        for ref in refs {
+            (contextsByID[ref.contextID] as? RegistryAttachable)?
+                .__notifyOverrideChange(actionID: ref.actionID)
+        }
+        let affectedContextIDs = Set(refs.map(\.contextID))
+        for contextID in affectedContextIDs {
+            matchers[contextID]?.rebuild()
+        }
+        for matcher in activeMatchers.values where affectedContextIDs.contains(matcher.contextID) {
             matcher.rebuild()
         }
-        reanalyzeConflicts()
-        rebuildKeyBindings()
+        refreshDerivedState()
     }
 }

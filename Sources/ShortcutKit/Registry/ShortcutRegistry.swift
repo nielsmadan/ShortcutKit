@@ -104,9 +104,8 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         hintsEnabled = hintsEnabledOverride ?? defaultHintsEnabled
         hintFrequencyOverride = loaded.preferences.hintFrequency
         hintFrequency = hintFrequencyOverride ?? defaultHintFrequency
-        reanalyzeConflicts()
+        refreshDerivedState()
         checkDefaultLevelConflicts()
-        rebuildKeyBindings()
     }
 
     /// Sets the user's hint-visibility preference.
@@ -170,7 +169,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         for matcher in activeMatchers.values {
             matcher.rebuild()
         }
-        reanalyzeConflicts()
+        refreshDerivedState()
         return true
     }
 
@@ -229,6 +228,10 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             systemShortcuts: systemShortcutsProvider.currentSystemShortcuts(),
             contextScopes: contextScopes()
         )
+    }
+
+    func refreshDerivedState() {
+        reanalyzeConflicts()
         rebuildKeyBindings()
     }
 
