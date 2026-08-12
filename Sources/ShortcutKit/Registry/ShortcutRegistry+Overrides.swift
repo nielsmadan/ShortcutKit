@@ -74,6 +74,9 @@ public extension ShortcutRegistry {
         guard let context = contexts.first(where: { $0.id == contextID }) else { return }
         (context as? RegistryAttachable)?.__notifyOverrideChange(actionID: actionID)
         matchers[contextID]?.rebuild()
+        for matcher in activeMatchers.values where matcher.contextID == contextID {
+            matcher.rebuild()
+        }
         reanalyzeConflicts()
         rebuildKeyBindings()
     }

@@ -7,6 +7,7 @@ import Testing
 @MainActor
 final class FakeContextMatcher: ContextMatching {
     let contextID: String
+    let activationID: UUID? = nil
     var handleResult: (NSEvent) -> ShortcutMatchResult
     private(set) var resetCount = 0
     private(set) var rebuildCount = 0

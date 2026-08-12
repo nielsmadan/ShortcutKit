@@ -56,6 +56,8 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     private let globalDispatchClosure: (@MainActor (Action, ShortcutDispatch) -> Void)?
 
     private var activeHandler: (@MainActor (Action, ShortcutDispatch) -> Void)?
+    private var activeHandlers: [UUID: @MainActor (Action, ShortcutDispatch) -> Void] = [:]
+    private var activationOrder: [UUID] = []
 
     private var changeSubjects: [String: CurrentValueSubject<[Shortcut], Never>] = [:]
 
@@ -120,8 +122,18 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         ))
     }
 
-    private func invokeHandler(_ action: Action, kind: ShortcutDispatch) {
-        if let handler = activeHandler {
+    private func invokeHandler(
+        _ action: Action,
+        kind: ShortcutDispatch,
+        activationID: UUID? = nil
+    ) {
+        if let activationID {
+            activeHandlers[activationID]?(action, kind)
+            return
+        }
+        if let activationID = activationOrder.last, let handler = activeHandlers[activationID] {
+            handler(action, kind)
+        } else if let handler = activeHandler {
             handler(action, kind)
         } else if let handler = globalDispatchClosure {
             handler(action, kind)
@@ -183,8 +195,12 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     // MARK: - Internal hooks (called by the registry)
 
-    func dispatchFromMatcher(_ action: Action, kind: ShortcutDispatch) {
-        invokeHandler(action, kind: kind)
+    func dispatchFromMatcher(
+        _ action: Action,
+        kind: ShortcutDispatch,
+        activationID: UUID? = nil
+    ) {
+        invokeHandler(action, kind: kind, activationID: activationID)
         registry?.recordActionFired(.init(
             contextID: id, actionID: action.rawValue, source: .shortcut
         ))
@@ -198,6 +214,20 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
     func __clearActiveHandler() {
         activeHandler = nil
+    }
+
+    func __setActiveHandler(
+        _ handler: @escaping @MainActor (Action, ShortcutDispatch) -> Void,
+        for activationID: UUID
+    ) {
+        activeHandlers[activationID] = handler
+        activationOrder.removeAll { $0 == activationID }
+        activationOrder.append(activationID)
+    }
+
+    func __clearActiveHandler(for activationID: UUID) {
+        activeHandlers[activationID] = nil
+        activationOrder.removeAll { $0 == activationID }
     }
 
     // swiftlint:enable identifier_name
@@ -216,14 +246,14 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     func reset(contextID: String, actionID: String)
     func resetAll(contextID: String)
     func recordActionFired(_ event: ActionFiredEvent)
-    func activateContext(id: String)
-    func deactivateContext(id: String)
+    func activateContext(id: String, activationID: UUID)
+    func deactivateContext(activationID: UUID)
 }
 
 @MainActor protocol ContextActivation: AnyObject {
     // swiftlint:disable identifier_name
-    func __activate()
-    func __deactivate()
+    func __activate(activationID: UUID)
+    func __deactivate(activationID: UUID)
     // swiftlint:enable identifier_name
 }
 
@@ -239,8 +269,11 @@ extension ShortcutContext: RegistryAttachable {
     }
 
     // swiftlint:disable:next identifier_name
-    func __buildMatcher(coalescer: ContinuousCoalescer) -> any ContextMatching {
-        ContextMatcher(context: self, coalescer: coalescer)
+    func __buildMatcher(
+        coalescer: ContinuousCoalescer,
+        activationID: UUID? = nil
+    ) -> any ContextMatching {
+        ContextMatcher(context: self, coalescer: coalescer, activationID: activationID)
     }
 
     // swiftlint:disable:next identifier_name
@@ -311,7 +344,12 @@ package extension ShortcutContext {
 
 extension ShortcutContext: ContextActivation {
     // swiftlint:disable identifier_name
-    func __activate() { registry?.activateContext(id: id) }
-    func __deactivate() { registry?.deactivateContext(id: id) }
+    func __activate(activationID: UUID) {
+        registry?.activateContext(id: id, activationID: activationID)
+    }
+
+    func __deactivate(activationID: UUID) {
+        registry?.deactivateContext(activationID: activationID)
+    }
     // swiftlint:enable identifier_name
 }

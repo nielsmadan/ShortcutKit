@@ -3,16 +3,17 @@ import SwiftUI
 struct ActiveShortcutContextModifier<Action: ShortcutAction>: ViewModifier {
     let context: ShortcutContext<Action>
     let handler: @MainActor (Action, ShortcutDispatch) -> Void
+    @State private var activationID = UUID()
 
     func body(content: Content) -> some View {
         content
             .onAppear {
-                context.__setActiveHandler(handler)
-                (context as any ContextActivation).__activate()
+                context.__setActiveHandler(handler, for: activationID)
+                (context as any ContextActivation).__activate(activationID: activationID)
             }
             .onDisappear {
-                (context as any ContextActivation).__deactivate()
-                context.__clearActiveHandler()
+                (context as any ContextActivation).__deactivate(activationID: activationID)
+                context.__clearActiveHandler(for: activationID)
             }
     }
 }

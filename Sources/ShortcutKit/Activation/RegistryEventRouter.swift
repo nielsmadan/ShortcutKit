@@ -26,8 +26,8 @@ final class RegistryEventRouter {
         }
     }
 
-    func remove(contextID: String) {
-        stack.removeAll { $0.contextID == contextID }
+    func remove(activationID: UUID) {
+        stack.removeAll { $0.activationID == activationID }
         if stack.isEmpty, isRegistered {
             dispatcher.unregister(id: listenerID)
             isRegistered = false

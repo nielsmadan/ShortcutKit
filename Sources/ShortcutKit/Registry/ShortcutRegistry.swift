@@ -40,6 +40,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     private var pendingSave: DispatchWorkItem?
     let router = RegistryEventRouter()
     var matchers: [String: any ContextMatching] = [:]
+    var activeMatchers: [UUID: any ContextMatching] = [:]
     let coalescer = ContinuousCoalescer()
 
     public init(
@@ -162,6 +163,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         for matcher in matchers.values {
             matcher.rebuild()
         }
+        for matcher in activeMatchers.values {
+            matcher.rebuild()
+        }
         reanalyzeConflicts()
         return true
     }
@@ -169,7 +173,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     private func attach(context: any AnyShortcutContext) {
         guard let attachable = context as? RegistryAttachable else { return }
         attachable.__attach(registry: self)
-        matchers[context.id] = attachable.__buildMatcher(coalescer: coalescer)
+        matchers[context.id] = attachable.__buildMatcher(coalescer: coalescer, activationID: nil)
     }
 
     // MARK: - RegistryOverrideSource
@@ -182,13 +186,19 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         actionFiredSubject.send(event)
     }
 
-    func activateContext(id: String) {
-        guard let matcher = matchers[id] else { return }
+    func activateContext(id: String, activationID: UUID) {
+        guard let context = contexts.first(where: { $0.id == id }) as? RegistryAttachable else { return }
+        if activeMatchers[activationID] != nil {
+            router.remove(activationID: activationID)
+        }
+        let matcher = context.__buildMatcher(coalescer: coalescer, activationID: activationID)
+        activeMatchers[activationID] = matcher
         router.push(matcher)
     }
 
-    func deactivateContext(id: String) {
-        router.remove(contextID: id)
+    func deactivateContext(activationID: UUID) {
+        activeMatchers[activationID] = nil
+        router.remove(activationID: activationID)
     }
 
     // MARK: - Assertion seam
@@ -400,7 +410,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 @MainActor protocol RegistryAttachable: AnyObject {
     func __attach(registry: any RegistryOverrideSource)
     func __notifyOverrideChange(actionID: String)
-    func __buildMatcher(coalescer: ContinuousCoalescer) -> any ContextMatching
+    func __buildMatcher(coalescer: ContinuousCoalescer, activationID: UUID?) -> any ContextMatching
     func __currentOccurrences() -> [Occurrence]
     func __defaultOccurrences() -> [Occurrence]
     func __currentEntries(conflictsForAction: (String) -> [Conflict]) -> [KeyBindings.Entry]

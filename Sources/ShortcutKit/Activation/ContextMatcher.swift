@@ -3,6 +3,7 @@ import ShortcutField
 
 @MainActor protocol ContextMatching: AnyObject {
     var contextID: String { get }
+    var activationID: UUID? { get }
     func handle(_ event: NSEvent) -> ShortcutMatchResult
     func reset()
     func rebuild()
@@ -11,12 +12,18 @@ import ShortcutField
 @MainActor
 final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
     let contextID: String
+    let activationID: UUID?
     private weak var context: ShortcutContext<Action>?
     private weak var coalescer: ContinuousCoalescer?
     private var perAction: [(action: Action, matcher: ShortcutMatcher)] = []
 
-    init(context: ShortcutContext<Action>, coalescer: ContinuousCoalescer? = nil) {
+    init(
+        context: ShortcutContext<Action>,
+        coalescer: ContinuousCoalescer? = nil,
+        activationID: UUID? = nil
+    ) {
         contextID = context.id
+        self.activationID = activationID
         self.context = context
         self.coalescer = coalescer
         rebuild()
@@ -35,7 +42,7 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
                 consumeFromAdvance = consumeFromAdvance || consume
             case .fired:
                 resetOthers(exceptIndex: index)
-                context?.dispatchFromMatcher(action, kind: .discrete)
+                context?.dispatchFromMatcher(action, kind: .discrete, activationID: activationID)
                 return .fired
             case let .continuousFired(magnitude):
                 if let coalescer, let context {
@@ -44,11 +51,19 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
                         contextID: id,
                         actionID: action.rawValue,
                         magnitude: magnitude
-                    ) { [weak context] summedMagnitude in
-                        context?.dispatchFromMatcher(action, kind: .continuous(magnitude: summedMagnitude))
+                    ) { [weak context, activationID] summedMagnitude in
+                        context?.dispatchFromMatcher(
+                            action,
+                            kind: .continuous(magnitude: summedMagnitude),
+                            activationID: activationID
+                        )
                     }
                 } else {
-                    context?.dispatchFromMatcher(action, kind: .continuous(magnitude: magnitude))
+                    context?.dispatchFromMatcher(
+                        action,
+                        kind: .continuous(magnitude: magnitude),
+                        activationID: activationID
+                    )
                 }
                 return .continuousFired(magnitude: magnitude)
             }
