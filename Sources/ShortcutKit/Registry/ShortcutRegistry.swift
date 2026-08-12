@@ -38,6 +38,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     private let actionFiredSubject = PassthroughSubject<ActionFiredEvent, Never>()
     var overrides: [String: [String: [Shortcut]]] = [:]
     private var pendingSave: DispatchWorkItem?
+    private var hasUnsavedChanges = false
     let router = RegistryEventRouter()
     var matchers: [String: any ContextMatching] = [:]
     var activeMatchers: [UUID: any ContextMatching] = [:]
@@ -138,6 +139,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             Self.logger.error("reload failed: \(String(describing: error)); keeping current state")
             return false
         }
+        pendingSave?.cancel()
+        pendingSave = nil
+        hasUnsavedChanges = false
         let previous = overrides
         overrides = loaded.overrides
         hintsEnabledOverride = loaded.preferences.hintsEnabled
@@ -354,15 +358,17 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 
     func scheduleSave() {
         pendingSave?.cancel()
+        hasUnsavedChanges = true
         let work = DispatchWorkItem { [weak self] in
-            Task { @MainActor in self?.flushSave() }
+            Task { @MainActor in self?.savePendingChanges() }
         }
         pendingSave = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.250, execute: work)
     }
 
-    private func flushSave() {
-        pendingSave = nil
+    @discardableResult
+    private func savePendingChanges() -> Bool {
+        guard hasUnsavedChanges else { return true }
         do {
             try store.save(RawState(
                 overrides: overrides,
@@ -371,22 +377,27 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
                     hintFrequency: hintFrequencyOverride
                 )
             ))
-        } catch {}
+            hasUnsavedChanges = false
+            pendingSave = nil
+            return true
+        } catch {
+            pendingSave = nil
+            Self.logger.error("save failed: \(String(describing: error))")
+            return false
+        }
     }
 
     /// Persists pending changes immediately, bypassing the 250 ms debounce.
-    /// Does nothing when no save is pending.
-    public func flushPendingSave() {
+    /// Returns `false` when saving fails; the changes remain pending for retry.
+    @discardableResult
+    public func flushPendingSave() -> Bool {
+        guard hasUnsavedChanges else { return true }
         pendingSave?.cancel()
         pendingSave = nil
-        flushSave()
+        return savePendingChanges()
     }
 
     // swiftlint:disable identifier_name
-    func __flushPendingSave() {
-        flushPendingSave()
-    }
-
     var __activeContextIDs: [String] {
         router.__currentStackIDs
     }

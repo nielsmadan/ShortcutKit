@@ -14,6 +14,29 @@ enum DemoAction: String, ShortcutAction {
 }
 
 @MainActor
+private final class RecordingStore: ShortcutBindingsStore {
+    enum Error: Swift.Error { case loadFailed, saveFailed }
+
+    var state = RawState()
+    var saveCount = 0
+    var shouldFailLoad = false
+    var shouldFailSave = false
+
+    func load() throws -> RawState {
+        if shouldFailLoad { throw Error.loadFailed }
+        return state
+    }
+
+    func save(_ state: RawState) throws {
+        saveCount += 1
+        if shouldFailSave { throw Error.saveFailed }
+        self.state = state
+    }
+
+    func clear() throws { state = RawState() }
+}
+
+@MainActor
 @Suite("ShortcutRegistry") struct ShortcutRegistryTests {
     private func isolatedStore() -> UserDefaultsStore {
         let suite = "ShortcutKitTests.\(UUID().uuidString)"
@@ -127,9 +150,64 @@ enum DemoAction: String, ShortcutAction {
         registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
         #expect(try store.load().overrides.isEmpty)
 
-        registry.__flushPendingSave()
+        #expect(registry.flushPendingSave())
         let loaded = try store.load()
         let expected: Shortcut = "cmd+shift+s"
         #expect(loaded.overrides["editor"]?["save"] == [expected])
+    }
+
+    @Test("flush with no pending changes does not write")
+    func cleanFlushIsNoOp() {
+        let store = RecordingStore()
+        let registry = ShortcutRegistry(contexts: [], store: store)
+
+        #expect(registry.flushPendingSave())
+        #expect(store.saveCount == 0)
+    }
+
+    @Test("failed flush reports failure and remains retryable")
+    func failedFlushCanRetry() {
+        let store = RecordingStore()
+        let context = ShortcutContext<DemoAction>("editor")
+        let registry = ShortcutRegistry(contexts: [context], store: store)
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
+        store.shouldFailSave = true
+
+        #expect(registry.flushPendingSave() == false)
+        #expect(store.saveCount == 1)
+        store.shouldFailSave = false
+        #expect(registry.flushPendingSave())
+        #expect(store.saveCount == 2)
+        #expect(store.state.overrides["editor"]?["save"] == ["cmd+shift+s"])
+        #expect(registry.flushPendingSave())
+        #expect(store.saveCount == 2)
+    }
+
+    @Test("successful reload discards pending changes")
+    func reloadDiscardsPendingChanges() {
+        let store = RecordingStore()
+        let context = ShortcutContext<DemoAction>("editor")
+        let registry = ShortcutRegistry(contexts: [context], store: store)
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
+
+        #expect(registry.reload())
+        #expect(registry.flushPendingSave())
+        #expect(store.saveCount == 0)
+        #expect(context.shortcuts(for: .save) == ["cmd+s"])
+    }
+
+    @Test("failed reload preserves pending changes")
+    func failedReloadPreservesPendingChanges() {
+        let store = RecordingStore()
+        let context = ShortcutContext<DemoAction>("editor")
+        let registry = ShortcutRegistry(contexts: [context], store: store)
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
+        store.shouldFailLoad = true
+
+        #expect(registry.reload() == false)
+        store.shouldFailLoad = false
+        #expect(registry.flushPendingSave())
+        #expect(store.saveCount == 1)
+        #expect(store.state.overrides["editor"]?["save"] == ["cmd+shift+s"])
     }
 }
