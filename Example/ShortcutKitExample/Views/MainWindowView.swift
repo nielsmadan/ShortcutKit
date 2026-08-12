@@ -25,13 +25,13 @@ struct MainWindowView: View {
         LegendOptions(columns: legendColumnMode, size: legendSize, labelWidth: legendLabelWidth).cellWidth + 16
     }
 
-    /// Rail width: wide enough for the controls, and for the chosen column count.
-    private var railWidth: CGFloat {
+    /// Ideal rail width: wide enough for the controls and chosen column count.
+    private var idealRailWidth: CGFloat {
         max(300, railColumnWidth * CGFloat(legendColumns) + 16)
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
+        HSplitView {
             NavigationSplitView {
                 SidebarView()
                     .environmentObject(ContextWiring.sidebar)
@@ -45,8 +45,7 @@ struct MainWindowView: View {
             }
 
             if appModel.legendVisible {
-                Divider()
-                // The right rail is the `.panel` legend (a docked, fixed-width
+                // The right rail is the `.panel` legend (a docked, resizable
                 // card). The Compact toggle flips `LegendOptions.compact`; the
                 // button shows the same data in a `.sheet` style sheet, where its
                 // scrolling, chrome-free container belongs.
@@ -95,7 +94,7 @@ struct MainWindowView: View {
                     }
                     .padding(8)
                 }
-                .frame(width: railWidth)
+                .frame(minWidth: 220, idealWidth: idealRailWidth)
             }
         }
         .frame(minWidth: 800, minHeight: 600)

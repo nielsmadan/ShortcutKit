@@ -15,8 +15,9 @@ import SwiftUI
 /// size, and a `compact` flag that collapses to a dense headerless strip — and
 /// carries the `LegendAppearance` that overrides fonts and colors to match a host's
 /// type stack. The
-/// default is a grouped table of fixed-width, aligned columns (shortcut then label,
-/// long values tail-truncated with the full text on hover). Shortcuts render with
+/// default is a grouped table of aligned columns (shortcut then label, long values
+/// tail-truncated with the full text on hover). Fixed column-count grids distribute
+/// spare width across their label columns. Shortcuts render with
 /// ShortcutField's `.compact` symbol labels by default in both layouts
 /// (gestures/scroll as icons, mouse clicks abbreviated, each with a hover tooltip);
 /// set `options.shortcutStyle = .text` for verbose words. Pass a `label` closure to
@@ -150,7 +151,7 @@ private struct LegendGrid: View {
                             if case .flexible = effectiveLabelWidth(for: options) {
                                 return legendFlexibleGridItems(
                                     count: count,
-                                    minCellWidth: options.metrics.cellWidth,
+                                    minCellWidth: resolvedCellWidth(for: options),
                                     spacing: options.metrics.columnSpacing
                                 )
                             }

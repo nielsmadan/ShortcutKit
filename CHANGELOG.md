@@ -11,7 +11,7 @@ The `0.x` line is pre-release: the public API is stabilizing toward 1.0 and may 
 ### Added
 - **[UI]** `KeyBindingsView` gains a `KeyBindingsPresentation`: `.standalone(search:layout:)` (the default self-contained pane) and `.embedded` — container-agnostic `Section`s (no scroll view, card, or search) to drop into your own `Form`/`List` so shortcuts sit natively alongside other settings.
 - **[UI]** `LegendOptions.shortcutStyle` — render shortcuts as ShortcutField `.compact` SF-symbol / abbreviation labels (the default) or `.text` verbose words.
-- **[UI]** Legend cells are fixed-width, gutter-aligned columns (shortcut right-aligned, label left-aligned), single-line with tail truncation and the full value shown on hover. `LegendOptions.labelWidth` (`.size` / `.flexible` / `.fixed(_)`) and the public `LegendOptions.cellWidth` size the columns.
+- **[UI]** Legend cells use gutter-aligned columns (shortcut right-aligned, label left-aligned), single-line with tail truncation and the full value shown on hover. Fixed column-count grids distribute spare width across their labels; auto-wrapping grids retain content-sized cells. `LegendOptions.labelWidth` (`.size` / `.flexible` / `.fixed(_)`) and the public `LegendOptions.cellWidth` size the columns.
 - **[Core/UI]** User-controllable hint frequency: `registry.hintFrequency` / `setHintFrequency(_:)` (persisted like `hintsEnabled`, defaulted via `ShortcutRegistry(defaultHintFrequency:)`), surfaced as a picker in `ShortcutPreferencesView` and read live by the HUD.
 - **[UI]** `HintPreferencesView` — the "show hints" toggle and frequency picker as bare `Form` rows to drop inside your own `Section`, so the hint controls compose into your settings layout instead of only inside the full `ShortcutPreferencesView` pane.
 - **[UI]** `LegendOptions.appearance` — a `LegendAppearance` of per-slot fonts (`labelFont` / `shortcutFont` / `headerFont`, each a `LegendFont`) and colors (`labelColor` / `shortcutColor` / `headerColor`), so a legend can adopt a host app's type stack instead of forcing the system font. Every slot defaults to the built-in look; `LegendFont` leaves `face` and `size` `nil` to inherit, so overriding a typeface keeps `LegendSize` scaling.
@@ -26,7 +26,7 @@ The `0.x` line is pre-release: the public API is stabilizing toward 1.0 and may 
 - **[UI] Breaking:** `KeyBindingsStyle.native` renamed to `.regular` — the axis is visual density (`.regular` vs `.dense`), and everything is equally "native" SwiftUI.
 - **[UI] Breaking:** `KeyBindingsView`'s `searchEnabled:` / `contextLayout:` init params moved onto `.standalone(search:layout:)`, so they can't be set on an `.embedded` view where they don't apply.
 - **[UI]** `ShortcutPreferencesView` now composes the `.embedded` `KeyBindingsView` inside a grouped `Form` (fixes the nested-scroll / double-card when it was the drop-in tab) and keeps a "Reset All…" button; its `searchEnabled` / `contextLayout` parameters were removed (search is host-owned in embedded layouts — add `.searchable` if wanted).
-- Bumped ShortcutField to 2.2.3 (SF-symbol shortcut labels).
+- Bumped ShortcutField to 2.3.0 (SF-symbol shortcut labels and process-wide chord beep suppression).
 
 ## [0.5.1] - 2026-06-26
 

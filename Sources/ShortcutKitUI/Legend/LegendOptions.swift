@@ -1,9 +1,9 @@
 import ShortcutField
 import SwiftUI
 
-/// How many columns of entries the (non-compact) legend lays out. Each entry is a
-/// fixed-width cell (shortcut + label columns, sized from `LegendSize`), so entries
-/// line up into true columns regardless of this choice.
+/// How many columns of entries the (non-compact) legend lays out. Each entry has
+/// aligned shortcut and label columns sized from `LegendSize`; fixed column-count
+/// grids distribute spare width across their labels.
 public enum LegendColumns: Sendable, Hashable {
     /// One column — a vertical list. Ideal for a narrow docked rail.
     case single
@@ -16,12 +16,13 @@ public enum LegendColumns: Sendable, Hashable {
 }
 
 /// Horizontal sizing of the label column. `LegendSize` metrics remain the
-/// default; `.flexible` and `.fixed(_)` let adopters override for one-column
-/// rails, grid layouts, or design-specific widths. Cases mirror
-/// `GridItem.Size`'s vocabulary (`fixed / flexible`) so SwiftUI callers see
-/// familiar names.
+/// default minimum; `.size` fills available space in single- and fixed-column
+/// layouts while auto-wrapping cells stay content-sized. `.flexible` and
+/// `.fixed(_)` let adopters override for rails, grids, or design-specific widths.
+/// Cases mirror `GridItem.Size`'s vocabulary (`fixed / flexible`) so SwiftUI
+/// callers see familiar names.
 public enum LegendLabelWidth: Sendable, Hashable {
-    /// Use `LegendSize.metrics.labelWidth`. Default.
+    /// Use `LegendSize.metrics.labelWidth` as the default width or minimum. Default.
     case size
     /// Fill available horizontal space (`.frame(maxWidth: .infinity)`).
     case flexible
@@ -137,9 +138,8 @@ public struct LegendOptions: Sendable, Hashable {
     /// each with a hover tooltip. Set ``ShortcutField/ShortcutLabelStyle/text`` to
     /// force verbose words instead.
     public var shortcutStyle: ShortcutLabelStyle?
-    /// Label column width. Default `.size` uses the `LegendSize` metric; the
-    /// `.single` column layout implicitly upgrades `.size` to `.flexible` so
-    /// one-column rails breathe.
+    /// Label column width. Default `.size` uses the `LegendSize` metric as a
+    /// minimum and fills spare width in single- and fixed-column layouts.
     public var labelWidth: LegendLabelWidth
     /// Fonts and colors. Defaults to the legend's built-in look; override
     /// individual slots to match a host app's type stack.
@@ -209,15 +209,19 @@ func legendColumnScale(for options: LegendOptions) -> CGFloat {
     return max(max(shortcut, label) / m.entryFont, 1)
 }
 
-/// Resolve the effective label width for `options`. When `columns == .single`
-/// and `labelWidth == .size`, upgrade to `.flexible` — a one-column layout
-/// wants to fill available space by default. Explicit overrides pass through.
+/// Resolve the effective label width for `options`. Single- and fixed-column
+/// layouts distribute available width by default; auto-wrapping layouts keep
+/// content-sized cells so their wrap points remain predictable. Explicit
+/// overrides pass through.
 /// Pure, so the smart-default rule is unit-testable.
 func effectiveLabelWidth(for options: LegendOptions) -> LegendLabelWidth {
-    if case .single = options.columns, options.labelWidth == .size {
+    guard options.labelWidth == .size else { return options.labelWidth }
+    switch options.columns {
+    case .single, .fixed:
         return .flexible
+    case .auto:
+        return .size
     }
-    return options.labelWidth
 }
 
 /// Resolve the shortcut label style for a legend cell: an explicit `override`

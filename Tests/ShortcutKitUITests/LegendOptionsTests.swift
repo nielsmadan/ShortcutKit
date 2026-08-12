@@ -132,11 +132,9 @@ struct LegendOptionsTests {
         #expect(effectiveLabelWidth(for: opts) == .flexible)
     }
 
-    @Test func effectiveLabelWidth_multiColumnKeepsSize() {
-        // Multi-column grids don't get the smart-fill treatment — the fixed metric
-        // width is what makes columns line up.
+    @Test func effectiveLabelWidth_fixedColumnsUpgradeSizeToFlexible() {
         let opts = LegendOptions(columns: .fixed(3), labelWidth: .size)
-        #expect(effectiveLabelWidth(for: opts) == .size)
+        #expect(effectiveLabelWidth(for: opts) == .flexible)
     }
 
     @Test func effectiveLabelWidth_autoColumnsKeepSize() {
