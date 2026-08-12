@@ -27,7 +27,7 @@ enum ContextWiring {
     }
 
     static let shared: ShortcutRegistry = {
-        let modeContexts: [any AnyShortcutContext] = [
+        let modeContexts: [AnyShortcutContext] = [
             canvas.selectContext,
             canvas.fillContext,
             canvas.strokeContext,
@@ -36,13 +36,13 @@ enum ContextWiring {
         ]
         let modeIDs = Set(modeContexts.map(\.id))
 
-        let selectionContexts: [any AnyShortcutContext] = [
+        let selectionContexts: [AnyShortcutContext] = [
             canvas.shapeSelectedContext,
             canvas.textSelectedContext,
         ]
         let selectionIDs = Set(selectionContexts.map(\.id))
 
-        let nonModeContexts: [any AnyShortcutContext] = [
+        let nonModeContexts: [AnyShortcutContext] = [
             app.context,
             sidebar.context,
             inspector.context,

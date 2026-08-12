@@ -8,16 +8,38 @@ import ShortcutField
 /// Global contexts are candidates for system-wide hotkey registration.
 public enum ContextScope: Sendable, Hashable { case local, global }
 
-/// A type-erased shortcut context accepted by `ShortcutRegistry`.
-@MainActor public protocol AnyShortcutContext: AnyObject {
-    var id: String { get }
-    var scope: ContextScope { get }
-    var includeInSettings: Bool { get }
+/// Type-erased base class for shortcut contexts accepted by `ShortcutRegistry`.
+@MainActor
+public class AnyShortcutContext {
+    /// Stable persistence key. Rename it only through a declared migration.
+    public let id: String
+
+    /// Activation scope, fixed at construction.
+    public let scope: ContextScope
+
+    /// Whether `KeyBindingsView` lists this context.
+    public var includeInSettings: Bool
+
+    private let displayNameOverride: LocalizedStringResource?
 
     /// Human-facing context name shown in settings pickers and legends.
     /// Resolves to an explicit value if the adopter set one, otherwise a
     /// title-cased rendering of `id` (e.g. `"canvas.shared"` → `"Canvas / Shared"`).
-    var displayName: LocalizedStringResource { get }
+    public var displayName: LocalizedStringResource {
+        displayNameOverride ?? LocalizedStringResource(stringLiteral: deriveContextDisplayName(fromID: id))
+    }
+
+    fileprivate init(
+        id: String,
+        scope: ContextScope,
+        displayName: LocalizedStringResource?,
+        includeInSettings: Bool
+    ) {
+        self.id = id
+        self.scope = scope
+        displayNameOverride = displayName
+        self.includeInSettings = includeInSettings
+    }
 }
 
 func deriveContextDisplayName(fromID id: String) -> String {
@@ -36,23 +58,6 @@ func deriveContextDisplayName(fromID id: String) -> String {
 /// and `isCustomized(_:)` returns `false`.
 @MainActor
 public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
-    /// Stable persistence key. Rename it only through a declared migration.
-    public let id: String
-
-    /// Activation scope, fixed at construction.
-    public let scope: ContextScope
-
-    /// Whether `KeyBindingsView` lists this context.
-    ///
-    /// This value is not published; treat it as a construction-time choice.
-    public var includeInSettings: Bool
-
-    private let displayNameOverride: LocalizedStringResource?
-
-    public var displayName: LocalizedStringResource {
-        displayNameOverride ?? LocalizedStringResource(stringLiteral: deriveContextDisplayName(fromID: id))
-    }
-
     private let globalDispatchClosure: (@MainActor (Action, ShortcutDispatch) -> Void)?
 
     private var activeHandler: (@MainActor (Action, ShortcutDispatch) -> Void)?
@@ -71,11 +76,13 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         displayName: LocalizedStringResource? = nil,
         includeInSettings: Bool = true
     ) {
-        self.id = id
-        scope = .local
-        displayNameOverride = displayName
-        self.includeInSettings = includeInSettings
         globalDispatchClosure = nil
+        super.init(
+            id: id,
+            scope: .local,
+            displayName: displayName,
+            includeInSettings: includeInSettings
+        )
     }
 
     /// Global context — registered system-wide via Carbon. Handler runs whenever
@@ -88,11 +95,13 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
         includeInSettings: Bool = true,
         dispatch: @escaping @MainActor (Action, ShortcutDispatch) -> Void
     ) {
-        self.id = id
-        scope = .global
-        displayNameOverride = displayName
-        self.includeInSettings = includeInSettings
         globalDispatchClosure = dispatch
+        super.init(
+            id: id,
+            scope: .global,
+            displayName: displayName,
+            includeInSettings: includeInSettings
+        )
     }
 
     // MARK: - Invocation

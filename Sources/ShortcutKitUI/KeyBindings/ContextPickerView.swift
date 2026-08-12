@@ -5,12 +5,12 @@ import SwiftUI
 struct ContextPickerView: View {
     enum Style: Sendable { case segmented, dropdown }
 
-    let contexts: [any AnyShortcutContext]
+    let contexts: [AnyShortcutContext]
     @Binding var selection: String
     let conflictedIDs: Set<String>
 
     init(
-        contexts: [any AnyShortcutContext],
+        contexts: [AnyShortcutContext],
         selection: Binding<String>,
         conflictedIDs: Set<String>
     ) {
@@ -19,7 +19,7 @@ struct ContextPickerView: View {
         self.conflictedIDs = conflictedIDs
     }
 
-    var visibleContexts: [any AnyShortcutContext] {
+    var visibleContexts: [AnyShortcutContext] {
         contexts.filter(\.includeInSettings)
     }
 
@@ -27,7 +27,7 @@ struct ContextPickerView: View {
         visibleContexts.count <= 3 ? .segmented : .dropdown
     }
 
-    func label(for ctx: any AnyShortcutContext) -> String {
+    func label(for ctx: AnyShortcutContext) -> String {
         let prefix = ctx.scope == .global ? "🌐 " : ""
         return prefix + String(localized: ctx.displayName)
     }

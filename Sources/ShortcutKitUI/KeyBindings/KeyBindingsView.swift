@@ -26,7 +26,7 @@ public enum KeyBindingsPresentation: Sendable, Hashable {
 public struct KeyBindingsView: View {
     enum Mode {
         case full(presentation: KeyBindingsPresentation)
-        case inline(context: any AnyShortcutContext, searchEnabled: Bool)
+        case inline(context: AnyShortcutContext, searchEnabled: Bool)
     }
 
     @ObservedObject var registry: ShortcutRegistry
@@ -277,7 +277,7 @@ public struct KeyBindingsView: View {
 
     @ViewBuilder
     private func inlineBody(
-        context: any AnyShortcutContext,
+        context: AnyShortcutContext,
         registry: ShortcutRegistry,
         searchEnabled: Bool
     ) -> some View {

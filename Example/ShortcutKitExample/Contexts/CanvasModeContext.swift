@@ -188,7 +188,7 @@ final class CanvasModeContextModel: ObservableObject {
 
     // MARK: - Mode → context routing
 
-    func modeContext(for mode: CanvasMode) -> any AnyShortcutContext {
+    func modeContext(for mode: CanvasMode) -> AnyShortcutContext {
         switch mode {
         case .select: selectContext
         case .fill: fillContext
@@ -202,7 +202,7 @@ final class CanvasModeContextModel: ObservableObject {
         [selectContext.id, fillContext.id, strokeContext.id, textContext.id, shapeContext.id]
     }
 
-    var selectionContext: (any AnyShortcutContext)? {
+    var selectionContext: AnyShortcutContext? {
         guard let selected = selectedObject else { return nil }
         return selected.isShape ? shapeSelectedContext : textSelectedContext
     }

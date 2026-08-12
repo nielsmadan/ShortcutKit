@@ -24,7 +24,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     public let defaultHintFrequency: HintPolicy
     private var hintFrequencyOverride: HintPolicy?
 
-    let contexts: [any AnyShortcutContext]
+    let contexts: [AnyShortcutContext]
     let mutuallyExclusiveContexts: [Set<String>]
     let migrations: [ShortcutMigration]
     let store: any ShortcutBindingsStore
@@ -44,7 +44,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     let coalescer = ContinuousCoalescer()
 
     public init(
-        contexts: [any AnyShortcutContext],
+        contexts: [AnyShortcutContext],
         mutuallyExclusiveContexts: [Set<String>] = [],
         migrations: [ShortcutMigration] = [],
         store: any ShortcutBindingsStore = UserDefaultsStore(),
@@ -170,7 +170,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         return true
     }
 
-    private func attach(context: any AnyShortcutContext) {
+    private func attach(context: AnyShortcutContext) {
         guard let attachable = context as? RegistryAttachable else { return }
         attachable.__attach(registry: self)
         matchers[context.id] = attachable.__buildMatcher(coalescer: coalescer, activationID: nil)
