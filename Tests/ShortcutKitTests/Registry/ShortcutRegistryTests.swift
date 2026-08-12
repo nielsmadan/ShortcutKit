@@ -32,6 +32,17 @@ enum DemoAction: String, ShortcutAction {
         #expect(ctx.isCustomized(.save) == false)
     }
 
+    @Test("a context rejects attachment to a second registry")
+    func contextHasOneRegistryOwner() {
+        let context = ShortcutContext<DemoAction>("editor")
+        let first = ShortcutRegistry(contexts: [context], store: isolatedStore())
+        let second = ShortcutRegistry(contexts: [], store: isolatedStore())
+
+        #expect(context.__attach(registry: first))
+        #expect(context.__attach(registry: second) == false)
+        #expect(context.attachedRegistry === first)
+    }
+
     @Test("setOverride replaces the effective shortcut for that action")
     func setOverrideReplacesShortcut() {
         let ctx = ShortcutContext<DemoAction>("editor")

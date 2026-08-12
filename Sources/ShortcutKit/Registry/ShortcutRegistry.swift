@@ -172,7 +172,10 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 
     private func attach(context: AnyShortcutContext) {
         guard let attachable = context as? RegistryAttachable else { return }
-        attachable.__attach(registry: self)
+        precondition(
+            attachable.__attach(registry: self),
+            "ShortcutRegistry: context '\(context.id)' is already attached to another registry."
+        )
         matchers[context.id] = attachable.__buildMatcher(coalescer: coalescer, activationID: nil)
     }
 
@@ -394,7 +397,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 
 // swiftlint:disable identifier_name
 @MainActor protocol RegistryAttachable: AnyObject {
-    func __attach(registry: any RegistryOverrideSource)
+    func __attach(registry: any RegistryOverrideSource) -> Bool
     func __notifyOverrideChange(actionID: String)
     func __buildMatcher(coalescer: ContinuousCoalescer, activationID: UUID?) -> any ContextMatching
     func __currentOccurrences() -> [Occurrence]

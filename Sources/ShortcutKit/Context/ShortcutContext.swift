@@ -268,8 +268,10 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
 
 extension ShortcutContext: RegistryAttachable {
     // swiftlint:disable:next identifier_name
-    func __attach(registry: any RegistryOverrideSource) {
+    func __attach(registry: any RegistryOverrideSource) -> Bool {
+        guard self.registry == nil || self.registry === registry else { return false }
         self.registry = registry
+        return true
     }
 
     // swiftlint:disable:next identifier_name
