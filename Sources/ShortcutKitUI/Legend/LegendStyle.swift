@@ -6,4 +6,6 @@ public enum LegendStyle: Sendable, Hashable {
     case panel
     /// A chrome-free, scrolling container.
     case sheet
+    /// Content without a container, for embedding in an existing surface.
+    case embedded
 }

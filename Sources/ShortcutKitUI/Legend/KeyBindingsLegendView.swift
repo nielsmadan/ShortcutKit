@@ -90,6 +90,8 @@ private struct LegendBody: View {
             content.padding(8).background(.thinMaterial)
         case .sheet:
             ScrollView { content.padding() }
+        case .embedded:
+            content
         }
     }
 

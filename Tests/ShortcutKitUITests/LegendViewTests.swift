@@ -36,6 +36,12 @@ struct LegendViewTests {
         #expect(view.styleForTest == .panel)
     }
 
+    @Test func embeddedBuilds() {
+        let legend = sampleLegend()
+        let view = KeyBindingsLegendView(bindings: legend, style: .embedded)
+        #expect(view.style == .embedded)
+    }
+
     @Test func compactOptionBuilds() {
         let legend = sampleLegend()
         let view = KeyBindingsLegendView(bindings: legend, style: .panel, options: LegendOptions(compact: true))

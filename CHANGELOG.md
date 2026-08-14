@@ -9,6 +9,7 @@ The `0.x` line is pre-release: the public API is stabilizing toward 1.0 and may 
 ## [Unreleased]
 
 ### Added
+- **[UI]** `LegendStyle.embedded` renders legend content without padding, scrolling, or a background so host apps can supply their own container.
 - **[UI]** `KeyBindingsView` gains a `KeyBindingsPresentation`: `.standalone(search:layout:)` (the default self-contained pane) and `.embedded` — container-agnostic `Section`s (no scroll view, card, or search) to drop into your own `Form`/`List` so shortcuts sit natively alongside other settings.
 - **[UI]** `LegendOptions.shortcutStyle` — render shortcuts as ShortcutField `.compact` SF-symbol / abbreviation labels (the default) or `.text` verbose words.
 - **[UI]** Legend cells use gutter-aligned columns (shortcut right-aligned, label left-aligned), single-line with tail truncation and the full value shown on hover. Fixed column-count grids distribute spare width across their labels; auto-wrapping grids retain content-sized cells. `LegendOptions.labelWidth` (`.size` / `.flexible` / `.fixed(_)`) and the public `LegendOptions.cellWidth` size the columns.

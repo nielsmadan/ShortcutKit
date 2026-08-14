@@ -79,6 +79,10 @@ with ``LegendStyle``:
 KeyBindingsLegendView(registry: model.registry, style: .panel)
 ```
 
+Use `.embedded` when the surrounding view owns the legend's padding and
+background. It renders only the legend content, without scrolling or container
+chrome.
+
 ## The discoverability HUD
 
 Attach `shortcutHintHUD(registry:options:)` near your root view. When an action
