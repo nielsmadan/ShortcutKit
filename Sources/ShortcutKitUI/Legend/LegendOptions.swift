@@ -41,7 +41,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
         case .small: LegendMetrics(
                 entryFont: 10,
                 headerFont: 9,
-                rowSpacing: 5,
+                rowSpacing: 2,
                 columnSpacing: 12,
                 headerToRows: 5,
                 sectionSpacing: 16,
@@ -110,6 +110,8 @@ public struct LegendOptions: Sendable, Hashable {
     public var size: LegendSize
     /// Show a headerless, content-width strip instead of a grouped grid. Default `false`.
     public var compact: Bool
+    /// Whether group headers show a divider. Default `true`.
+    public var showsHeaderDivider: Bool
     /// Shortcut rendering style. `nil` uses ``ShortcutField/ShortcutLabelStyle/compact``.
     public var shortcutStyle: ShortcutLabelStyle?
     /// Label width. Default `.size` fills spare width in single- and fixed-column layouts.
@@ -122,6 +124,7 @@ public struct LegendOptions: Sendable, Hashable {
         entryLayout: LegendEntryLayout = .shortcutLeading,
         size: LegendSize = .small,
         compact: Bool = false,
+        showsHeaderDivider: Bool = true,
         shortcutStyle: ShortcutLabelStyle? = nil,
         labelWidth: LegendLabelWidth = .size,
         appearance: LegendAppearance = .default
@@ -130,6 +133,7 @@ public struct LegendOptions: Sendable, Hashable {
         self.entryLayout = entryLayout
         self.size = size
         self.compact = compact
+        self.showsHeaderDivider = showsHeaderDivider
         self.shortcutStyle = shortcutStyle
         self.labelWidth = labelWidth
         self.appearance = appearance

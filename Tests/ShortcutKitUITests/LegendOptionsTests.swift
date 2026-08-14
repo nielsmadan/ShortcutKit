@@ -32,6 +32,26 @@ struct LegendOptionsTests {
         }
     }
 
+    @Test func smallPresetKeepsRowsDense() {
+        let options = LegendOptions.default
+        let result = legendFlowLayout(
+            sizes: [CGSize(width: 100, height: 20), CGSize(width: 100, height: 20)],
+            maxWidth: 100,
+            spacing: options.metrics.columnSpacing,
+            lineSpacing: options.metrics.rowSpacing
+        )
+
+        #expect(result.positions[1].y == 22)
+    }
+
+    @Test func headerDividerCanBeHidden() {
+        var options = LegendOptions.default
+        #expect(legendHeaderDividerOpacity(for: options) == 0.6)
+
+        options.showsHeaderDivider = false
+        #expect(legendHeaderDividerOpacity(for: options) == 0)
+    }
+
     @Test func columnWidthsScaleWithSize() {
         let shortcutWidths = LegendSize.allCases.map(\.metrics.shortcutWidth)
         #expect(shortcutWidths == [44, 52, 60, 72])

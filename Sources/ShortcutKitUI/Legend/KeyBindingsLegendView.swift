@@ -180,9 +180,13 @@ private struct LegendSectionHeader: View {
                 .foregroundStyle(options.appearance.headerForeground)
                 .textCase(.uppercase)
                 .kerning(0.6)
-            Divider().opacity(0.6)
+            Divider().opacity(legendHeaderDividerOpacity(for: options))
         }
     }
+}
+
+func legendHeaderDividerOpacity(for options: LegendOptions) -> Double {
+    options.showsHeaderDivider ? 0.6 : 0
 }
 
 private struct LegendEntryCell: View {
