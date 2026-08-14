@@ -44,6 +44,18 @@ struct LegendOptionsTests {
         #expect(result.positions[1].y == 22)
     }
 
+    @Test func mediumPresetUsesFourPointRowSpacing() {
+        let options = LegendOptions(size: .medium)
+        let result = legendFlowLayout(
+            sizes: [CGSize(width: 100, height: 20), CGSize(width: 100, height: 20)],
+            maxWidth: 100,
+            spacing: options.metrics.columnSpacing,
+            lineSpacing: options.metrics.rowSpacing
+        )
+
+        #expect(result.positions[1].y == 24)
+    }
+
     @Test func headerDividerCanBeHidden() {
         var options = LegendOptions.default
         #expect(legendHeaderDividerOpacity(for: options) == 0.6)

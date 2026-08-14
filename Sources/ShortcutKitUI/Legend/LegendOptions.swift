@@ -52,7 +52,7 @@ public enum LegendSize: Sendable, Hashable, CaseIterable {
         case .medium: LegendMetrics(
                 entryFont: 12,
                 headerFont: 11,
-                rowSpacing: 6,
+                rowSpacing: 4,
                 columnSpacing: 14,
                 headerToRows: 6,
                 sectionSpacing: 19,
