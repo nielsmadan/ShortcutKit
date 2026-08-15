@@ -48,21 +48,63 @@ struct LegendViewTests {
         #expect(view.styleForTest == .panel)
     }
 
-    @Test func registryBasedInitBuilds() {
-        let ctx = ShortcutContext<Act>("editor")
-        let registry = ShortcutRegistry(contexts: [ctx])
-        let view = KeyBindingsLegendView(registry: registry, style: .panel)
+    @Test func snapshotTrailingClosureRemainsTheLabel() {
+        let legend = sampleLegend()
+        let view = KeyBindingsLegendView(bindings: legend, style: .panel) { entry in
+            entry.actionID == "save" ? "Save Doc" : nil
+        }
         #expect(view.styleForTest == .panel)
     }
 
-    @Test func optionsAndLabelInitsBuild() {
+    @Test func registryTrailingClosureRemainsTheLabel() {
+        let ctx = ShortcutContext<Act>("editor")
+        let registry = ShortcutRegistry(contexts: [ctx])
+        let view = KeyBindingsLegendView(registry: registry, style: .panel) { entry in
+            entry.actionID == "save" ? "Save Doc" : nil
+        }
+        #expect(view.styleForTest == .panel)
+    }
+
+    @Test func registryFilterAndLabelBuild() {
+        let ctx = ShortcutContext<Act>("editor")
+        let registry = ShortcutRegistry(contexts: [ctx])
+        let view = KeyBindingsLegendView(
+            registry: registry,
+            style: .panel,
+            isIncluded: { $0.actionID == "save" },
+            label: { $0.actionID == "save" ? "Save Doc" : nil }
+        )
+        #expect(view.styleForTest == .panel)
+    }
+
+    @Test func snapshotOptionsFilterAndLabelBuild() {
         let legend = sampleLegend()
         let view = KeyBindingsLegendView(
             bindings: legend,
             style: .panel,
             options: LegendOptions(columns: .fixed(2), entryLayout: .labelLeading, size: .large),
+            isIncluded: { $0.actionID == "save" },
             label: { $0.actionID == "save" ? "Save Doc" : nil }
         )
         #expect(view.styleForTest == .panel)
+    }
+
+    @Test func includingEveryEntryPreservesBindings() {
+        let legend = sampleLegend()
+        #expect(includedLegendBindings(legend, isIncluded: { _ in true }) == legend)
+    }
+
+    @Test func includeFiltersEntries() {
+        let legend = sampleLegend()
+        let filtered = includedLegendBindings(legend, isIncluded: { $0.actionID == "save" })
+
+        #expect(filtered.groups.map(\.entries).flatMap { $0 }.map(\.actionID) == ["save"])
+    }
+
+    @Test func includeOmitsEmptyGroups() {
+        let legend = sampleLegend()
+        let filtered = includedLegendBindings(legend, isIncluded: { _ in false })
+
+        #expect(filtered.groups.isEmpty)
     }
 }

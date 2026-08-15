@@ -7,8 +7,9 @@ import SwiftUI
 /// binding. Unbound actions are omitted.
 ///
 /// ``LegendStyle`` controls the container and ``LegendOptions`` controls layout and
-/// appearance. The `label` closure can replace an entry's display name; return `nil`
-/// to use the original name.
+/// appearance. The `isIncluded` closure controls which entries are shown without
+/// changing their bindings. The `label` closure can replace an entry's display name;
+/// return `nil` to use the original name.
 ///
 /// Initialize with a registry for live updates or with `KeyBindings` for a fixed snapshot.
 @MainActor
@@ -21,6 +22,7 @@ public struct KeyBindingsLegendView: View {
     private let backing: Backing
     public let style: LegendStyle
     private let options: LegendOptions
+    private let isIncluded: (KeyBindings.Entry) -> Bool
     private let label: (KeyBindings.Entry) -> String?
 
     /// Snapshot legend from a fixed `KeyBindings` value.
@@ -30,9 +32,27 @@ public struct KeyBindingsLegendView: View {
         options: LegendOptions = .default,
         label: @escaping (KeyBindings.Entry) -> String? = { _ in nil }
     ) {
+        self.init(
+            bindings: bindings,
+            style: style,
+            options: options,
+            isIncluded: { _ in true },
+            label: label
+        )
+    }
+
+    /// Snapshot legend from a fixed `KeyBindings` value, filtered for presentation.
+    public init(
+        bindings: KeyBindings,
+        style: LegendStyle,
+        options: LegendOptions = .default,
+        isIncluded: @escaping (KeyBindings.Entry) -> Bool,
+        label: @escaping (KeyBindings.Entry) -> String? = { _ in nil }
+    ) {
         backing = .snapshot(bindings.boundOnly())
         self.style = style
         self.options = options
+        self.isIncluded = isIncluded
         self.label = label
     }
 
@@ -46,9 +66,29 @@ public struct KeyBindingsLegendView: View {
         options: LegendOptions = .default,
         label: @escaping (KeyBindings.Entry) -> String? = { _ in nil }
     ) {
+        self.init(
+            registry: registry,
+            style: style,
+            contextIDs: contextIDs,
+            options: options,
+            isIncluded: { _ in true },
+            label: label
+        )
+    }
+
+    /// Live legend bound to a registry and filtered for presentation.
+    public init(
+        registry: ShortcutRegistry,
+        style: LegendStyle,
+        contextIDs: Set<String>? = nil,
+        options: LegendOptions = .default,
+        isIncluded: @escaping (KeyBindings.Entry) -> Bool,
+        label: @escaping (KeyBindings.Entry) -> String? = { _ in nil }
+    ) {
         backing = .live(registry, contextIDs: contextIDs)
         self.style = style
         self.options = options
+        self.isIncluded = isIncluded
         self.label = label
     }
 
@@ -57,9 +97,16 @@ public struct KeyBindingsLegendView: View {
     public var body: some View {
         switch backing {
         case let .snapshot(bindings):
-            LegendBody(bindings: bindings, style: style, options: options, label: label)
+            LegendBody(bindings: bindings, style: style, options: options, isIncluded: isIncluded, label: label)
         case let .live(registry, contextIDs):
-            LiveLegend(registry: registry, contextIDs: contextIDs, style: style, options: options, label: label)
+            LiveLegend(
+                registry: registry,
+                contextIDs: contextIDs,
+                style: style,
+                options: options,
+                isIncluded: isIncluded,
+                label: label
+            )
         }
     }
 }
@@ -69,12 +116,13 @@ private struct LiveLegend: View {
     let contextIDs: Set<String>?
     let style: LegendStyle
     let options: LegendOptions
+    let isIncluded: (KeyBindings.Entry) -> Bool
     let label: (KeyBindings.Entry) -> String?
 
     var body: some View {
         let bindings = (contextIDs.map { registry.bindings(for: $0) } ?? registry.activeBindings())
             .boundOnly()
-        LegendBody(bindings: bindings, style: style, options: options, label: label)
+        LegendBody(bindings: bindings, style: style, options: options, isIncluded: isIncluded, label: label)
     }
 }
 
@@ -82,6 +130,7 @@ private struct LegendBody: View {
     let bindings: KeyBindings
     let style: LegendStyle
     let options: LegendOptions
+    let isIncluded: (KeyBindings.Entry) -> Bool
     let label: (KeyBindings.Entry) -> String?
 
     var body: some View {
@@ -97,12 +146,28 @@ private struct LegendBody: View {
 
     @ViewBuilder
     private var content: some View {
+        let bindings = includedLegendBindings(bindings, isIncluded: isIncluded)
         if options.compact {
             CompactStrip(bindings: bindings, options: options, label: label)
         } else {
             LegendGrid(bindings: bindings, options: options, label: label)
         }
     }
+}
+
+func includedLegendBindings(
+    _ bindings: KeyBindings,
+    isIncluded: (KeyBindings.Entry) -> Bool
+) -> KeyBindings {
+    KeyBindings(groups: bindings.groups.compactMap { group in
+        let entries = group.entries.filter(isIncluded)
+        guard !entries.isEmpty else { return nil }
+        return KeyBindings.Group(
+            contextID: group.contextID,
+            displayName: group.displayName,
+            entries: entries
+        )
+    })
 }
 
 private struct LegendGrid: View {
