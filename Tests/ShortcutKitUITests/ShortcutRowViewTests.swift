@@ -60,10 +60,15 @@ struct ShortcutRowViewTests {
         )
     }
 
-    private func row(_ description: LocalizedStringResource?, showsDescription: Bool) -> ShortcutRowView {
+    private func row(
+        _ description: LocalizedStringResource?,
+        showsDescription: Bool,
+        usesContainerVerticalSpacing: Bool = false
+    ) -> ShortcutRowView {
         ShortcutRowView(
             row: entry(description: description), policy: .local, style: .regular,
             showsDescription: showsDescription,
+            usesContainerVerticalSpacing: usesContainerVerticalSpacing,
             onSet: { _ in }, onClear: { _ in }, onReset: {}
         )
     }
@@ -78,5 +83,13 @@ struct ShortcutRowViewTests {
 
     @Test func subtitleShownWhenFlagOnAndDescriptionPresent() {
         #expect(row("Saves the file", showsDescription: true).subtitleText == "Saves the file")
+    }
+
+    @Test func regularRowUsesManagedVerticalPadding() {
+        #expect(row(nil, showsDescription: false).verticalPadding == 10)
+    }
+
+    @Test func embeddedRowUsesContainerVerticalSpacing() {
+        #expect(row(nil, showsDescription: false, usesContainerVerticalSpacing: true).verticalPadding == 0)
     }
 }

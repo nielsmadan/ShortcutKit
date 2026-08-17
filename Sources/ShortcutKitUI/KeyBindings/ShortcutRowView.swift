@@ -8,6 +8,7 @@ struct ShortcutRowView: View {
     let policy: ScopePolicy
     let style: KeyBindingsStyle
     let showsDescription: Bool
+    let usesContainerVerticalSpacing: Bool
     let onSet: ([Shortcut]) -> Void
     let onClear: (Int) -> Void
     let onReset: () -> Void
@@ -18,6 +19,7 @@ struct ShortcutRowView: View {
         policy: ScopePolicy,
         style: KeyBindingsStyle,
         showsDescription: Bool = false,
+        usesContainerVerticalSpacing: Bool = false,
         onSet: @escaping ([Shortcut]) -> Void,
         onClear: @escaping (Int) -> Void,
         onReset: @escaping () -> Void,
@@ -27,6 +29,7 @@ struct ShortcutRowView: View {
         self.policy = policy
         self.style = style
         self.showsDescription = showsDescription
+        self.usesContainerVerticalSpacing = usesContainerVerticalSpacing
         self.onSet = onSet
         self.onClear = onClear
         self.onReset = onReset
@@ -52,7 +55,11 @@ struct ShortcutRowView: View {
             recorders
             resetButton
         }
-        .padding(.vertical, style == .dense ? 1 : 10)
+        .padding(.vertical, verticalPadding)
+    }
+
+    var verticalPadding: CGFloat {
+        usesContainerVerticalSpacing ? 0 : (style == .dense ? 1 : 10)
     }
 
     var bindingCount: Int { row.effectiveShortcuts.count }

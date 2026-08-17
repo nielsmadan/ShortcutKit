@@ -14,7 +14,7 @@ public enum ContextLayout: Sendable, Hashable {
 public enum KeyBindingsPresentation: Sendable, Hashable {
     /// A complete pane with scrolling, optional search, and Reset All.
     case standalone(search: Bool = true, layout: ContextLayout = .stacked)
-    /// Sections for a host `Form` or `List`, without scrolling, search, or Reset All.
+    /// Sections that adopt a host `Form` or `List`'s row spacing, without scrolling, search, or Reset All.
     case embedded
 }
 
@@ -154,7 +154,7 @@ public struct KeyBindingsView: View {
             Section {
                 if style == .dense { denseColumnHeader }
                 ForEach(group.entries, id: \.id) { row in
-                    shortcutRow(row, registry: registry)
+                    shortcutRow(row, registry: registry, usesContainerVerticalSpacing: true)
                 }
             } header: {
                 Text(group.displayName)
@@ -163,13 +163,16 @@ public struct KeyBindingsView: View {
     }
 
     private func shortcutRow(
-        _ row: KeyBindings.Entry, registry: ShortcutRegistry
+        _ row: KeyBindings.Entry,
+        registry: ShortcutRegistry,
+        usesContainerVerticalSpacing: Bool = false
     ) -> some View {
         ShortcutRowView(
             row: row,
             policy: ScopePolicy(registry.scope(forContextID: row.contextID)),
             style: style,
             showsDescription: showsDescriptions,
+            usesContainerVerticalSpacing: usesContainerVerticalSpacing,
             onSet: { registry.setShortcuts($0, contextID: row.contextID, actionID: row.actionID) },
             onClear: { registry.removeShortcut(at: $0, contextID: row.contextID, actionID: row.actionID) },
             onReset: { registry.reset(contextID: row.contextID, actionID: row.actionID) }
