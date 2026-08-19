@@ -36,5 +36,23 @@ struct ShortcutBindingEditorTests {
         #expect(editor.entry?.isCustomized == true)
     }
 
+    @Test("editor uses its container's vertical spacing")
+    func usesContainerVerticalSpacing() {
+        let ctx = ShortcutContext<Act>("editor")
+        let registry = ShortcutRegistry(contexts: [ctx])
+        let editor = ShortcutBindingEditor(.save, in: ctx)
+        #expect(editor.rowView?.verticalPadding == 0)
+        _ = registry
+    }
+
+    @Test("editor places an enabled description inside its shortcut row")
+    func forwardsDescriptionToRow() {
+        let ctx = ShortcutContext<Act>("editor")
+        let registry = ShortcutRegistry(contexts: [ctx])
+        let editor = ShortcutBindingEditor(.save, in: ctx, showsDescription: true)
+        #expect(editor.rowView?.subtitleText == "Write the document to disk.")
+        _ = registry
+    }
+
     // Swift Testing cannot exercise the unattached-context assertion without aborting the runner.
 }

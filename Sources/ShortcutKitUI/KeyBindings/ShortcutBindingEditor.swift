@@ -35,23 +35,23 @@ public struct ShortcutBindingEditor<Action: ShortcutAction>: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            if let entry {
-                ShortcutRowView(
-                    row: entry,
-                    policy: ScopePolicy(context.scope),
-                    style: style,
-                    onSet: { registry.setShortcuts($0, contextID: context.id, actionID: action.rawValue) },
-                    onClear: { registry.removeShortcut(at: $0, contextID: context.id, actionID: action.rawValue) },
-                    onReset: { registry.reset(contextID: context.id, actionID: action.rawValue) }
-                )
-                if showsDescription, let description = action.definition.description {
-                    Text(description)
-                        .font(.system(size: style == .dense ? 9 : 11))
-                        .foregroundStyle(.secondary)
-                }
-            }
+        if let rowView {
+            rowView
         }
+    }
+
+    var rowView: ShortcutRowView? {
+        guard let entry else { return nil }
+        return ShortcutRowView(
+            row: entry,
+            policy: ScopePolicy(context.scope),
+            style: style,
+            showsDescription: showsDescription,
+            usesContainerVerticalSpacing: true,
+            onSet: { registry.setShortcuts($0, contextID: context.id, actionID: action.rawValue) },
+            onClear: { registry.removeShortcut(at: $0, contextID: context.id, actionID: action.rawValue) },
+            onReset: { registry.reset(contextID: context.id, actionID: action.rawValue) }
+        )
     }
 
     var entry: KeyBindings.Entry? {
