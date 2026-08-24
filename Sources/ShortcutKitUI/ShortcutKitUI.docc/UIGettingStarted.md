@@ -102,15 +102,39 @@ ContentView()
     .shortcutHintHUD(registry: registry)
 ```
 
-Position and timing come from ``HintHUDOptions`` — including ``HintHUDPlacement``'s
-nine fixed anchors and `.cursor`:
+Position, timing, and animation come from ``HintHUDOptions`` — including
+``HintHUDPlacement``'s nine fixed anchors and `.cursor`:
 
 ```swift
 .shortcutHintHUD(
     registry: model.registry,
-    options: HintHUDOptions(placement: .cursor, duration: .seconds(3))
+    options: HintHUDOptions(
+        placement: .cursor,
+        duration: .seconds(3),
+        transition: .fade
+    )
 )
 ```
+
+Apply ``ShortcutHintStyle`` after the HUD modifier to customize only the built-in
+toast. Omitted values keep their defaults:
+
+```swift
+ContentView()
+    .shortcutHintHUD(registry: model.registry)
+    .shortcutHintStyle(.toast(
+        font: .system(size: 13, weight: .medium),
+        textColor: .white,
+        backgroundColor: .indigo
+    ))
+```
+
+The built-in ``ShortcutHintToastStyle`` inherits the surrounding font at its
+automatic size and adapts its foreground, background, and subtle border to the
+current color scheme. The action name and shortcut are emphasized. It also
+provides explicit semantic sizes and rounded, capsule, rectangular, or
+chrome-free containers. Define a custom ``ShortcutHintStyle`` when the
+appearance needs a different composition.
 
 For a fully custom toast, use the trailing-closure overload; it hands you a
 ``HintToastContext`` with the action name, shortcut, and prebuilt text:

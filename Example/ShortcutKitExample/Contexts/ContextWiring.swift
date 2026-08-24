@@ -11,6 +11,7 @@ enum ContextWiring {
     static let wizard = WizardContextModel()
     static let global = GlobalContextModel()
     static let conflictDemo = ConflictDemoContextModel()
+    static let hudPlayground = HUDPlaygroundModel()
 
     static let globalActivator = CarbonGlobalActivator()
 

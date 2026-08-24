@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import ShortcutKit
 import ShortcutKitUI
@@ -15,8 +16,6 @@ struct ExampleSettingsView: View {
                 .tabItem { Label("Drop-in", systemImage: "slider.horizontal.3") }
             LegendStylesView()
                 .tabItem { Label("Legend", systemImage: "list.bullet.rectangle") }
-            HUDPlaygroundView()
-                .tabItem { Label("HUD", systemImage: "bubble.left.and.bubble.right") }
             QuickSetupView()
                 .tabItem { Label("Quick Setup", systemImage: "wand.and.stars") }
             DiagnosticsView()
@@ -147,96 +146,226 @@ private struct LegendStylesView: View {
 
 // MARK: - HUD playground
 
-@MainActor
-private struct HUDPlaygroundView: View {
-    @ObservedObject private var registry = ContextWiring.shared
-    @State private var placement: HintHUDPlacement = .topTrailing
-    @State private var durationSeconds: Double = 2
-    @State private var policyChoice: PolicyChoice = .always
-    @State private var customToast = false
-
-    private enum PolicyChoice: String, CaseIterable, Identifiable {
-        case always, oncePerSession, timeout
+struct HUDPlaygroundConfiguration {
+    enum RendererChoice: String, CaseIterable, Identifiable {
+        case builtIn, custom
         var id: String { rawValue }
-        var policy: HintPolicy {
-            switch self {
-            case .always: .always
-            case .oncePerSession: .oncePerSession
-            case .timeout: .timeout(2)
-            }
-        }
+        var label: String { self == .builtIn ? "Built-in style" : "Custom view" }
+    }
 
-        var label: String {
+    enum TransitionChoice: String, CaseIterable, Identifiable {
+        case automatic, fade, scale, move, none
+        var id: String { rawValue }
+
+        func transition(edge: Edge) -> HintHUDTransition {
             switch self {
-            case .always: "Always"
-            case .oncePerSession: "Once / session"
-            case .timeout: "Timeout 2s"
+            case .automatic: .automatic
+            case .fade: .fade
+            case .scale: .scale
+            case .move: .move(edge: edge)
+            case .none: .none
             }
         }
     }
 
-    private var options: HintHUDOptions {
-        HintHUDOptions(placement: placement, duration: .seconds(durationSeconds))
+    enum FontChoice: String, CaseIterable, Identifiable {
+        case automatic, caption, body, headline, monospaced
+        var id: String { rawValue }
+
+        var font: Font? {
+            switch self {
+            case .automatic: nil
+            case .caption: .caption
+            case .body: .body
+            case .headline: .headline
+            case .monospaced: .system(.body, design: .monospaced)
+            }
+        }
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("HUD Playground").font(.headline)
-            Picker("Placement", selection: $placement) {
-                Text("Top Leading").tag(HintHUDPlacement.topLeading)
-                Text("Top").tag(HintHUDPlacement.top)
-                Text("Top Trailing").tag(HintHUDPlacement.topTrailing)
-                Text("Leading").tag(HintHUDPlacement.leading)
-                Text("Center").tag(HintHUDPlacement.center)
-                Text("Trailing").tag(HintHUDPlacement.trailing)
-                Text("Bottom Leading").tag(HintHUDPlacement.bottomLeading)
-                Text("Bottom").tag(HintHUDPlacement.bottom)
-                Text("Bottom Trailing").tag(HintHUDPlacement.bottomTrailing)
-                Text("Cursor").tag(HintHUDPlacement.cursor)
-            }
-            HStack {
-                Text("Duration: \(durationSeconds, specifier: "%.1f")s")
-                Slider(value: $durationSeconds, in: 1 ... 5, step: 0.5)
-            }
-            Picker("Policy", selection: $policyChoice) {
-                ForEach(PolicyChoice.allCases) { Text($0.label).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: policyChoice) { registry.setHintFrequency(policyChoice.policy) }
-            Toggle("Custom toast", isOn: $customToast)
-            Button("Fire test hint") {
-                registry.setHintsEnabled(true)
-                registry.setHintFrequency(policyChoice.policy)
-                registry.dispatch(contextID: "app", actionID: "toggleLegend")
-            }
-            Spacer()
-            Text("Fires the “Toggle Legend” action programmatically; the discoverability "
-                + "toast appears with the chosen options. (For .cursor, move the pointer "
-                + "over this pane first.)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .modifier(PlaygroundHUD(custom: customToast, options: options))
+    var placement: HintHUDPlacement = .topTrailing
+    var durationSeconds: Double = 2
+    var renderer: RendererChoice = .builtIn
+    var transitionChoice: TransitionChoice = .automatic
+    var moveEdge: Edge = .top
+    var size: ShortcutHintSize = .automatic
+    var container: ShortcutHintContainerStyle = .roundedRectangle
+    var fontChoice: FontChoice = .automatic
+    var overridesTextColor = false
+    var textColor = Color.white
+    var overridesBackgroundColor = false
+    var backgroundColor = Color.indigo
+
+    var options: HintHUDOptions {
+        HintHUDOptions(
+            placement: placement,
+            duration: .seconds(durationSeconds),
+            transition: transitionChoice.transition(edge: moveEdge)
+        )
+    }
+
+    var toastStyle: ShortcutHintToastStyle {
+        ShortcutHintToastStyle(
+            size: size,
+            font: fontChoice.font,
+            textColor: overridesTextColor ? textColor : nil,
+            backgroundColor: overridesBackgroundColor ? backgroundColor : nil,
+            container: container
+        )
     }
 }
 
 @MainActor
-private struct PlaygroundHUD: ViewModifier {
-    let custom: Bool
-    let options: HintHUDOptions
+final class HUDPlaygroundModel: ObservableObject {
+    @Published var configuration = HUDPlaygroundConfiguration()
+}
+
+@MainActor
+struct HUDPlaygroundView: View {
+    @ObservedObject var model: HUDPlaygroundModel
+    let registry: ShortcutRegistry
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Button("Show Hint", action: fireHint)
+                    .buttonStyle(.borderedProminent)
+                    .frame(maxWidth: .infinity)
+                renderingControls
+                presentationControls
+                appearanceControls
+                Button("Reset Defaults", action: resetDefaults)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding(8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var renderingControls: some View {
+        GroupBox("Rendering") {
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("Mode", selection: $model.configuration.renderer) {
+                    ForEach(HUDPlaygroundConfiguration.RendererChoice.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Text(model.configuration.renderer == .builtIn
+                    ? "Uses ShortcutHintToastStyle with selective overrides."
+                    : "Uses the full custom-view closure.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var presentationControls: some View {
+        GroupBox("Presentation") {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("Placement", selection: $model.configuration.placement) {
+                    Text("Top Leading").tag(HintHUDPlacement.topLeading)
+                    Text("Top").tag(HintHUDPlacement.top)
+                    Text("Top Trailing").tag(HintHUDPlacement.topTrailing)
+                    Text("Leading").tag(HintHUDPlacement.leading)
+                    Text("Center").tag(HintHUDPlacement.center)
+                    Text("Trailing").tag(HintHUDPlacement.trailing)
+                    Text("Bottom Leading").tag(HintHUDPlacement.bottomLeading)
+                    Text("Bottom").tag(HintHUDPlacement.bottom)
+                    Text("Bottom Trailing").tag(HintHUDPlacement.bottomTrailing)
+                    Text("Cursor").tag(HintHUDPlacement.cursor)
+                }
+                Picker("Transition", selection: $model.configuration.transitionChoice) {
+                    ForEach(HUDPlaygroundConfiguration.TransitionChoice.allCases) { choice in
+                        Text(choice.rawValue.capitalized).tag(choice)
+                    }
+                }
+                if model.configuration.transitionChoice == .move {
+                    Picker("Move edge", selection: $model.configuration.moveEdge) {
+                        Text("Top").tag(Edge.top)
+                        Text("Bottom").tag(Edge.bottom)
+                        Text("Leading").tag(Edge.leading)
+                        Text("Trailing").tag(Edge.trailing)
+                    }
+                    .pickerStyle(.segmented)
+                }
+                HStack {
+                    Text("Duration: \(model.configuration.durationSeconds, specifier: "%.1f")s")
+                    Slider(value: $model.configuration.durationSeconds, in: 1 ... 5, step: 0.5)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var appearanceControls: some View {
+        GroupBox("Built-in Appearance") {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("Size", selection: $model.configuration.size) {
+                    Text("Auto").tag(ShortcutHintSize.automatic)
+                    Text("S").tag(ShortcutHintSize.small)
+                    Text("M").tag(ShortcutHintSize.medium)
+                    Text("L").tag(ShortcutHintSize.large)
+                    Text("XL").tag(ShortcutHintSize.extraLarge)
+                }
+                .pickerStyle(.segmented)
+                Picker("Container", selection: $model.configuration.container) {
+                    Text("Rounded").tag(ShortcutHintContainerStyle.roundedRectangle)
+                    Text("Capsule").tag(ShortcutHintContainerStyle.capsule)
+                    Text("Rectangle").tag(ShortcutHintContainerStyle.rectangle)
+                    Text("None").tag(ShortcutHintContainerStyle.none)
+                }
+                Picker("Font", selection: $model.configuration.fontChoice) {
+                    ForEach(HUDPlaygroundConfiguration.FontChoice.allCases) { choice in
+                        Text(choice.rawValue.capitalized).tag(choice)
+                    }
+                }
+                Toggle("Override text color", isOn: $model.configuration.overridesTextColor)
+                if model.configuration.overridesTextColor {
+                    ColorPicker("Text color", selection: $model.configuration.textColor, supportsOpacity: true)
+                }
+                Toggle("Override background", isOn: $model.configuration.overridesBackgroundColor)
+                if model.configuration.overridesBackgroundColor {
+                    ColorPicker(
+                        "Background color",
+                        selection: $model.configuration.backgroundColor,
+                        supportsOpacity: true
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .disabled(model.configuration.renderer == .custom)
+    }
+
+    private func fireHint() {
+        registry.setHintsEnabled(true)
+        registry.setHintFrequency(.always)
+        registry.notify(contextID: ContextWiring.app.context.id, actionID: AppAction.fireConfetti.rawValue)
+    }
+
+    private func resetDefaults() {
+        model.configuration = HUDPlaygroundConfiguration()
+        registry.setHintsEnabled(true)
+        registry.setHintFrequency(.always)
+    }
+}
+
+@MainActor
+struct PlaygroundHUD: ViewModifier {
+    let registry: ShortcutRegistry
+    @ObservedObject var model: HUDPlaygroundModel
 
     func body(content: Content) -> some View {
-        if custom {
-            content.shortcutHintHUD(registry: ContextWiring.shared, options: options) { hint in
+        let configuration = model.configuration
+        content.shortcutHintHUD(registry: registry, options: configuration.options) { hint in
+            if configuration.renderer == .custom {
                 Label(hint.text, systemImage: "keyboard")
                     .padding(8)
                     .background(.tint, in: Capsule())
                     .foregroundStyle(.white)
+            } else {
+                configuration.toastStyle.makeBody(configuration: hint)
             }
-        } else {
-            content.shortcutHintHUD(registry: ContextWiring.shared, options: options)
         }
     }
 }

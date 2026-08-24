@@ -10,6 +10,16 @@ public enum HintHUDPlacement: Sendable, Hashable {
     case cursor
 }
 
+/// Presentation transition for shortcut hints.
+public enum HintHUDTransition: Sendable, Hashable {
+    /// Scale and fade normally; fade only when Reduce Motion is enabled.
+    case automatic
+    case fade
+    case scale
+    case move(edge: Edge)
+    case none
+}
+
 extension HintHUDPlacement {
     var alignment: Alignment {
         switch self {
@@ -27,23 +37,29 @@ extension HintHUDPlacement {
     }
 }
 
-/// Placement and duration options for the shortcut hint HUD.
+/// Presentation options for the shortcut hint HUD.
 public struct HintHUDOptions: Sendable, Hashable {
     /// Where the toast appears. Default `.topTrailing`.
     public var placement: HintHUDPlacement
     /// How long a toast remains visible. Default two seconds.
     public var duration: Duration
+    /// How a toast enters and leaves. Default ``HintHUDTransition/automatic``.
+    public var transition: HintHUDTransition
 
-    public init(placement: HintHUDPlacement = .topTrailing, duration: Duration = .seconds(2)) {
+    public init(
+        placement: HintHUDPlacement = .topTrailing,
+        duration: Duration = .seconds(2),
+        transition: HintHUDTransition = .automatic
+    ) {
         self.placement = placement
         self.duration = duration
+        self.transition = transition
     }
 
     public static let `default` = HintHUDOptions()
 }
 
-/// Localized content supplied to a custom shortcut-hint view.
-/// `text` is the built-in message; `actionName` and `shortcut` support custom layouts.
+/// Localized content supplied to a shortcut-hint style or custom view.
 public struct HintToastContext: Sendable, Hashable {
     public let actionName: String
     public let shortcut: String

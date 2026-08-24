@@ -9,6 +9,19 @@ struct HintHUDOptionsTests {
         let options = HintHUDOptions.default
         #expect(options.placement == .topTrailing)
         #expect(options.duration == .seconds(2))
+        #expect(options.transition == .automatic)
+    }
+
+    @Test func transitionCanBeConfiguredIndependently() {
+        let options = HintHUDOptions(transition: .move(edge: .bottom))
+        #expect(options.placement == .topTrailing)
+        #expect(options.duration == .seconds(2))
+        #expect(options.transition == .move(edge: .bottom))
+    }
+
+    @Test func noTransitionDisablesPresentationAnimation() {
+        #expect(HintHUDTransition.none.animation(.linear) == nil)
+        #expect(HintHUDTransition.fade.animation(.linear) != nil)
     }
 
     @Test func fixedPlacementsMapToMatchingAlignment() {

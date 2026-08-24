@@ -14,6 +14,8 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
     @State private var toastSize: CGSize = .zero
     @State private var tracker = CursorTracker()
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     init(
         registry: ShortcutRegistry,
         options: HintHUDOptions = .default,
@@ -48,7 +50,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
                             Color.clear.preference(key: ToastSizeKey.self, value: sizeProxy.size)
                         }
                     )
-                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
+                    .transition(options.transition.swiftUITransition(reduceMotion: reduceMotion))
 
                 if options.placement == .cursor, let point = currentCursor {
                     measured.position(clampedToastCenter(
@@ -80,7 +82,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
         let shortcut = firstBinding.displayString
         let text = uiString("Tip: \(name) is bound to \(shortcut)")
         let context = HintToastContext(actionName: name, shortcut: shortcut, text: text)
-        withAnimation(.easeOut(duration: 0.2)) {
+        withAnimation(options.transition.animation(.easeOut(duration: 0.2))) {
             current = context
             currentCursor = options.placement == .cursor ? tracker.point : nil
         }
@@ -88,7 +90,7 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
             try? await Task.sleep(for: options.duration)
             // Do not let an older timer dismiss its replacement.
             if current == context {
-                withAnimation(.easeIn(duration: 0.3)) { current = nil }
+                withAnimation(options.transition.animation(.easeIn(duration: 0.3))) { current = nil }
             }
         }
     }
@@ -109,7 +111,7 @@ public extension View {
         options: HintHUDOptions = .default
     ) -> some View {
         modifier(ShortcutHintHUD(registry: registry, options: options) { context in
-            HintToast(text: context.text)
+            StyledShortcutHint(configuration: context)
         })
     }
 
@@ -152,21 +154,28 @@ private struct ToastSizeKey: PreferenceKey {
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
 }
 
-private struct HintToast: View {
-    let text: String
-    @Environment(\.colorScheme) private var colorScheme
+extension HintHUDTransition {
+    func swiftUITransition(reduceMotion: Bool) -> AnyTransition {
+        switch self {
+        case .automatic:
+            reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96, anchor: .center))
+        case .fade:
+            .opacity
+        case .scale:
+            .scale(scale: 0.96, anchor: .center)
+        case let .move(edge):
+            .move(edge: edge)
+        case .none:
+            .identity
+        }
+    }
 
-    private var isDark: Bool { colorScheme == .dark }
-
-    var body: some View {
-        Text(text)
-            .foregroundStyle(isDark ? Color.black : Color.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                isDark ? Color(white: 0.97) : Color(white: 0.12),
-                in: RoundedRectangle(cornerRadius: 8)
-            )
-            .shadow(color: .black.opacity(0.25), radius: 8, y: 2)
+    func animation(_ animation: Animation) -> Animation? {
+        switch self {
+        case .none:
+            nil
+        default:
+            animation
+        }
     }
 }

@@ -25,7 +25,7 @@ ShortcutKit and skip this module.
 - The **`shortcutHintHUD(registry:options:)`** view modifier — a transient
   "you could've used ⌘S" toast when an action fires via a non-shortcut path.
   Frequency follows the registry's `hintFrequency` (a `HintPolicy`); tune
-  placement/duration with ``HintHUDOptions``.
+  presentation with ``HintHUDOptions`` and appearance with ``ShortcutHintStyle``.
 
 ```swift
 import ShortcutKitUI
@@ -68,4 +68,9 @@ ContentView().shortcutHintHUD(registry: model.registry)
 
 - ``HintHUDOptions``
 - ``HintHUDPlacement``
+- ``HintHUDTransition``
+- ``ShortcutHintStyle``
+- ``ShortcutHintToastStyle``
+- ``ShortcutHintSize``
+- ``ShortcutHintContainerStyle``
 - ``HintToastContext``

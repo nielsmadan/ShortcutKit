@@ -1,5 +1,4 @@
 import ShortcutKit
-import ShortcutKitUI
 import SwiftUI
 
 @main
@@ -15,6 +14,7 @@ struct ShortcutKitExampleApp: App {
         WindowGroup("ShortcutKit Example") {
             RootBridge(appModel: appModel)
         }
+        .defaultSize(width: 1200, height: 760)
         .commands {
             CommandMenu("Actions") {
                 Button("Toggle Legend") { ContextWiring.app.context.dispatch(.toggleLegend) }
@@ -45,7 +45,6 @@ private struct RootBridge: View {
 
     var body: some View {
         MainWindowView()
-            .shortcutHintHUD(registry: ContextWiring.shared)
             .onChange(of: appModel.inspectorOpenSignal) { _, _ in
                 openWindow(id: "inspector")
             }
