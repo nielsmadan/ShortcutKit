@@ -13,7 +13,7 @@ let package = Package(
         .library(name: "ShortcutKitGlobal", targets: ["ShortcutKitGlobal"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/nielsmadan/ShortcutField", from: "2.3.0"),
+        .package(url: "https://github.com/nielsmadan/ShortcutField", from: "2.4.0"),
         .package(url: "https://github.com/LebJe/TOMLKit", from: "0.6.0"),
         // Enables `swift package generate-documentation`; not linked into the libraries.
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),

@@ -29,7 +29,8 @@ The `0.x` line is pre-release: the public API is stabilizing toward 1.0 and may 
 - **[UI] Breaking:** `KeyBindingsStyle.native` renamed to `.regular` — the axis is visual density (`.regular` vs `.dense`), and everything is equally "native" SwiftUI.
 - **[UI] Breaking:** `KeyBindingsView`'s `searchEnabled:` / `contextLayout:` init params moved onto `.standalone(search:layout:)`, so they can't be set on an `.embedded` view where they don't apply.
 - **[UI]** `ShortcutPreferencesView` now composes the `.embedded` `KeyBindingsView` inside a grouped `Form` (fixes the nested-scroll / double-card when it was the drop-in tab) and keeps a "Reset All…" button; its `searchEnabled` / `contextLayout` parameters were removed (search is host-owned in embedded layouts — add `.searchable` if wanted).
-- Bumped ShortcutField to 2.3.0 (SF-symbol shortcut labels and process-wide chord beep suppression).
+- **[Core] Behaviour change:** Bare-key shortcuts (and ⇧/⌥-only combinations) no longer fire while a text field, search field, or text view has focus — the keystroke goes to the field instead. Shortcuts carrying ⌘ or ⌃, and keys that produce no text (Escape, F1–F20), still fire wherever focus sits, and a chord already in progress always completes. Inherited from ShortcutField 2.4.0; no adopter code change required.
+- Bumped ShortcutField to 2.4.0 (text-input focus gate; SF-symbol shortcut labels and process-wide chord beep suppression).
 
 ## [0.5.1] - 2026-06-26
 
