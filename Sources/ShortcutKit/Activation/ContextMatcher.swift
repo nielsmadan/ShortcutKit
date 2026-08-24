@@ -42,7 +42,9 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
                 consumeFromAdvance = consumeFromAdvance || consume
             case .fired:
                 resetOthers(exceptIndex: index)
-                context?.dispatchFromMatcher(action, kind: .discrete, activationID: activationID)
+                if !Self.isSuppressedRepeat(event, for: action) {
+                    context?.dispatchFromMatcher(action, kind: .discrete, activationID: activationID)
+                }
                 return .fired
             case let .continuousFired(magnitude):
                 if let coalescer, let context {
@@ -92,5 +94,16 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
         for index in perAction.indices where index != keepIndex {
             perAction[index].matcher.reset()
         }
+    }
+
+    /// The match still consumes the event either way — only the dispatch is
+    /// dropped, so a held key doesn't leak repeats into the responder chain.
+    ///
+    /// `isARepeat` is only valid for keyboard events; reading it on a scroll or
+    /// gesture event throws, so the `.keyDown` guard is load-bearing.
+    static func isSuppressedRepeat(_ event: NSEvent, for action: Action) -> Bool {
+        event.type == .keyDown
+            && event.isARepeat
+            && !action.definition.allowsKeyRepeat
     }
 }
