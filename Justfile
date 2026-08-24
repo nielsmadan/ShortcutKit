@@ -25,7 +25,7 @@ example:
     @xcodebuild -project Example/ShortcutKitExample.xcodeproj \
         -scheme ShortcutKitExample -configuration Debug \
         -derivedDataPath .build/Example build
-    @.build/Example/Build/Products/Debug/ShortcutKitExample.app/Contents/MacOS/ShortcutKitExample
+    @open -n .build/Example/Build/Products/Debug/ShortcutKitExample.app
 
 # Clear all persisted shortcut overrides for the example app so it starts
 # fresh on the next launch. Useful after experimenting with re-bindings in
@@ -51,7 +51,7 @@ tag-release bump:
     LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1 | sed 's/^v//')
     if [ -z "$LATEST_TAG" ]; then
         VERSION="0.1.0"
-        case "{{bump}}" in
+        case "{{ bump }}" in
             patch) VERSION="0.0.1" ;;
             minor) VERSION="0.1.0" ;;
             major) VERSION="1.0.0" ;;
@@ -60,7 +60,7 @@ tag-release bump:
         MAJOR=$(echo "$LATEST_TAG" | cut -d. -f1)
         MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
         PATCH=$(echo "$LATEST_TAG" | cut -d. -f3)
-        case "{{bump}}" in
+        case "{{ bump }}" in
             patch) PATCH=$((PATCH + 1)) ;;
             minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
             major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
