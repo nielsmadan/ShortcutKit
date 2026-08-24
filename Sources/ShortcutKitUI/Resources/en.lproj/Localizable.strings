@@ -4,8 +4,13 @@
 
 /* Preferences pane */
 "General" = "General";
-"Shortcuts" = "Shortcuts";
 "Show shortcut hints" = "Show shortcut hints";
+
+/* Hint preferences — frequency picker */
+"Hint frequency" = "Hint frequency";
+"Always" = "Always";
+"Once per session" = "Once per session";
+"Occasionally" = "Occasionally";
 
 /* Settings table — reset flow */
 "Reset All…" = "Reset All…";
