@@ -38,6 +38,9 @@
 "Unsupported in scope" = "Unsupported in scope";
 "Global shortcuts can't be chords" = "Global shortcuts can't be chords";
 "Global shortcuts can't be continuous" = "Global shortcuts can't be continuous";
+"Key missing on other keyboards" = "Key missing on other keyboards";
+"Only on ISO keyboards" = "Only on ISO keyboards";
+"Only on Japanese keyboards" = "Only on Japanese keyboards";
 
 /* Discoverability HUD */
 "Tip: %@ is bound to %@" = "Tip: %@ is bound to %@";

@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import ShortcutField
 
 @MainActor
@@ -14,7 +15,34 @@ enum ConflictAnalyzer {
         conflicts.append(contentsOf: detectSystemShared(bindings: bindings, systemShortcuts: systemShortcuts))
         conflicts.append(contentsOf: detectShadowedByGlobal(bindings: bindings, scopes: contextScopes))
         conflicts.append(contentsOf: detectUnsupportedInScope(bindings: bindings, scopes: contextScopes))
+        conflicts.append(contentsOf: detectLayoutExclusiveKeys(bindings))
         return conflicts
+    }
+
+    // MARK: Layout-exclusive keys
+
+    /// Key codes that only exist on one physical keyboard family. Matching is by
+    /// key code, so a binding on one of these works for whoever recorded it and
+    /// is simply unreachable for everyone on other hardware.
+    private static let layoutExclusiveKeyCodes: [UInt16: Conflict.KeyboardLayoutFamily] = [
+        UInt16(kVK_ISO_Section): .iso,
+        UInt16(kVK_JIS_Yen): .jis,
+        UInt16(kVK_JIS_Underscore): .jis,
+        UInt16(kVK_JIS_KeypadComma): .jis,
+        UInt16(kVK_JIS_Eisu): .jis,
+        UInt16(kVK_JIS_Kana): .jis,
+    ]
+
+    private static func detectLayoutExclusiveKeys(_ bindings: [Occurrence]) -> [Conflict] {
+        bindings.compactMap { occurrence in
+            guard case let .discrete(discrete) = occurrence.shortcut else { return nil }
+            let layout = discrete.steps.lazy.compactMap { step -> Conflict.KeyboardLayoutFamily? in
+                guard case let .key(keyCode) = step.kind else { return nil }
+                return layoutExclusiveKeyCodes[keyCode]
+            }.first
+            guard let layout else { return nil }
+            return .layoutExclusiveKey(occurrence: occurrence, layout: layout)
+        }
     }
 
     // MARK: Duplicates

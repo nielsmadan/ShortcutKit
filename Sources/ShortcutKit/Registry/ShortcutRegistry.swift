@@ -354,6 +354,8 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             return "[\(global.contextID).\(global.actionID)] shadows [\(local.contextID).\(local.actionID)]"
         case let .unsupportedInScope(occurrence, reason):
             return "[\(occurrence.contextID).\(occurrence.actionID)] unsupported in scope (\(reason))"
+        case let .layoutExclusiveKey(occurrence, layout):
+            return "[\(occurrence.contextID).\(occurrence.actionID)] uses a \(layout)-only key"
         }
     }
 

@@ -11,11 +11,25 @@ public enum Conflict: Sendable, Hashable {
     case menuCollision(action: Occurrence, menuItemTitle: String)
     case shadowedByGlobal(local: Occurrence, global: Occurrence)
     case unsupportedInScope(occurrence: Occurrence, reason: UnsupportedReason)
+    /// The binding uses a physical key that only exists on one keyboard family,
+    /// so it is unreachable for users on any other.
+    case layoutExclusiveKey(occurrence: Occurrence, layout: KeyboardLayoutFamily)
 
     /// Why a binding is unsupported in its declared scope.
     public enum UnsupportedReason: Sendable, Hashable {
         case multiStepInGlobal
         case continuousInGlobal
+    }
+
+    /// A physical keyboard family that carries keys the others don't.
+    ///
+    /// Matching is by key code, so these bindings work perfectly for the person
+    /// who recorded them — the hazard only shows up on someone else's hardware.
+    public enum KeyboardLayoutFamily: Sendable, Hashable {
+        /// The § / ± key left of `1`, absent from ANSI and JIS keyboards.
+        case iso
+        /// ¥, _, and the kana/eisu keys, present only on Japanese keyboards.
+        case jis
     }
 
     /// Conflict severity ordered from `warning` to `error`.
@@ -25,8 +39,9 @@ public enum Conflict: Sendable, Hashable {
     }
 
     /// Severity rule: within-context `duplicate` / `unreachablePrefix` are
-    /// `.error`; cross-context variants, `systemShared`, and `menuCollision`
-    /// are `.warning`. `shadowedByGlobal` and `unsupportedInScope` are `.error`.
+    /// `.error`; cross-context variants, `systemShared`, `menuCollision`, and
+    /// `layoutExclusiveKey` are `.warning`. `shadowedByGlobal` and
+    /// `unsupportedInScope` are `.error`.
     public var severity: Severity {
         switch self {
         case let .duplicate(occurrences):
@@ -36,7 +51,7 @@ public enum Conflict: Sendable, Hashable {
             return blocker.contextID == blocked.contextID ? .error : .warning
         case .shadowedByGlobal, .unsupportedInScope:
             return .error
-        case .systemShared, .menuCollision:
+        case .systemShared, .menuCollision, .layoutExclusiveKey:
             return .warning
         }
     }
@@ -57,6 +72,8 @@ public extension Conflict {
         case let .shadowedByGlobal(local, global):
             [local, global]
         case let .unsupportedInScope(occurrence, _):
+            [occurrence]
+        case let .layoutExclusiveKey(occurrence, _):
             [occurrence]
         }
     }

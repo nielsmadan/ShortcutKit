@@ -64,6 +64,12 @@ private struct ConflictRow: View {
                 Text(describe(reason)).font(.caption)
                 jumpButton(occurrence.actionID, occurrence)
             }
+        case let .layoutExclusiveKey(occurrence, layout):
+            VStack(alignment: .leading) {
+                Text(uiString("Key missing on other keyboards")).bold()
+                Text(describe(layout)).font(.caption)
+                jumpButton(occurrence.actionID, occurrence)
+            }
         }
     }
 
@@ -75,6 +81,13 @@ private struct ConflictRow: View {
         switch reason {
         case .multiStepInGlobal: uiString("Global shortcuts can't be chords")
         case .continuousInGlobal: uiString("Global shortcuts can't be continuous")
+        }
+    }
+
+    private func describe(_ layout: Conflict.KeyboardLayoutFamily) -> String {
+        switch layout {
+        case .iso: uiString("Only on ISO keyboards")
+        case .jis: uiString("Only on Japanese keyboards")
         }
     }
 }
