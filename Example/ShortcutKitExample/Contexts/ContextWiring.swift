@@ -1,6 +1,7 @@
 import Foundation
 import ShortcutKit
 import ShortcutKitGlobal
+import ShortcutKitUI
 
 @MainActor
 enum ContextWiring {
@@ -71,6 +72,8 @@ enum ContextWiring {
         conflictDemo.seedConflicts()
         return registry
     }()
+
+    static let hintPresenter = ShortcutHintPresenter(registry: shared)
 }
 
 // MARK: - Conflict demo

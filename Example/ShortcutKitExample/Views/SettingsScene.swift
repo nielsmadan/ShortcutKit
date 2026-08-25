@@ -184,6 +184,7 @@ struct HUDPlaygroundConfiguration {
     }
 
     var placement: HintHUDPlacement = .topTrailing
+    var presentation: HintHUDPresentation = .view
     var durationSeconds: Double = 2
     var renderer: RendererChoice = .builtIn
     var transitionChoice: TransitionChoice = .automatic
@@ -199,6 +200,7 @@ struct HUDPlaygroundConfiguration {
     var options: HintHUDOptions {
         HintHUDOptions(
             placement: placement,
+            presentation: presentation,
             duration: .seconds(durationSeconds),
             transition: transitionChoice.transition(edge: moveEdge)
         )
@@ -262,6 +264,12 @@ struct HUDPlaygroundView: View {
     private var presentationControls: some View {
         GroupBox("Presentation") {
             VStack(alignment: .leading, spacing: 10) {
+                Picker("Host", selection: $model.configuration.presentation) {
+                    Text("View").tag(HintHUDPresentation.view)
+                    Text("Window").tag(HintHUDPresentation.window)
+                    Text("Screen").tag(HintHUDPresentation.screen)
+                }
+                .pickerStyle(.segmented)
                 Picker("Placement", selection: $model.configuration.placement) {
                     Text("Top Leading").tag(HintHUDPlacement.topLeading)
                     Text("Top").tag(HintHUDPlacement.top)
@@ -352,12 +360,12 @@ struct HUDPlaygroundView: View {
 
 @MainActor
 struct PlaygroundHUD: ViewModifier {
-    let registry: ShortcutRegistry
+    let presenter: ShortcutHintPresenter
     @ObservedObject var model: HUDPlaygroundModel
 
     func body(content: Content) -> some View {
         let configuration = model.configuration
-        content.shortcutHintHUD(registry: registry, options: configuration.options) { hint in
+        content.shortcutHintHUD(presenter: presenter, options: configuration.options) { hint in
             if configuration.renderer == .custom {
                 Label(hint.text, systemImage: "keyboard")
                     .padding(8)

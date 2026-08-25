@@ -1,4 +1,5 @@
 import ShortcutKit
+import ShortcutKitUI
 import SwiftUI
 
 @MainActor
@@ -20,5 +21,9 @@ struct InspectorWindowView: View {
         .padding()
         .frame(minWidth: 240, minHeight: 160)
         .activeShortcutContext(model.context, dispatch: model.handle)
+        .modifier(PlaygroundHUD(
+            presenter: ContextWiring.hintPresenter,
+            model: ContextWiring.hudPlayground
+        ))
     }
 }

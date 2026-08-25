@@ -22,9 +22,9 @@ just example      # from the repo root — builds and launches the app
 - **Mutually-exclusive contexts** — the five canvas modes, the two selection
   contexts, and the wizard each form a mutex set.
 - **Global hotkeys** — `⌃⌥⌘K` fires system-wide via `CarbonGlobalActivator`.
-- **Discoverability HUD** — triggering an action by mouse shows its shortcut.
-- **Panel legend** — `KeyBindingsLegendView` (`.panel`) in the right rail, with a
-  Compact toggle and a "Show as sheet" button demoing the `.sheet` style.
+- **Legend / Hints rail** — switch between the `KeyBindingsLegendView` playground
+  and live HUD controls for view, window, and screen presentation. The main and
+  Inspector windows share one `ShortcutHintPresenter`.
 - **Menu bar** — the *Actions* menu shows each action's live shortcut via the
   `.shortcut(_:in:)` helper; re-binding in Settings updates it.
 
@@ -35,8 +35,6 @@ just example      # from the repo root — builds and launches the app
 - **Drop-in** tab — the canned `ShortcutPreferencesView`.
 - **Legend** tab — `KeyBindingsLegendView` with live `LegendStyle` (panel / sheet),
   a Compact toggle, and column / cell / size controls.
-- **HUD** tab — a playground for `HintHUDOptions` (placement incl. `.cursor`,
-  duration), `HintPolicy`, and a custom toast.
 - **Quick Setup** tab — single-action `ShortcutBindingEditor` rows.
 - **Diagnostics** tab — `reload()`, `clear()`, `RawState.debugDescription`, a
   `FileStore(.toml)` export, and the live conflict list.

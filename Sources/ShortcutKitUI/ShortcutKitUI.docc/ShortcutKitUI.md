@@ -67,8 +67,10 @@ ContentView().shortcutHintHUD(registry: model.registry)
 ### Discoverability HUD
 
 - ``HintHUDOptions``
+- ``HintHUDPresentation``
 - ``HintHUDPlacement``
 - ``HintHUDTransition``
+- ``ShortcutHintPresenter``
 - ``ShortcutHintStyle``
 - ``ShortcutHintToastStyle``
 - ``ShortcutHintSize``

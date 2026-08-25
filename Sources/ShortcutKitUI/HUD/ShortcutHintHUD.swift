@@ -4,55 +4,94 @@ import SwiftUI
 
 @MainActor
 struct ShortcutHintHUD<Toast: View>: ViewModifier {
-    @ObservedObject var registry: ShortcutRegistry
+    let presenter: ShortcutHintPresenter
     let options: HintHUDOptions
     let toast: (HintToastContext) -> Toast
 
-    @State private var gate: HintPolicyGate
-    @State private var current: HintToastContext?
-    @State private var currentCursor: CGPoint?
-    @State private var toastSize: CGSize = .zero
-    @State private var tracker = CursorTracker()
+    @StateObject private var host: HintHUDHost
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.locale) private var locale
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.font) private var font
+    @Environment(\.controlSize) private var controlSize
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.shortcutHintStyle) private var hintStyle
 
     init(
-        registry: ShortcutRegistry,
+        presenter: ShortcutHintPresenter,
         options: HintHUDOptions = .default,
         @ViewBuilder toast: @escaping (HintToastContext) -> Toast
     ) {
-        self.registry = registry
+        self.presenter = presenter
         self.options = options
         self.toast = toast
-        _gate = State(initialValue: HintPolicyGate())
+        _host = StateObject(wrappedValue: HintHUDHost(options: options))
     }
 
     func body(content: Content) -> some View {
+        let viewPresentation = host.current.flatMap { presentation in
+            presentation.options.presentation == .view ? presentation : nil
+        }
         content
-            .overlay { overlay }
+            .overlay {
+                HintHUDToastOverlay(presentation: viewPresentation, toast: toast)
+            }
+            .background {
+                HintHUDAnchorReader(
+                    host: host,
+                    presenter: presenter,
+                    options: options,
+                    environment: environment,
+                    renderer: { context in AnyView(toast(context)) }
+                )
+            }
             .onContinuousHover(coordinateSpace: .local) { phase in
                 switch phase {
-                case let .active(point): tracker.point = point
-                case .ended: tracker.point = nil
+                case let .active(point): host.cursorPoint = point
+                case .ended: host.cursorPoint = nil
                 @unknown default: break
                 }
             }
-            .onReceive(registry.actionFired) { handle(event: $0) }
     }
 
-    private var overlay: some View {
+    private var environment: HintHUDEnvironment {
+        HintHUDEnvironment(
+            colorScheme: colorScheme,
+            locale: locale,
+            layoutDirection: layoutDirection,
+            font: font,
+            controlSize: controlSize,
+            dynamicTypeSize: dynamicTypeSize,
+            reduceMotion: reduceMotion,
+            hintStyle: hintStyle
+        )
+    }
+}
+
+@MainActor
+struct HintHUDToastOverlay<Toast: View>: View {
+    let presentation: HintHUDHost.Presentation?
+    let toast: (HintToastContext) -> Toast
+
+    @State private var toastSize: CGSize = .zero
+
+    var body: some View {
         GeometryReader { proxy in
-            if let context = current {
-                let measured = toast(context)
+            if let presentation {
+                let measured = toast(presentation.context)
                     .fixedSize()
                     .background(
                         GeometryReader { sizeProxy in
                             Color.clear.preference(key: ToastSizeKey.self, value: sizeProxy.size)
                         }
                     )
-                    .transition(options.transition.swiftUITransition(reduceMotion: reduceMotion))
+                    .transition(presentation.options.transition.swiftUITransition(
+                        reduceMotion: presentation.environment.reduceMotion
+                    ))
 
-                if options.placement == .cursor, let point = currentCursor {
+                if presentation.options.placement == .cursor, let point = presentation.cursorPoint {
                     measured.position(clampedToastCenter(
                         cursor: point, container: proxy.size, toast: toastSize
                     ))
@@ -62,44 +101,57 @@ struct ShortcutHintHUD<Toast: View>: ViewModifier {
                         .frame(
                             width: proxy.size.width,
                             height: proxy.size.height,
-                            alignment: options.placement.alignment
+                            alignment: presentation.options.placement.alignment
                         )
                 }
             }
         }
         .onPreferenceChange(ToastSizeKey.self) { toastSize = $0 }
+        .allowsHitTesting(false)
+    }
+}
+
+@MainActor
+private struct OwnedShortcutHintHUD<Toast: View>: ViewModifier {
+    @StateObject private var owner: ShortcutHintPresenterOwner
+    let registry: ShortcutRegistry
+    let options: HintHUDOptions
+    let toast: (HintToastContext) -> Toast
+
+    init(
+        registry: ShortcutRegistry,
+        options: HintHUDOptions,
+        @ViewBuilder toast: @escaping (HintToastContext) -> Toast
+    ) {
+        _owner = StateObject(wrappedValue: ShortcutHintPresenterOwner(registry: registry))
+        self.registry = registry
+        self.options = options
+        self.toast = toast
     }
 
-    private func handle(event: ActionFiredEvent) {
-        guard registry.hintsEnabled, event.source == .programmatic else { return }
-        guard let entry = entryFor(event: event),
-              let firstBinding = entry.effectiveShortcuts.first
-        else { return }
-        guard gate.shouldShow(actionID: event.actionID, policy: registry.hintFrequency) else { return }
-        gate.markShown(actionID: event.actionID)
-        // Adopter content and library chrome belong to different localization bundles.
-        let name = String(localized: entry.displayName)
-        let shortcut = firstBinding.displayString
-        let text = uiString("Tip: \(name) is bound to \(shortcut)")
-        let context = HintToastContext(actionName: name, shortcut: shortcut, text: text)
-        withAnimation(options.transition.animation(.easeOut(duration: 0.2))) {
-            current = context
-            currentCursor = options.placement == .cursor ? tracker.point : nil
-        }
-        Task {
-            try? await Task.sleep(for: options.duration)
-            // Do not let an older timer dismiss its replacement.
-            if current == context {
-                withAnimation(options.transition.animation(.easeIn(duration: 0.3))) { current = nil }
+    func body(content: Content) -> some View {
+        content
+            .modifier(ShortcutHintHUD(presenter: owner.presenter, options: options, toast: toast))
+            .onChange(of: ObjectIdentifier(registry)) { _ in
+                owner.update(registry: registry)
             }
-        }
+    }
+}
+
+@MainActor
+final class ShortcutHintPresenterOwner: ObservableObject {
+    @Published private(set) var presenter: ShortcutHintPresenter
+    private var registry: ShortcutRegistry
+
+    init(registry: ShortcutRegistry) {
+        self.registry = registry
+        presenter = ShortcutHintPresenter(registry: registry)
     }
 
-    private func entryFor(event: ActionFiredEvent) -> KeyBindings.Entry? {
-        for group in registry.keyBindings.groups where group.contextID == event.contextID {
-            return group.entries.first(where: { $0.actionID == event.actionID })
-        }
-        return nil
+    func update(registry: ShortcutRegistry) {
+        guard self.registry !== registry else { return }
+        self.registry = registry
+        presenter = ShortcutHintPresenter(registry: registry)
     }
 }
 
@@ -110,7 +162,7 @@ public extension View {
         registry: ShortcutRegistry,
         options: HintHUDOptions = .default
     ) -> some View {
-        modifier(ShortcutHintHUD(registry: registry, options: options) { context in
+        modifier(OwnedShortcutHintHUD(registry: registry, options: options) { context in
             StyledShortcutHint(configuration: context)
         })
     }
@@ -122,13 +174,27 @@ public extension View {
         options: HintHUDOptions = .default,
         @ViewBuilder toast: @escaping (HintToastContext) -> some View
     ) -> some View {
-        modifier(ShortcutHintHUD(registry: registry, options: options, toast: toast))
+        modifier(OwnedShortcutHintHUD(registry: registry, options: options, toast: toast))
     }
-}
 
-@MainActor
-final class CursorTracker {
-    var point: CGPoint?
+    /// Adds the built-in shortcut hint HUD using a shared presentation domain.
+    func shortcutHintHUD(
+        presenter: ShortcutHintPresenter,
+        options: HintHUDOptions = .default
+    ) -> some View {
+        modifier(ShortcutHintHUD(presenter: presenter, options: options) { context in
+            StyledShortcutHint(configuration: context)
+        })
+    }
+
+    /// Adds a custom shortcut hint HUD using a shared presentation domain.
+    func shortcutHintHUD(
+        presenter: ShortcutHintPresenter,
+        options: HintHUDOptions = .default,
+        @ViewBuilder toast: @escaping (HintToastContext) -> some View
+    ) -> some View {
+        modifier(ShortcutHintHUD(presenter: presenter, options: options, toast: toast))
+    }
 }
 
 func clampedToastCenter(
@@ -149,7 +215,7 @@ func clampedToastCenter(
     return CGPoint(x: x, y: y)
 }
 
-private struct ToastSizeKey: PreferenceKey {
+struct ToastSizeKey: PreferenceKey {
     static let defaultValue = CGSize.zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
 }

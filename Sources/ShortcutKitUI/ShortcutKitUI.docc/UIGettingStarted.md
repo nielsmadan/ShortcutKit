@@ -102,8 +102,9 @@ ContentView()
     .shortcutHintHUD(registry: registry)
 ```
 
-Position, timing, and animation come from ``HintHUDOptions`` — including
-``HintHUDPlacement``'s nine fixed anchors and `.cursor`:
+Position, timing, animation, and the hosting layer come from ``HintHUDOptions``.
+``HintHUDPlacement`` provides nine fixed anchors and `.cursor`; the default
+``HintHUDPresentation/view`` host stays inside the modified view:
 
 ```swift
 .shortcutHintHUD(
@@ -115,6 +116,27 @@ Position, timing, and animation come from ``HintHUDOptions`` — including
     )
 )
 ```
+
+Use ``HintHUDPresentation/window`` to cover the active app window, including an
+attached sheet, or ``HintHUDPresentation/screen`` to place the hint within that
+screen's visible frame. A shared ``ShortcutHintPresenter`` coordinates one hint
+across every window in an app:
+
+```swift
+let hintPresenter = ShortcutHintPresenter(registry: registry)
+let hintOptions = HintHUDOptions(placement: .top, presentation: .screen)
+
+ContentView()
+    .shortcutHintHUD(presenter: hintPresenter, options: hintOptions)
+```
+
+Keep the presenter alive at app-model scope and attach the same instance to each
+window root. It selects the key or frontmost eligible window, applies hint
+frequency once across the app, and dismisses any previous hint before showing a
+replacement. Window and screen presentation use a click-through,
+non-activating panel that follows the selected window's Space and disappears
+when the app deactivates. With `.screen` plus `.cursor`, the pointer's screen is
+used; other placements use the selected window's screen.
 
 Apply ``ShortcutHintStyle`` after the HUD modifier to customize only the built-in
 toast. Omitted values keep their defaults:
@@ -144,3 +166,9 @@ For a fully custom toast, use the trailing-closure overload; it hands you a
     MyBrandedToast(title: hint.actionName, shortcut: hint.shortcut)
 }
 ```
+
+Window and screen hosts carry the standard visual environment into their
+separate panel: color scheme, locale, layout direction, font, control size,
+Dynamic Type size, Reduce Motion, and ``ShortcutHintStyle``. A custom toast that
+depends on an app-specific environment object should capture that model in its
+closure instead of reading it from the panel environment.

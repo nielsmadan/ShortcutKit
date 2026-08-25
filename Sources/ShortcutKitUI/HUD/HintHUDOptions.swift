@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Placement of a shortcut hint within the modified view.
+/// Placement of a shortcut hint within its presentation host.
 public enum HintHUDPlacement: Sendable, Hashable {
     case topLeading, top, topTrailing
     case leading, center, trailing
     case bottomLeading, bottom, bottomTrailing
 
-    /// At the pointer, clamped inside the view. Falls back to `.top` when unavailable.
+    /// At the pointer, clamped inside the presentation host. Falls back to `.top` when unavailable.
     case cursor
 }
 

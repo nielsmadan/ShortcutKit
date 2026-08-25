@@ -9,6 +9,7 @@ The `0.x` line is pre-release: the public API is stabilizing toward 1.0 and may 
 ## [Unreleased]
 
 ### Added
+- **[UI]** `HintHUDOptions.presentation` adds view-, window-, and screen-hosted hints. `ShortcutHintPresenter` coordinates one policy/timing stream across multiple windows and can keep a nonactivating hint panel above sheets.
 - **[UI]** `LegendStyle.embedded` renders legend content without padding, scrolling, or a background so host apps can supply their own container.
 - **[Core]** `Conflict.layoutExclusiveKey(occurrence:layout:)` — a `.warning` raised when a binding uses a physical key that only exists on one keyboard family (`§`/`±` on ISO, `¥`/`_`/kana on JIS). Matching is by key code, so these bindings work for whoever recorded them and are simply unreachable on other hardware. Surfaced in the conflict popover.
 - **[Core]** `ShortcutActionDefinition.allowsKeyRepeat` (defaults to `true`) — set it `false` so holding the key fires the action once instead of repeating, for actions where each invocation costs something (deletions, toggles, sends). The match still consumes the event, so suppressed repeats don't leak into the responder chain. Discrete actions only; continuous shortcuts have no key-repeat.

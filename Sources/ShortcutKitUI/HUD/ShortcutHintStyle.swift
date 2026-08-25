@@ -187,7 +187,7 @@ private struct BuiltInShortcutHintToast: View {
     }
 }
 
-private struct AnyShortcutHintStyle: Sendable {
+struct AnyShortcutHintStyle: Sendable {
     private let body: @MainActor @Sendable (HintToastContext) -> AnyView
 
     init(_ style: some ShortcutHintStyle) {
@@ -206,7 +206,7 @@ private struct ShortcutHintStyleKey: EnvironmentKey {
     static let defaultValue = AnyShortcutHintStyle(ShortcutHintToastStyle())
 }
 
-private extension EnvironmentValues {
+extension EnvironmentValues {
     var shortcutHintStyle: AnyShortcutHintStyle {
         get { self[ShortcutHintStyleKey.self] }
         set { self[ShortcutHintStyleKey.self] = newValue }

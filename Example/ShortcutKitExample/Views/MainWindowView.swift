@@ -79,7 +79,7 @@ struct MainWindowView: View {
             wizardModel.start()
         }
         .modifier(PlaygroundHUD(
-            registry: ContextWiring.shared,
+            presenter: ContextWiring.hintPresenter,
             model: ContextWiring.hudPlayground
         ))
     }
