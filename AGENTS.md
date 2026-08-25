@@ -13,7 +13,15 @@ reads it via an `@AGENTS.md` import in `CLAUDE.md`; other agents read it directl
 
 Tests mirror the source layout under `Tests/`. Each target has its own DocC catalog (`Sources/<Target>/<Target>.docc/`).
 
-[`docs/ROADMAP.md`](docs/ROADMAP.md) is the forward-looking backlog — proposed features, cross-repo follow-ups, and decided post-1.0 limitations. The package design meta-spec is [`docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md`](docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md).
+Where to look:
+
+| Need | Doc |
+|---|---|
+| Public API, concepts, guides | DocC catalogs (`Sources/<Target>/<Target>.docc/`), published to Swift Package Index |
+| What's planned / deferred | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
+| Why something is the way it is | [`docs/decisions/`](docs/decisions/) (ADRs) |
+| How ShortcutField actually behaves | [`docs/reference/shortcutfield.md`](docs/reference/shortcutfield.md) |
+| Package-wide design & the 12 invariants | [`docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md`](docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md) |
 
 Working docs under `docs/superpowers/` are **not** all tracked: a global ignore rule (`**/docs/superpowers/`) excludes newly-created ones, so specs written there are local unless force-added. Anything durable belongs in `ROADMAP.md`, this file, or the package design spec. Completed plans are deleted rather than archived — `git log -- <path>` recovers them.
 
@@ -52,10 +60,7 @@ In `#expect`, don't put bare integer-literal arithmetic on one side of `==` agai
 
 Before asserting what a dependency does — especially event handling, availability annotations, or OS event interception — read its source, don't reason from first principles. ShortcutField and KeyboardShortcuts are checked out as siblings (`../ShortcutField`, `../KeyboardShortcuts`); read them directly. (ShortcutField uses `NSEvent.addLocalMonitorForEvents`, so it *does* see OS-level shortcuts like ⌘Space — a first-principles guess got this wrong once.)
 
-Two ShortcutField facts that repeatedly get guessed wrong, both verified in its source:
-
-- **Matching is by physical key code** (`event.keyCode == keyCode`), not by character, so shortcuts are layout-independent. Hazards that afflict character-keyed libraries — ⌥+letter producing `å`, Shift+number producing punctuation — do not apply here. A borrowed "⌥+letter may not work" warning was nearly shipped on this false premise.
-- **Display resolves against the user's current layout** via `TISCopyCurrentASCIICapableKeyboardLayoutInputSource` + `UCKeyTranslate` with dead keys suppressed, so a key renders with the right cap on ISO/JIS keyboards.
+Verified findings about how ShortcutField actually behaves — key-code matching, layout-aware display, the text-input focus gate, the test seams — live in [`docs/reference/shortcutfield.md`](docs/reference/shortcutfield.md). Read it before reasoning about matching or focus; it exists because these get guessed wrong.
 
 ### Which layer a fix belongs to
 
@@ -64,7 +69,7 @@ Event matching, focus, and key-shape concerns belong in **ShortcutField**, not S
 1. Does `.onShortcut` have the same bug without ShortcutKit? If yes, a ShortcutKit-level fix leaves standalone adopters broken.
 2. Does the fix need matcher-internal state (`currentStep`, step shape)? `RegistryEventRouter` sees `.advanced` only *after* a matcher consumed the event, so anything needing mid-sequence context cannot be done from here without duplicating state.
 
-Accept the cross-repo release rather than working around it in Core. The text-input focus gate went this way and ShortcutKit inherited it with no code change — that inheritance is the signal the layering was right.
+Accept the cross-repo release rather than working around it in Core. Rationale and the counter-case: [ADR 0001](docs/decisions/0001-event-matching-fixes-belong-in-shortcutfield.md), [ADR 0002](docs/decisions/0002-key-repeat-is-per-action-policy-in-core.md).
 
 ## Conflict detection
 
