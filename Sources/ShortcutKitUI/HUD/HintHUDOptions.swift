@@ -20,6 +20,16 @@ public enum HintHUDTransition: Sendable, Hashable {
     case none
 }
 
+/// The coordinate space and window layer that hosts shortcut hints.
+public enum HintHUDPresentation: Sendable, Hashable {
+    /// Inside the modified SwiftUI view.
+    case view
+    /// Above the active application window, including its sheets.
+    case window
+    /// On the visible frame of the active application's screen.
+    case screen
+}
+
 extension HintHUDPlacement {
     var alignment: Alignment {
         switch self {
@@ -41,6 +51,8 @@ extension HintHUDPlacement {
 public struct HintHUDOptions: Sendable, Hashable {
     /// Where the toast appears. Default `.topTrailing`.
     public var placement: HintHUDPlacement
+    /// Where the toast is hosted. Default ``HintHUDPresentation/view``.
+    public var presentation: HintHUDPresentation
     /// How long a toast remains visible. Default two seconds.
     public var duration: Duration
     /// How a toast enters and leaves. Default ``HintHUDTransition/automatic``.
@@ -48,10 +60,12 @@ public struct HintHUDOptions: Sendable, Hashable {
 
     public init(
         placement: HintHUDPlacement = .topTrailing,
+        presentation: HintHUDPresentation = .view,
         duration: Duration = .seconds(2),
         transition: HintHUDTransition = .automatic
     ) {
         self.placement = placement
+        self.presentation = presentation
         self.duration = duration
         self.transition = transition
     }

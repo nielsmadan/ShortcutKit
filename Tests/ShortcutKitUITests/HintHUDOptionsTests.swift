@@ -8,6 +8,15 @@ struct HintHUDOptionsTests {
     @Test func defaultOptionsAreTopTrailingTwoSeconds() {
         let options = HintHUDOptions.default
         #expect(options.placement == .topTrailing)
+        #expect(options.presentation == .view)
+        #expect(options.duration == .seconds(2))
+        #expect(options.transition == .automatic)
+    }
+
+    @Test func presentationCanBeConfiguredIndependently() {
+        let options = HintHUDOptions(presentation: .screen)
+        #expect(options.placement == .topTrailing)
+        #expect(options.presentation == .screen)
         #expect(options.duration == .seconds(2))
         #expect(options.transition == .automatic)
     }
