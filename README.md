@@ -6,7 +6,7 @@
 
 VS Code–style keybindings for native macOS apps. Higher-level shortcut management built on top of [ShortcutField](https://github.com/nielsmadan/ShortcutField).
 
-> ⚠️ **Pre-release.** ShortcutKit is under active development. Public API stabilizes at 1.0 alongside the documentation site at `shortcutkit.dev`. Track progress against the [phase plan](ShortcutKitDevelopment.md).
+> ⚠️ **Pre-release.** ShortcutKit is under active development. Public API stabilizes at 1.0 alongside the documentation site at `shortcutkit.dev`. Track what's planned in the [roadmap](docs/ROADMAP.md).
 
 ## Products
 
@@ -43,7 +43,7 @@ Per-target imports:
 
 All three products — `ShortcutKit` (Core), `ShortcutKitUI`, and `ShortcutKitGlobal` — are implemented and tested. The public API is stabilizing toward 1.0; the `shortcutkit.dev` docs site is still to come.
 
-See [`ShortcutKitDevelopment.md`](ShortcutKitDevelopment.md) for the vision document and [`docs/superpowers/specs/`](docs/superpowers/specs/) for the package design meta-spec.
+See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the forward-looking backlog and [`docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md`](docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md) for the package design meta-spec.
 
 ## License
 

@@ -7,6 +7,48 @@ rationale behind the current public surface.
 
 ## Proposed features (unscheduled)
 
+### Debug surface (designed, awaiting plan)
+
+A Core debug data surface — ordered activation stack, a per-keystroke outcome
+publisher, and a recording flag — consumed by a debug window in the Example app.
+Answers "why didn't my shortcut fire", which today has no supported answer: five
+separate paths lead to a silent keystroke and none is observable.
+
+Design is complete and approved:
+[`specs/2026-08-25-shortcutkit-debug-surface-design.md`](superpowers/specs/2026-08-25-shortcutkit-debug-surface-design.md).
+Staged so a full event trace later is a consumer-side change with no Core API
+churn. A `ShortcutKitDevTools` product was designed and deliberately rejected as
+premature.
+
+### Sanctioned conflicts
+
+`Conflict` / `Severity` has no acknowledgement channel, so a deliberate overlap
+warns in the settings pane forever. Wanted: a way to record "this one is fine".
+
+Not small — the acknowledgement has to persist, which touches `RawState` and the
+migration list (invariant 1). Needs its own design pass. Prior art: TanStack
+Hotkeys makes this a per-registration `conflictBehavior` policy; only its
+`'allow'` case maps onto a persisted-override model, and `'replace'` / `'error'`
+actively fight one.
+
+### Runnable example per feature (Phase 4)
+
+TanStack ships one minimal runnable example per hook, and it is what makes their
+docs read as complete. Our DocC catalogues cover the reference half. Pairs with
+the existing `test_DocExample_<topicSlug>` rule — an example that is both
+compiled and rendered cannot drift.
+
+## Cross-repo follow-ups (ShortcutField)
+
+- **Focus-gate attribution.** ShortcutField's text-input focus gate returns
+  `.ignored`, indistinguishable from "did not match", so ShortcutKit cannot
+  report *why* a keystroke vanished. Reporting it needs `ShortcutMatchResult`
+  enriched with a reason. Blocks the debug surface from distinguishing
+  focus-gated keystrokes from unbound ones (see that spec's §6).
+- **Key-repeat suppression for `.onShortcut`.** `allowsKeyRepeat` lives on
+  `ShortcutActionDefinition`, so ShortcutField's own `.onShortcut` adopters
+  cannot opt out of auto-repeat. Push the primitive down if anyone asks.
+
 ### Command launcher / palette (Phase 3.5 candidate)
 
 A Notion / Superhuman / Linear-style modal palette in `ShortcutKitUI`: a search
@@ -59,5 +101,9 @@ Decided limitations — documented and defensible for v1:
   inert (lookup ignores them).
 - **Global-activator status publisher** — post-1.0; a live settings UI polls
   `CarbonGlobalActivator.status` for now.
+- **Debug events for global shortcuts** — Carbon hotkeys fire through
+  `CarbonGlobalActivator` straight to the context and never reach
+  `RegistryEventRouter`, so they produce no debug events. Needs a second
+  emission point in `ShortcutKitGlobal`.
 - **`ScopePolicy` / Core scope-rule consolidation** — optional internal cleanup;
   both sides are internal and independently tested.

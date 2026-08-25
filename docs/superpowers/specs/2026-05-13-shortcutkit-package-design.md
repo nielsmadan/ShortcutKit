@@ -5,7 +5,7 @@
 | **Date** | 2026-05-13 |
 | **Status** | Approved (brainstorm complete, awaiting plan) |
 | **Type** | Meta-spec — package-level decisions inherited by every phase |
-| **Predecessor** | [`ShortcutKitDevelopment.md`](../../../ShortcutKitDevelopment.md) (planning doc, retained as input reference) |
+| **Predecessor** | `ShortcutKitDevelopment.md` (planning doc; removed once its phases shipped — `git log -- ShortcutKitDevelopment.md` recovers it) |
 | **Successor specs** | One per phase: Phase 1 (Core), Phase 2 (UI + HUD), Phase 3 (Global), Phase 4 (docs site) |
 
 ## 1. Scope and purpose
@@ -52,7 +52,7 @@ A library that lets a macOS dev:
 - Surface a **discoverability HUD** ("this also has a shortcut: ⌘S") when an action is invoked via a non-shortcut source.
 - Integrate **global (system-wide) shortcuts** so the library is a complete keyboard input layer.
 
-See `ShortcutKitDevelopment.md` for the full vision, feasibility analysis, and prior-art comparison.
+The full vision, feasibility analysis, and prior-art comparison lived in `ShortcutKitDevelopment.md`, since removed; recover with `git log -- ShortcutKitDevelopment.md`.
 
 ## 3. Package layout
 

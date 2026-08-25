@@ -13,7 +13,9 @@ reads it via an `@AGENTS.md` import in `CLAUDE.md`; other agents read it directl
 
 Tests mirror the source layout under `Tests/`. Each target has its own DocC catalog (`Sources/<Target>/<Target>.docc/`).
 
-Specs and plans are tracked under `docs/superpowers/specs/` and `docs/superpowers/plans/`. The vision doc is [`ShortcutKitDevelopment.md`](ShortcutKitDevelopment.md); the package design meta-spec is [`docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md`](docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md).
+[`docs/ROADMAP.md`](docs/ROADMAP.md) is the forward-looking backlog — proposed features, cross-repo follow-ups, and decided post-1.0 limitations. The package design meta-spec is [`docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md`](docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md).
+
+Working docs under `docs/superpowers/` are **not** all tracked: a global ignore rule (`**/docs/superpowers/`) excludes newly-created ones, so specs written there are local unless force-added. Anything durable belongs in `ROADMAP.md`, this file, or the package design spec. Completed plans are deleted rather than archived — `git log -- <path>` recovers them.
 
 ## Build, Test, and Development Commands
 
@@ -50,13 +52,44 @@ In `#expect`, don't put bare integer-literal arithmetic on one side of `==` agai
 
 Before asserting what a dependency does — especially event handling, availability annotations, or OS event interception — read its source, don't reason from first principles. ShortcutField and KeyboardShortcuts are checked out as siblings (`../ShortcutField`, `../KeyboardShortcuts`); read them directly. (ShortcutField uses `NSEvent.addLocalMonitorForEvents`, so it *does* see OS-level shortcuts like ⌘Space — a first-principles guess got this wrong once.)
 
+Two ShortcutField facts that repeatedly get guessed wrong, both verified in its source:
+
+- **Matching is by physical key code** (`event.keyCode == keyCode`), not by character, so shortcuts are layout-independent. Hazards that afflict character-keyed libraries — ⌥+letter producing `å`, Shift+number producing punctuation — do not apply here. A borrowed "⌥+letter may not work" warning was nearly shipped on this false premise.
+- **Display resolves against the user's current layout** via `TISCopyCurrentASCIICapableKeyboardLayoutInputSource` + `UCKeyTranslate` with dead keys suppressed, so a key renders with the right cap on ISO/JIS keyboards.
+
+### Which layer a fix belongs to
+
+Event matching, focus, and key-shape concerns belong in **ShortcutField**, not ShortcutKit — even when ShortcutKit is where the bug was noticed. Two tests:
+
+1. Does `.onShortcut` have the same bug without ShortcutKit? If yes, a ShortcutKit-level fix leaves standalone adopters broken.
+2. Does the fix need matcher-internal state (`currentStep`, step shape)? `RegistryEventRouter` sees `.advanced` only *after* a matcher consumed the event, so anything needing mid-sequence context cannot be done from here without duplicating state.
+
+Accept the cross-repo release rather than working around it in Core. The text-input focus gate went this way and ShortcutKit inherited it with no code change — that inheritance is the signal the layering was right.
+
+## Conflict detection
+
+Adding a case to `Conflict` requires four wiring points, not two. The compiler catches three; the fourth is silent:
+
+1. `Conflict.severity`
+2. `Conflict.occurrences`
+3. `ShortcutRegistry.describeConflict` (default-level assertion text)
+4. `ConflictPopover` in ShortcutKitUI — plus a `Localizable.strings` entry per new user-facing string
+
+`conflictsByActionRef()` needs no update: it derives refs from `occurrences`, so case 2 covers it.
+
+## Localization
+
+`Sources/ShortcutKitUI/Resources/en.lproj/Localizable.strings` is **hand-maintained** — SwiftPM does not extract keys from source (that is an Xcode build phase), so a new `uiString("…")` call site needs a matching entry added by hand.
+
+A missing key is invisible in English: `String(localized:)` falls back to the key, and the keys *are* the English text, so the UI looks correct and tests pass. `LocalizationCoverageTests` scans call sites and fails on drift in both directions — missing entries and dead ones. If it fails, fix the catalogue rather than the test.
+
 ## Squashing history
 
 Don't use the squash-commits skill's default `git merge --squash <tip> && git commit` here: the lefthook pre-commit reformats staged content (rebuilt tree diverges) and `rerere.enabled=true` replays stale conflict resolutions, producing phantom conflicts mid-rebuild. Rebuild the chain with `git commit-tree` instead (stamp each group-tip's exact tree onto a parent chain — no hook, no merge, no rerere), then `git reset --soft`. Verify `git diff ORIG_TIP NEW` is empty and keep a backup tag first.
 
 ## Phase status & phase-aware work
 
-Implementation proceeds in 4 sequential phases (see [`ShortcutKitDevelopment.md`](ShortcutKitDevelopment.md) and the package design spec). The three library products are implemented and tested; the public API is stabilizing toward 1.0.
+Implementation proceeds in 4 sequential phases (see the package design spec, §4). The three library products are implemented and tested; the public API is stabilizing toward 1.0.
 
 | Phase | Target | Status |
 |---|---|---|
