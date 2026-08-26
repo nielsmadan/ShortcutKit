@@ -1,6 +1,6 @@
 # 0004 — No DevTools product; ship the Core debug surface first
 
-Date: 2026-08-25 · Status: Accepted
+Date: 2026-08-25 · Status: Accepted — implemented 2026-08-26
 
 ## Context
 
@@ -29,5 +29,8 @@ justified.
   consumer-side change with no Core API churn. That staging is the point of the
   design.
 - Promotion to a product later stays additive.
-- Design: `docs/superpowers/specs/2026-08-25-shortcutkit-debug-surface-design.md`
-  (local-only unless force-added); summary in `docs/ROADMAP.md`.
+- Shipped 2026-08-26 as `ShortcutRegistry.debugEvents` / `activationSnapshot` /
+  `isDebugRecording`, consumed by the Example app's Shortcut Debug window. The
+  design doc that produced this was deleted once implemented, per the repo's
+  norm; `git log -- docs/superpowers/specs/` recovers nothing for it, since it
+  was never tracked. Current behaviour is documented in `<doc:Debugging>`.

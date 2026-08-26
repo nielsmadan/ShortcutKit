@@ -18,12 +18,12 @@ Where to look:
 | Need | Doc |
 |---|---|
 | Public API, concepts, guides | DocC catalogs (`Sources/<Target>/<Target>.docc/`), published to Swift Package Index |
-| What's planned / deferred | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
+| Decided post-1.0 limitations | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
 | Why something is the way it is | [`docs/decisions/`](docs/decisions/) (ADRs) |
 | How ShortcutField actually behaves | [`docs/reference/shortcutfield.md`](docs/reference/shortcutfield.md) |
 | Package-wide design & the 12 invariants | [`docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md`](docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md) |
 
-Working docs under `docs/superpowers/` are **not** all tracked: a global ignore rule (`**/docs/superpowers/`) excludes newly-created ones, so specs written there are local unless force-added. Anything durable belongs in `ROADMAP.md`, this file, or the package design spec. Completed plans are deleted rather than archived — `git log -- <path>` recovers them.
+Working docs under `docs/superpowers/` are **not** all tracked: a global ignore rule (`**/docs/superpowers/`) excludes newly-created ones, so specs written there are local unless force-added. Anything durable belongs in `docs/decisions/`, `docs/reference/`, `docs/ROADMAP.md`, this file, or the package design spec. Completed plans are deleted rather than archived — `git log -- <path>` recovers them.
 
 ## Build, Test, and Development Commands
 
