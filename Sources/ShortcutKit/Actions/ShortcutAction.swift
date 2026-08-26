@@ -25,11 +25,11 @@ public struct ShortcutActionDefinition: Sendable {
     /// Traps at definition time if `defaults` mixes discrete and continuous
     /// shortcuts — every default must share the action's kind.
     ///
-    /// - Parameter allowsKeyRepeat: When `false`, holding the key fires the
-    ///   action once instead of repeating. Set it for actions where each
-    ///   invocation costs something — deletions, toggles, sends. Leave it `true`
-    ///   for actions built to repeat, like nudging or incrementing. Only affects
-    ///   discrete actions; continuous shortcuts have no key-repeat.
+    /// Setting `allowsKeyRepeat` to `false` makes holding the key fire the action
+    /// once instead of repeating — for actions where each invocation costs
+    /// something, like deletions, toggles, and sends. Leave it `true` for actions
+    /// built to repeat, like nudging. Discrete actions only; continuous shortcuts
+    /// have no key-repeat.
     public init(
         _ displayName: LocalizedStringResource,
         description: LocalizedStringResource? = nil,

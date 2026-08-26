@@ -112,7 +112,7 @@ public struct LegendOptions: Sendable, Hashable {
     public var compact: Bool
     /// Whether group headers show a divider. Default `true`.
     public var showsHeaderDivider: Bool
-    /// Shortcut rendering style. `nil` uses ``ShortcutField/ShortcutLabelStyle/compact``.
+    /// Shortcut rendering style. `nil` uses ShortcutField's `ShortcutLabelStyle.compact`.
     public var shortcutStyle: ShortcutLabelStyle?
     /// Label width. Default `.size` fills spare width in single- and fixed-column layouts.
     public var labelWidth: LegendLabelWidth

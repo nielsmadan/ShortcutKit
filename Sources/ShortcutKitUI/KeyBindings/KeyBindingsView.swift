@@ -52,7 +52,7 @@ public struct KeyBindingsView: View {
         mode = .full(presentation: presentation)
     }
 
-    /// Creates an inline list for one context attached to a ``ShortcutRegistry``.
+    /// Creates an inline list for one context attached to a `ShortcutRegistry`.
     /// Search is disabled by default.
     public init(
         context: ShortcutContext<some ShortcutAction>,

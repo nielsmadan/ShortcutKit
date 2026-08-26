@@ -69,6 +69,46 @@ documentation for the registration and permission flow.
 > global context's effective bindings can't be multi-step chords or continuous
 > gestures. ``Conflict`` surfaces an `unsupportedInScope` entry if one slips in.
 
+## When a matched shortcut doesn't fire
+
+Being bound and in an active context isn't sufficient. Two rules suppress a
+matched shortcut, both deliberately.
+
+### Typing wins over bare keys
+
+While a text field, search field, or text view has focus, a shortcut whose
+trigger is a **bare key** — or a ⇧/⌥-only combination — does not fire; the
+keystroke goes to the field. Otherwise binding `K` to "search" would make the
+letter `k` unusable in every text field in the app.
+
+The rule is derived from the shortcut's shape, so there is nothing to configure:
+
+| Trigger | While editing text |
+|---|---|
+| ⌘ or ⌃ combination (`⌘S`, `⌃K`) | fires |
+| Escape, F1–F20 | fires |
+| Bare key (`K`), ⇧/⌥-only (`⇧K`, `⌥K`) | suppressed |
+| Any step after the first in a chord | fires |
+
+The last row matters for chords: pressing `⌘K` commits to the sequence, so a
+bare second step still completes it. Navigation and editing keys (arrows, Tab,
+Return, Space, Delete) count as text input and stay with the field.
+
+This lives in ShortcutField's matcher, so it applies to `.onShortcut` too.
+
+### Auto-repeat is opt-out per action
+
+Holding a key repeats the action by default. For actions where each invocation
+costs something — deletions, toggles, sends — set
+``ShortcutActionDefinition/allowsKeyRepeat`` to `false`:
+
+```swift
+case .deleteItem: .init("Delete", "cmd+d", allowsKeyRepeat: false)
+```
+
+The event is still consumed, so suppressed repeats don't leak through to the
+responder chain. Continuous shortcuts have no key-repeat and ignore the flag.
+
 ## Dispatch vs. notify
 
 Both run on a context (or, by id, on the registry):

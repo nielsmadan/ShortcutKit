@@ -25,6 +25,11 @@ shortcut) so you can render and jump to the offenders.
 - **`unsupportedInScope`** — a binding can't work in its context's scope (e.g. a
   multi-step chord or continuous gesture in a `.global` context, which Carbon
   can't represent).
+- **`layoutExclusiveKey`** — a binding uses a physical key that only exists on one
+  keyboard family: `§`/`±` on ISO boards, `¥`/`_`/kana on JIS. Matching is by key
+  code, so the binding works perfectly for whoever recorded it and is simply
+  unreachable for everyone on other hardware — which is why it is easy to ship by
+  accident.
 
 ## Severity
 

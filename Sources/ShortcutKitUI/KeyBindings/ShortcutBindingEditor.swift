@@ -12,7 +12,7 @@ import SwiftUI
 /// }
 /// ```
 ///
-/// The context must already be attached to a ``ShortcutRegistry``.
+/// The context must already be attached to a `ShortcutRegistry`.
 @MainActor
 public struct ShortcutBindingEditor<Action: ShortcutAction>: View {
     @ObservedObject private var registry: ShortcutRegistry
