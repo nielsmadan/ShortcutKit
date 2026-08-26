@@ -12,6 +12,10 @@ final class RegistryEventRouter {
     private let listenerID = UUID()
     private var isRegistered = false
 
+    /// Debug sink. `nil` — the default — is the recording gate: with nothing
+    /// attached the hot path pays one optional test and builds no event.
+    var onDebugEvent: ((ShortcutDebugEvent) -> Void)?
+
     init(dispatcher: ShortcutEventDispatcher = .shared) {
         self.dispatcher = dispatcher
     }
@@ -37,22 +41,49 @@ final class RegistryEventRouter {
     func handle(_ event: NSEvent) -> ShortcutMatchResult {
         var consumeFromAdvance = false
         var didAdvance = false
-        for matcher in stack.reversed() {
-            switch matcher.handle(event) {
+        var advanced: ActionRef?
+        // Innermost first, so the index is the depth reported to the debug sink.
+        for (depth, matcher) in stack.reversed().enumerated() {
+            let outcome = matcher.handle(event)
+            switch outcome.result {
             case .ignored:
                 continue
             case let .advanced(consume):
                 didAdvance = true
                 consumeFromAdvance = consumeFromAdvance || consume
+                if advanced == nil { advanced = outcome.action }
             case .fired:
                 resetOthers(winner: matcher)
+                emitDebug(event) {
+                    guard let action = outcome.action else { return .noMatch }
+                    return outcome.repeatSuppressed
+                        ? .suppressedKeyRepeat(action)
+                        : .dispatched(action, stackDepth: depth)
+                }
                 return .fired
             case let .continuousFired(magnitude):
                 resetOthers(winner: matcher)
                 return .continuousFired(magnitude: magnitude)
             }
         }
-        return didAdvance ? .advanced(consumeEvent: consumeFromAdvance) : .ignored
+        guard didAdvance else {
+            emitDebug(event) { .noMatch }
+            return .ignored
+        }
+        emitDebug(event) { advanced.map { .advanced($0) } ?? .noMatch }
+        return .advanced(consumeEvent: consumeFromAdvance)
+    }
+
+    /// The outcome closure runs only when a sink is attached, so nothing is built
+    /// while recording is off.
+    private func emitDebug(
+        _ event: NSEvent,
+        _ outcome: () -> ShortcutDebugEvent.Outcome
+    ) {
+        guard let onDebugEvent,
+              let pressed = ShortcutDebugEvent.pressedShortcut(from: event)
+        else { return }
+        onDebugEvent(ShortcutDebugEvent(pressed: pressed, outcome: outcome()))
     }
 
     private func resetOthers(winner: any ContextMatching) {
@@ -68,4 +99,12 @@ final class RegistryEventRouter {
 
     var __currentStackIDs: [String] { stack.map(\.contextID) }
     // swiftlint:enable identifier_name
+
+    /// Router order — outermost first. `nil` activation ids are skipped: only
+    /// activated matchers sit on this stack.
+    var activationOrder: [(contextID: String, activationID: UUID)] {
+        stack.compactMap { matcher in
+            matcher.activationID.map { (matcher.contextID, $0) }
+        }
+    }
 }

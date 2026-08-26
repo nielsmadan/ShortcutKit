@@ -42,6 +42,7 @@ For system-wide hotkeys, add **ShortcutKitGlobal**.
 - <doc:Contexts-and-Activation>
 - <doc:Persistence-and-Migrations>
 - <doc:Conflicts>
+- <doc:Debugging>
 
 ### Declaring Actions
 

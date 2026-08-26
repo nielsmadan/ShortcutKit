@@ -11,6 +11,45 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     @Published public private(set) var keyBindings: KeyBindings = .init()
     public let actionFired: AnyPublisher<ActionFiredEvent, Never>
 
+    /// Per-keystroke outcomes, for answering "why didn't my shortcut fire".
+    ///
+    /// Emits only while ``isDebugRecording`` is `true`. Nothing is stored — keep
+    /// whatever history you need on the observing side.
+    ///
+    /// Key events routed through active contexts only: global (Carbon) hotkeys
+    /// bypass the router, and with no context active the router is unregistered
+    /// and there is nothing to observe. An empty ``activationSnapshot`` is the
+    /// explanation for a silent stream.
+    public let debugEvents: AnyPublisher<ShortcutDebugEvent, Never>
+
+    /// Whether ``debugEvents`` is emitting. `false` by default; while off the
+    /// event path pays a single optional test per keystroke.
+    public var isDebugRecording: Bool = false {
+        didSet {
+            guard isDebugRecording != oldValue else { return }
+            router.onDebugEvent = isDebugRecording
+                ? { [weak self] event in self?.debugEventSubject.send(event) }
+                : nil
+        }
+    }
+
+    /// The live activation stack, in router order — outermost first, duplicates
+    /// preserved. Unlike ``activeBindings()`` this keeps what decides precedence.
+    public var activationSnapshot: ActivationSnapshot {
+        let byID = Dictionary(
+            contexts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }
+        )
+        return ActivationSnapshot(entries: router.activationOrder.compactMap { entry in
+            guard let context = byID[entry.contextID] else { return nil }
+            return ActivationSnapshot.Entry(
+                activationID: entry.activationID,
+                contextID: entry.contextID,
+                displayName: context.displayName,
+                scope: context.scope
+            )
+        })
+    }
+
     /// The user's hint-visibility override, or the app default when unset.
     @Published public private(set) var hintsEnabled: Bool = true
 
@@ -36,6 +75,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     )
 
     private let actionFiredSubject = PassthroughSubject<ActionFiredEvent, Never>()
+    private let debugEventSubject = PassthroughSubject<ShortcutDebugEvent, Never>()
     var overrides: [String: [String: [Shortcut]]] = [:]
     private var pendingSave: DispatchWorkItem?
     private var hasUnsavedChanges = false
@@ -78,6 +118,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         self.defaultHintsEnabled = defaultHintsEnabled
         self.defaultHintFrequency = defaultHintFrequency
         actionFired = actionFiredSubject.eraseToAnyPublisher()
+        debugEvents = debugEventSubject.eraseToAnyPublisher()
 
         // Overrides can introduce multi-step bindings after initialization.
         ShortcutTracking.installBeepSuppression()

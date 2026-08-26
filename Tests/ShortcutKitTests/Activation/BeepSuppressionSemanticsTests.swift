@@ -28,14 +28,14 @@ import Testing
     @Test("an unbound key beeps when no chord is in flight")
     func unboundKeyBeeps() {
         let matcher = makeMatcher()
-        #expect(beeps(matcher.handle(keyDown(kVK_ANSI_J, .command))))
+        #expect(beeps(matcher.handle(keyDown(kVK_ANSI_J, .command)).result))
         matcher.reset()
     }
 
     @Test("a chord prefix does not beep and does set tracking")
     func prefixSuppressed() {
         let matcher = makeMatcher()
-        let result = matcher.handle(keyDown(kVK_ANSI_K, .command))
+        let result = matcher.handle(keyDown(kVK_ANSI_K, .command)).result
         #expect(beeps(result) == false)
         #expect(result == .advanced(consumeEvent: false))
         #expect(ShortcutTracking.isActive)
@@ -45,8 +45,8 @@ import Testing
     @Test("a completed chord does not beep — the event is consumed")
     func completionConsumed() {
         let matcher = makeMatcher()
-        _ = matcher.handle(keyDown(kVK_ANSI_K, .command))
-        let result = matcher.handle(keyDown(kVK_ANSI_O, .command))
+        _ = matcher.handle(keyDown(kVK_ANSI_K, .command)).result
+        let result = matcher.handle(keyDown(kVK_ANSI_O, .command)).result
         #expect(result == .fired)
         #expect(beeps(result) == false)
         matcher.reset()
@@ -55,8 +55,8 @@ import Testing
     @Test("an invalid second key still beeps — tracking resets before the event lands")
     func invalidSecondKeyBeeps() {
         let matcher = makeMatcher()
-        #expect(beeps(matcher.handle(keyDown(kVK_ANSI_K, .command))) == false)
-        let result = matcher.handle(keyDown(kVK_ANSI_Z, .command))
+        #expect(beeps(matcher.handle(keyDown(kVK_ANSI_K, .command)).result) == false)
+        let result = matcher.handle(keyDown(kVK_ANSI_Z, .command)).result
         #expect(beeps(result))
         #expect(ShortcutTracking.isActive == false)
         matcher.reset()
@@ -65,7 +65,7 @@ import Testing
     @Test("a plain single-step shortcut never sets tracking")
     func singleStepNeverTracks() {
         let matcher = makeMatcher()
-        let result = matcher.handle(keyDown(kVK_ANSI_S, .command))
+        let result = matcher.handle(keyDown(kVK_ANSI_S, .command)).result
         #expect(result == .fired)
         #expect(ShortcutTracking.isActive == false)
         matcher.reset()
@@ -74,9 +74,9 @@ import Testing
     @Test("beeping resumes normally after a chord sequence")
     func noStuckSuppression() {
         let matcher = makeMatcher()
-        _ = matcher.handle(keyDown(kVK_ANSI_K, .command))
-        _ = matcher.handle(keyDown(kVK_ANSI_O, .command))
-        #expect(beeps(matcher.handle(keyDown(kVK_ANSI_J, .command))))
+        _ = matcher.handle(keyDown(kVK_ANSI_K, .command)).result
+        _ = matcher.handle(keyDown(kVK_ANSI_O, .command)).result
+        #expect(beeps(matcher.handle(keyDown(kVK_ANSI_J, .command)).result))
         #expect(ShortcutTracking.isActive == false)
         matcher.reset()
     }

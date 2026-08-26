@@ -29,10 +29,10 @@ import Testing
         }
         let matcher = ContextMatcher(context: ctx)
 
-        let r1 = matcher.handle(keyDown(kVK_ANSI_S, .command))
+        let r1 = matcher.handle(keyDown(kVK_ANSI_S, .command)).result
         #expect(r1 == .fired)
 
-        let r2 = matcher.handle(keyDown(kVK_ANSI_S, .control))
+        let r2 = matcher.handle(keyDown(kVK_ANSI_S, .control)).result
         #expect(r2 == .fired)
 
         #expect(fired == 2)

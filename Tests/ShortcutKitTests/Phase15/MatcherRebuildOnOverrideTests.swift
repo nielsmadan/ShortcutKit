@@ -35,10 +35,10 @@ import Testing
             return
         }
 
-        _ = matcher.handle(keyDown(kVK_ANSI_S, .command))
+        _ = matcher.handle(keyDown(kVK_ANSI_S, .command)).result
         #expect(fired == 0)
 
-        _ = matcher.handle(keyDown(kVK_ANSI_S, .option))
+        _ = matcher.handle(keyDown(kVK_ANSI_S, .option)).result
         #expect(fired == 1)
     }
 }

@@ -1,10 +1,24 @@
 import AppKit
 import ShortcutField
 
+/// One matcher's verdict on an event, plus the detail the debug surface needs.
+///
+/// `ShortcutMatchResult` alone says `.fired` without saying *what* fired, and the
+/// router has no other way to learn it. Internal, so this costs no public API.
+struct ContextMatchOutcome {
+    let result: ShortcutMatchResult
+    /// The action the result refers to, when there is one.
+    let action: ActionRef?
+    /// Matched but not dispatched because the action opted out of key repeat.
+    let repeatSuppressed: Bool
+
+    static let ignored = ContextMatchOutcome(result: .ignored, action: nil, repeatSuppressed: false)
+}
+
 @MainActor protocol ContextMatching: AnyObject {
     var contextID: String { get }
     var activationID: UUID? { get }
-    func handle(_ event: NSEvent) -> ShortcutMatchResult
+    func handle(_ event: NSEvent) -> ContextMatchOutcome
     func reset()
     func rebuild()
 }
@@ -29,9 +43,10 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
         rebuild()
     }
 
-    func handle(_ event: NSEvent) -> ShortcutMatchResult {
+    func handle(_ event: NSEvent) -> ContextMatchOutcome {
         var didAdvance = false
         var consumeFromAdvance = false
+        var advancedAction: ActionRef?
         for index in perAction.indices {
             let (action, matcher) = perAction[index]
             switch matcher.handle(event) {
@@ -40,12 +55,16 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
             case let .advanced(consume):
                 didAdvance = true
                 consumeFromAdvance = consumeFromAdvance || consume
+                if advancedAction == nil { advancedAction = ref(action) }
             case .fired:
                 resetOthers(exceptIndex: index)
-                if !Self.isSuppressedRepeat(event, for: action) {
+                let suppressed = Self.isSuppressedRepeat(event, for: action)
+                if !suppressed {
                     context?.dispatchFromMatcher(action, kind: .discrete, activationID: activationID)
                 }
-                return .fired
+                return ContextMatchOutcome(
+                    result: .fired, action: ref(action), repeatSuppressed: suppressed
+                )
             case let .continuousFired(magnitude):
                 if let coalescer, let context {
                     let id = context.id
@@ -67,10 +86,23 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
                         activationID: activationID
                     )
                 }
-                return .continuousFired(magnitude: magnitude)
+                return ContextMatchOutcome(
+                    result: .continuousFired(magnitude: magnitude),
+                    action: ref(action),
+                    repeatSuppressed: false
+                )
             }
         }
-        return didAdvance ? .advanced(consumeEvent: consumeFromAdvance) : .ignored
+        guard didAdvance else { return .ignored }
+        return ContextMatchOutcome(
+            result: .advanced(consumeEvent: consumeFromAdvance),
+            action: advancedAction,
+            repeatSuppressed: false
+        )
+    }
+
+    private func ref(_ action: Action) -> ActionRef {
+        ActionRef(contextID: contextID, actionID: action.rawValue)
     }
 
     func reset() {

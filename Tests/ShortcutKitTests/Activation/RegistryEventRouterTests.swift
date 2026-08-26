@@ -9,6 +9,8 @@ final class FakeContextMatcher: ContextMatching {
     let contextID: String
     let activationID: UUID? = nil
     var handleResult: (NSEvent) -> ShortcutMatchResult
+    /// Action reported alongside the result, for debug-event assertions.
+    var reportedAction: ActionRef?
     private(set) var resetCount = 0
     private(set) var rebuildCount = 0
 
@@ -19,7 +21,14 @@ final class FakeContextMatcher: ContextMatching {
         handleResult = handle
     }
 
-    func handle(_ event: NSEvent) -> ShortcutMatchResult { handleResult(event) }
+    func handle(_ event: NSEvent) -> ContextMatchOutcome {
+        ContextMatchOutcome(
+            result: handleResult(event),
+            action: reportedAction ?? ActionRef(contextID: contextID, actionID: "act"),
+            repeatSuppressed: false
+        )
+    }
+
     func reset() { resetCount += 1 }
     func rebuild() { rebuildCount += 1 }
 }

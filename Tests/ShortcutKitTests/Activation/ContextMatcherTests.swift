@@ -31,7 +31,7 @@ enum SeqAction: String, ShortcutAction {
             fired = (action, kind)
         }
         let matcher = ContextMatcher(context: ctx)
-        let result = matcher.handle(keyDown(kVK_ANSI_S, .command))
+        let result = matcher.handle(keyDown(kVK_ANSI_S, .command)).result
         #expect(result == .fired)
         #expect(fired?.0 == .save)
         #expect(fired?.1 == .discrete)
@@ -43,7 +43,7 @@ enum SeqAction: String, ShortcutAction {
         let ctx = ShortcutContext<SeqAction>("editor")
         ctx.__setActiveHandler { _, _ in fired = true }
         let matcher = ContextMatcher(context: ctx)
-        let result = matcher.handle(keyDown(kVK_ANSI_X, .command))
+        let result = matcher.handle(keyDown(kVK_ANSI_X, .command)).result
         #expect(result == .ignored)
         #expect(fired == false)
     }
@@ -55,11 +55,11 @@ enum SeqAction: String, ShortcutAction {
         ctx.__setActiveHandler { action, _ in fired = action }
         let matcher = ContextMatcher(context: ctx)
 
-        let advance = matcher.handle(keyDown(kVK_ANSI_K, .command))
+        let advance = matcher.handle(keyDown(kVK_ANSI_K, .command)).result
         if case .advanced = advance {} else { Issue.record("expected .advanced") }
         #expect(fired == nil)
 
-        let fire = matcher.handle(keyDown(kVK_ANSI_O, .command))
+        let fire = matcher.handle(keyDown(kVK_ANSI_O, .command)).result
         #expect(fire == .fired)
         #expect(fired == .openProject)
     }
@@ -73,10 +73,10 @@ enum SeqAction: String, ShortcutAction {
         }
         let matcher = ContextMatcher(context: ctx)
 
-        _ = matcher.handle(keyDown(kVK_ANSI_K, .command))
-        _ = matcher.handle(keyDown(kVK_ANSI_O, .command))
+        _ = matcher.handle(keyDown(kVK_ANSI_K, .command)).result
+        _ = matcher.handle(keyDown(kVK_ANSI_O, .command)).result
 
-        let result = matcher.handle(keyDown(kVK_ANSI_W, .command))
+        let result = matcher.handle(keyDown(kVK_ANSI_W, .command)).result
         #expect(result == .ignored)
         #expect(firedSequence == [.openProject])
     }
@@ -85,8 +85,8 @@ enum SeqAction: String, ShortcutAction {
     func resetReturnsToStartingState() {
         let ctx = ShortcutContext<SeqAction>("editor")
         let matcher = ContextMatcher(context: ctx)
-        _ = matcher.handle(keyDown(kVK_ANSI_K, .command))
+        _ = matcher.handle(keyDown(kVK_ANSI_K, .command)).result
         matcher.reset()
-        #expect(matcher.handle(keyDown(kVK_ANSI_O, .command)) == .ignored)
+        #expect(matcher.handle(keyDown(kVK_ANSI_O, .command)).result == .ignored)
     }
 }

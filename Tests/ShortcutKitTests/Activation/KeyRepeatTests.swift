@@ -31,7 +31,7 @@ enum RepeatAction: String, ShortcutAction {
         ctx.__setActiveHandler { action, _ in fired.append(action) }
         let matcher = ContextMatcher(context: ctx)
 
-        let result = matcher.handle(keyDown(kVK_ANSI_D, .command))
+        let result = matcher.handle(keyDown(kVK_ANSI_D, .command)).result
 
         #expect(result == .fired)
         #expect(fired == [.deleteItem])
@@ -44,9 +44,9 @@ enum RepeatAction: String, ShortcutAction {
         ctx.__setActiveHandler { action, _ in fired.append(action) }
         let matcher = ContextMatcher(context: ctx)
 
-        _ = matcher.handle(keyDown(kVK_ANSI_D, .command))
-        _ = matcher.handle(keyDown(kVK_ANSI_D, .command, isARepeat: true))
-        _ = matcher.handle(keyDown(kVK_ANSI_D, .command, isARepeat: true))
+        _ = matcher.handle(keyDown(kVK_ANSI_D, .command)).result
+        _ = matcher.handle(keyDown(kVK_ANSI_D, .command, isARepeat: true)).result
+        _ = matcher.handle(keyDown(kVK_ANSI_D, .command, isARepeat: true)).result
 
         #expect(fired == [.deleteItem])
     }
@@ -57,8 +57,8 @@ enum RepeatAction: String, ShortcutAction {
         ctx.__setActiveHandler { _, _ in }
         let matcher = ContextMatcher(context: ctx)
 
-        _ = matcher.handle(keyDown(kVK_ANSI_D, .command))
-        let result = matcher.handle(keyDown(kVK_ANSI_D, .command, isARepeat: true))
+        _ = matcher.handle(keyDown(kVK_ANSI_D, .command)).result
+        let result = matcher.handle(keyDown(kVK_ANSI_D, .command, isARepeat: true)).result
 
         #expect(result == .fired)
     }
@@ -70,9 +70,9 @@ enum RepeatAction: String, ShortcutAction {
         ctx.__setActiveHandler { action, _ in fired.append(action) }
         let matcher = ContextMatcher(context: ctx)
 
-        _ = matcher.handle(keyDown(kVK_ANSI_J, .command))
-        _ = matcher.handle(keyDown(kVK_ANSI_J, .command, isARepeat: true))
-        _ = matcher.handle(keyDown(kVK_ANSI_J, .command, isARepeat: true))
+        _ = matcher.handle(keyDown(kVK_ANSI_J, .command)).result
+        _ = matcher.handle(keyDown(kVK_ANSI_J, .command, isARepeat: true)).result
+        _ = matcher.handle(keyDown(kVK_ANSI_J, .command, isARepeat: true)).result
 
         #expect(fired == [.nudge, .nudge, .nudge])
     }

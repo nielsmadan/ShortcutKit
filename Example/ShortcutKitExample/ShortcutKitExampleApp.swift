@@ -26,7 +26,14 @@ struct ShortcutKitExampleApp: App {
                 Button("Fire Confetti") { ContextWiring.app.context.dispatch(.fireConfetti) }
                     .shortcut(.fireConfetti, in: ContextWiring.app.context)
             }
+            CommandMenu("Debug") {
+                Button("Shortcut Debug…") { openWindow(id: "shortcut-debug") }
+            }
         }
+        Window("Shortcut Debug", id: "shortcut-debug") {
+            DebugWindowView()
+        }
+        .defaultSize(width: 520, height: 320)
         WindowGroup("Inspector", id: "inspector") {
             InspectorWindowView()
                 .environmentObject(ContextWiring.inspector)
