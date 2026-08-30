@@ -21,9 +21,9 @@ Where to look:
 | Decided post-1.0 limitations | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
 | Why something is the way it is | [`docs/decisions/`](docs/decisions/) (ADRs) |
 | How ShortcutField actually behaves | [`docs/reference/shortcutfield.md`](docs/reference/shortcutfield.md) |
-| Package-wide design & the 12 invariants | [`docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md`](docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md) |
+| Package boundaries & invariants | [`docs/architecture.md`](docs/architecture.md) |
 
-Working docs under `docs/superpowers/` are **not** all tracked: a global ignore rule (`**/docs/superpowers/`) excludes newly-created ones, so specs written there are local unless force-added. Anything durable belongs in `docs/decisions/`, `docs/reference/`, `docs/ROADMAP.md`, this file, or the package design spec. Completed plans are deleted rather than archived — `git log -- <path>` recovers them.
+Temporary planning files are local working material. Anything durable belongs in `docs/architecture.md`, `docs/decisions/`, `docs/reference/`, `docs/ROADMAP.md`, this file, or the DocC catalogs. Completed tracked plans are recoverable through git history.
 
 ## Build, Test, and Development Commands
 
@@ -94,7 +94,7 @@ Don't use the squash-commits skill's default `git merge --squash <tip> && git co
 
 ## Phase status & phase-aware work
 
-Implementation proceeds in 4 sequential phases (see the package design spec, §4). The three library products are implemented and tested; the public API is stabilizing toward 1.0.
+The original package plan used four sequential phases. The three library products are implemented and tested; the public API is stabilizing toward 1.0.
 
 | Phase | Target | Status |
 |---|---|---|
@@ -107,7 +107,7 @@ Each phase has its own brainstorm → spec → plan → execute cycle. Avoid pul
 
 ## Cross-phase invariants
 
-All 12 invariants in §7 of the package design spec are load-bearing. The high-impact ones for day-to-day work:
+All invariants in [`docs/architecture.md`](docs/architecture.md) are load-bearing. The high-impact ones for day-to-day work:
 
 1. **Stable persistence IDs** — action raw values and context IDs persist forever; renames go through declared migrations.
 2. **Headless-first** — every UI affordance has a `Sendable` data type in Core, with the SwiftUI view layered in UI.

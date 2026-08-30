@@ -31,6 +31,5 @@ justified.
 - Promotion to a product later stays additive.
 - Shipped 2026-08-26 as `ShortcutRegistry.debugEvents` / `activationSnapshot` /
   `isDebugRecording`, consumed by the Example app's Shortcut Debug window. The
-  design doc that produced this was deleted once implemented, per the repo's
-  norm; `git log -- docs/superpowers/specs/` recovers nothing for it, since it
-  was never tracked. Current behaviour is documented in `<doc:Debugging>`.
+  temporary design doc that produced this was deleted once implemented and was
+  never tracked. Current behaviour is documented in `<doc:Debugging>`.

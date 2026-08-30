@@ -43,7 +43,7 @@ Per-target imports:
 
 All three products — `ShortcutKit` (Core), `ShortcutKitUI`, and `ShortcutKitGlobal` — are implemented and tested. The public API is stabilizing toward 1.0; the `shortcutkit.dev` docs site is still to come.
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the forward-looking backlog and [`docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md`](docs/superpowers/specs/2026-05-13-shortcutkit-package-design.md) for the package design meta-spec.
+See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the forward-looking backlog and [`docs/architecture.md`](docs/architecture.md) for package boundaries and invariants.
 
 ## License
 

@@ -16,6 +16,7 @@ they changed.
 - [Event delivery](#event-delivery)
 - [The text-input focus gate (2.4.0)](#the-text-input-focus-gate-240)
 - [Internal seams we rely on](#internal-seams-we-rely-on)
+- [Beep suppression](#beep-suppression)
 
 ## Matching is by physical key code
 
@@ -108,3 +109,48 @@ Both are `internal`, reachable from our tests via `@testable import ShortcutFiel
   that decided [ADR 0001](../decisions/0001-event-matching-fixes-belong-in-shortcutfield.md).
 
 *Verified 2026-08-25 against 2.4.0.*
+
+## Beep suppression
+
+An intermediate chord step is a *successful* match, but ShortcutField hands the
+event back to AppKit unless it must be consumed. With no responder for it, AppKit
+plays the system alert sound.
+
+`.advanced(consumeEvent: false)` means the matcher **advanced**; it never means
+the prefix was rejected. `consumeEvent` is `true` only for a `keyDown` the focus
+system would intercept (in `SequenceMatcher.handle(_:)`), so an ordinary ⌘K prefix
+returns `false` and beeps.
+
+*Verified 2026-08-30 against 2.4.0 (`0d4ebe1`).*
+
+Two public entry points install the fix, both landing in
+`BeepSuppressor.installOverride` (`SuppressShortcutBeep.swift`):
+
+- **`View.suppressShortcutBeep()`** — for a hosting window you don't own, e.g. a
+  `WindowGroup` scene.
+- **`ShortcutTracking.installBeepSuppression()`** — the same install with no view
+  or window to hang it off. Idempotent, so it is safe on every launch path.
+
+**The mechanism is a runtime swizzle.**
+`ShortcutTracking.installBeepSuppression()` passes `NSResponder.self`, so
+`method_setImplementation` patches every responder in the process.
+`View.suppressShortcutBeep()` passes the concrete hosting-window class; for a
+standard window, `class_getInstanceMethod` resolves the inherited
+`NSResponder.noResponder(for:)` method and produces the same process-wide patch.
+If a custom `NSWindow` subclass overrides the selector, the modifier patches
+that override instead. Installation dedupes on the *resolved method* rather than
+the class passed in, but **there is no uninstall path.**
+
+**Its behavioural reach is narrow**, which is what makes that acceptable: the
+replacement returns early only when the event selector is `keyDown(with:)` *and*
+`ShortcutTracking.isActive`. Every other selector, and every `keyDown` outside an
+in-progress sequence, reaches the original implementation.
+
+**Unrecognized keys still beep.** A step that fails to match calls `reset()`
+before returning `.ignored`, so `isActive` is already `false` by the time AppKit
+goes looking for a responder. Only genuine mid-sequence steps are silenced.
+
+**An `NSWindow` subclass that overrides `noResponder(for:)` bypasses a
+process-wide `NSResponder` patch.** Apply `View.suppressShortcutBeep()` inside
+that window to patch the subclass's implementation, or override
+`noResponder(for:)` directly and gate on `ShortcutTracking.isActive`.

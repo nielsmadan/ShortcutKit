@@ -8,6 +8,8 @@ design both lived here and have been dropped; `git log -- docs/ROADMAP.md` and
 
 ## Deferred to post-1.0 / v2
 
+- **Command palette product** — a proposed `ShortcutKitCommands` target would expose searchable registered actions plus adopter-provided commands, with both an in-app sheet and a floating panel. The design has not been implemented or accepted into the package surface; revisit its module boundary, metadata needs, and presentation API against the current registry before building it.
+
 - **Late context registration** — runtime register/unregister, a `contextsChanged`
   publisher, and orphan-override semantics. Post-1.0; contexts are fixed at init.
 - **Hierarchical mutex via a context tree** — v2; the flat
