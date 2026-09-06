@@ -7,7 +7,7 @@ The split keeps the Core usable without SwiftUI settings or Carbon hotkeys while
 
 | Product | Responsibility | Dependencies |
 | --- | --- | --- |
-| `ShortcutKit` | Action and context model, activation, dispatch, persistence, conflict analysis, headless key-binding data, and menu helpers | ShortcutField, TOMLKit |
+| `ShortcutKit` | Action and context model, activation, dispatch, persistence, conflict analysis, headless key-binding data, and menu helpers | ShortcutField, TOMLKit, swift-toml-edit |
 | `ShortcutKitUI` | Settings, recorder, legend, and shortcut-hint SwiftUI views | ShortcutKit, ShortcutField |
 | `ShortcutKitGlobal` | System-wide registration and status through Carbon | ShortcutKit |
 
@@ -33,6 +33,12 @@ Only user overrides and non-default preferences are stored; declared defaults re
 Context IDs and action raw values are persistence identifiers and must remain stable.
 Renames, moves, and resets use an append-only list of idempotent, content-detecting `ShortcutMigration` values.
 There is no applied-version counter, so every shipped migration must remain safe to run again.
+
+`TOMLFile` owns lossless assignment edits, coherent snapshots, structured
+diagnostics, stale-revision checks, and atomic file replacement. A namespaced
+`FileStore` owns ShortcutKit's schema within those bytes. An adopter sharing the
+file with another schema owns the aggregate validation and submits one composed
+edit plan, so neither schema can commit a document invalid for the other.
 
 ## Package invariants
 

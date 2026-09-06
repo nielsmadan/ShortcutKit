@@ -15,6 +15,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/nielsmadan/ShortcutField", from: "2.4.0"),
         .package(url: "https://github.com/LebJe/TOMLKit", from: "0.6.0"),
+        .package(url: "https://github.com/akira-toriyama/swift-toml-edit", exact: "3.0.0"),
         // Enables `swift package generate-documentation`; not linked into the libraries.
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.0.0"),
     ],
@@ -24,6 +25,7 @@ let package = Package(
             dependencies: [
                 .product(name: "ShortcutField", package: "ShortcutField"),
                 .product(name: "TOMLKit", package: "TOMLKit"),
+                .product(name: "Toml", package: "swift-toml-edit"),
             ]
         ),
         .target(
@@ -39,7 +41,11 @@ let package = Package(
             dependencies: ["ShortcutKit"],
             linkerSettings: [.linkedFramework("Carbon")]
         ),
-        .testTarget(name: "ShortcutKitTests", dependencies: ["ShortcutKit"]),
+        .testTarget(
+            name: "ShortcutKitTests",
+            dependencies: ["ShortcutKit"],
+            resources: [.copy("Fixtures")]
+        ),
         .testTarget(
             name: "ShortcutKitUITests",
             dependencies: ["ShortcutKitUI", "ShortcutKit"],

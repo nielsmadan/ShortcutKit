@@ -67,8 +67,13 @@ For system-wide hotkeys, add **ShortcutKitGlobal**.
 - ``ShortcutBindingsStore``
 - ``UserDefaultsStore``
 - ``FileStore``
+- ``TOMLFile``
+- ``TOMLPath``
+- ``TOMLEditPlan``
+- ``TOMLDiagnostic``
 - ``RawState``
 - ``Preferences``
+- ``ShortcutSaveResult``
 - ``HintPolicy``
 - ``ShortcutMigration``
 

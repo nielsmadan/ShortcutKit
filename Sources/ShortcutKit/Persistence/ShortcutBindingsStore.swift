@@ -147,6 +147,23 @@ extension RawState: CustomDebugStringConvertible {
     }
 }
 
+/// The outcome of one attempted registry persistence write.
+public enum ShortcutSaveResult: Sendable {
+    case saved(RawState)
+    case failed(RawState, any Error)
+
+    public var state: RawState {
+        switch self {
+        case let .saved(state), let .failed(state, _): state
+        }
+    }
+
+    public var error: (any Error)? {
+        guard case let .failed(_, error) = self else { return nil }
+        return error
+    }
+}
+
 // MARK: - Store protocol
 
 /// Pluggable persistence for `RawState`.

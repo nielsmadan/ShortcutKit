@@ -64,13 +64,13 @@ import Testing
     }
 
     @Test("migration .custom is a no-op on already-new shape")
-    func migrationIsIdempotent() {
+    func migrationIsIdempotent() throws {
         let savedShortcut: Shortcut = "cmd+s"
         let initial = RawState(overrides: ["editor": ["save": [savedShortcut]]])
         var once = initial
-        ShortcutMigrationApplier.apply([WrapSingleBindingsMigration.entry], to: &once)
+        try ShortcutMigrationApplier.apply([WrapSingleBindingsMigration.entry], to: &once)
         var twice = once
-        ShortcutMigrationApplier.apply([WrapSingleBindingsMigration.entry], to: &twice)
+        try ShortcutMigrationApplier.apply([WrapSingleBindingsMigration.entry], to: &twice)
         #expect(once == initial)
         #expect(once == twice)
     }

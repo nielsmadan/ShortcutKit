@@ -31,12 +31,14 @@ enum ShortcutMigrationApplier {
         category: "migration"
     )
 
-    static func apply(_ migrations: [ShortcutMigration], to state: inout RawState) {
+    static func apply(_ migrations: [ShortcutMigration], to state: inout RawState) throws {
+        var migrated = state
         for migration in migrations {
-            do { try applyOne(migration, &state) } catch {
-                logger.error(".custom migration threw: \(String(describing: error))")
-            }
+            var candidate = migrated
+            try applyOne(migration, &candidate)
+            migrated = candidate
         }
+        state = migrated
     }
 
     private static func applyOne(

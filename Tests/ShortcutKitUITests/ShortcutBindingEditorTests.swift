@@ -34,6 +34,7 @@ struct ShortcutBindingEditorTests {
         let editor = ShortcutBindingEditor(.save, in: ctx)
         #expect(editor.entry?.effectiveShortcuts == [Shortcut("cmd+shift+s")])
         #expect(editor.entry?.isCustomized == true)
+        _ = registry
     }
 
     @Test("editor uses its container's vertical spacing")

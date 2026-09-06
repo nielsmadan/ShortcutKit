@@ -1,0 +1,12 @@
+# Hand-edited application settings stay untouched.
+[settings]
+theme = 'solarized'
+
+[shortcuts.global]
+"window.focus.left" = [
+  "opt+h",
+  { gesture = "cmd+scroll-up", sensitivity = 0.5 },
+]
+
+[plugin."third.party"]
+enabled = true # unknown to ShortcutKit

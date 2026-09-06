@@ -199,8 +199,8 @@ private final class RecordingStore: ShortcutBindingsStore {
         #expect(store.saveCount == 2)
     }
 
-    @Test("successful reload discards pending changes")
-    func reloadDiscardsPendingChanges() {
+    @Test("successful reload flushes pending changes instead of discarding them")
+    func reloadFlushesPendingChanges() {
         let store = RecordingStore()
         let context = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [context], store: store)
@@ -208,8 +208,8 @@ private final class RecordingStore: ShortcutBindingsStore {
 
         #expect(registry.reload())
         #expect(registry.flushPendingSave())
-        #expect(store.saveCount == 0)
-        #expect(context.shortcuts(for: .save) == ["cmd+s"])
+        #expect(store.saveCount == 1)
+        #expect(context.shortcuts(for: .save) == ["cmd+shift+s"])
     }
 
     @Test("failed reload preserves pending changes")
@@ -225,5 +225,136 @@ private final class RecordingStore: ShortcutBindingsStore {
         #expect(registry.flushPendingSave())
         #expect(store.saveCount == 1)
         #expect(store.state.overrides["editor"]?["save"] == ["cmd+shift+s"])
+    }
+
+    @Test("prepare has no effect and commit publishes one binding change")
+    func prepareThenCommit() throws {
+        let store = RecordingStore()
+        let context = ShortcutContext<DemoAction>("editor")
+        let registry = ShortcutRegistry(contexts: [context], store: store)
+        var values: [[Shortcut]] = []
+        let token = context.shortcutsChanges(for: .save).sink { values.append($0) }
+        let preparation = try registry.prepare(RawState(
+            overrides: ["editor": ["save": ["cmd+shift+s"]]]
+        ))
+
+        #expect(preparation.requiresPersistenceWriteback == false)
+        #expect(context.shortcuts(for: .save) == ["cmd+s"])
+        #expect(values == [["cmd+s"]])
+
+        registry.commit(preparation.preparedState)
+
+        #expect(context.shortcuts(for: .save) == ["cmd+shift+s"])
+        #expect(values == [["cmd+s"], ["cmd+shift+s"]])
+        _ = token
+    }
+
+    @Test("prepare returns an exact migration write-back without applying it")
+    func prepareMigrationWriteback() throws {
+        let store = RecordingStore()
+        let context = ShortcutContext<DemoAction>("editor")
+        let migration: ShortcutMigration = .renameAction(
+            context: "editor",
+            from: "save-legacy",
+            to: "save"
+        )
+        let registry = ShortcutRegistry(contexts: [context], migrations: [migration], store: store)
+        let input = RawState(overrides: ["editor": ["save-legacy": ["cmd+shift+s"]]])
+
+        let preparation = try registry.prepare(input)
+
+        #expect(preparation.requiresPersistenceWriteback)
+        #expect(preparation.persistenceWriteback?.overrides == [
+            "editor": ["save": ["cmd+shift+s"]],
+        ])
+        #expect(context.shortcuts(for: .save) == ["cmd+s"])
+    }
+
+    @Test("reload applies migrations through the same preparation path")
+    func reloadAppliesMigrations() throws {
+        let store = RecordingStore()
+        store.state = RawState(overrides: ["editor": ["save-legacy": ["cmd+shift+s"]]])
+        let context = ShortcutContext<DemoAction>("editor")
+        let migration: ShortcutMigration = .renameAction(
+            context: "editor",
+            from: "save-legacy",
+            to: "save"
+        )
+        let registry = ShortcutRegistry(contexts: [context], migrations: [migration], store: store)
+
+        #expect(context.shortcuts(for: .save) == ["cmd+shift+s"])
+        #expect(store.state.overrides == ["editor": ["save": ["cmd+shift+s"]]])
+        store.state = RawState(overrides: ["editor": ["save-legacy": ["ctrl+s"]]])
+
+        #expect(registry.reload())
+        #expect(context.shortcuts(for: .save) == ["ctrl+s"])
+        #expect(store.state.overrides == ["editor": ["save": ["ctrl+s"]]])
+    }
+
+    @Test("a throwing reload migration retains current runtime state")
+    func reloadMigrationFailureIsAtomic() {
+        struct MigrationError: Error {}
+        let store = RecordingStore()
+        let migration: ShortcutMigration = .custom { state in
+            if state.overrides["invalid"] != nil { throw MigrationError() }
+        }
+        let context = ShortcutContext<DemoAction>("editor")
+        let registry = ShortcutRegistry(contexts: [context], migrations: [migration], store: store)
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
+        #expect(registry.flushPendingSave())
+        store.state = RawState(overrides: ["invalid": ["value": ["cmd+i"]]])
+
+        #expect(registry.reload() == false)
+        #expect(context.shortcuts(for: .save) == ["cmd+shift+s"])
+        #expect(registry.hasPendingSave == false)
+    }
+
+    @Test("save results arrive after the store attempt and retain the error")
+    func structuredSaveResults() {
+        let store = RecordingStore()
+        let context = ShortcutContext<DemoAction>("editor")
+        let registry = ShortcutRegistry(contexts: [context], store: store)
+        var results: [ShortcutSaveResult] = []
+        var pendingStates: [Bool] = []
+        let token = registry.saveResults.sink {
+            results.append($0)
+            pendingStates.append(registry.hasPendingSave)
+        }
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
+        store.shouldFailSave = true
+
+        #expect(registry.flushPendingSave() == false)
+        #expect(results.count == 1)
+        #expect(results[0].error is RecordingStore.Error)
+        #expect(results[0].state.overrides["editor"]?["save"] == ["cmd+shift+s"])
+        #expect(pendingStates == [true])
+        store.shouldFailSave = false
+
+        #expect(registry.flushPendingSave())
+        #expect(results.count == 2)
+        #expect(results[1].error == nil)
+        #expect(pendingStates == [true, false])
+        _ = token
+    }
+
+    @Test("failed pending state can be explicitly discarded while applying last-valid state")
+    func discardPendingSave() throws {
+        let store = RecordingStore()
+        let context = ShortcutContext<DemoAction>("editor")
+        let registry = ShortcutRegistry(contexts: [context], store: store)
+        let lastValid = try registry.prepare(RawState(
+            overrides: ["editor": ["save": ["ctrl+s"]]]
+        )).preparedState
+        registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
+        store.shouldFailSave = true
+        #expect(registry.flushPendingSave() == false)
+
+        registry.discardPendingSave(applying: lastValid)
+
+        #expect(registry.hasPendingSave == false)
+        #expect(context.shortcuts(for: .save) == ["ctrl+s"])
+        let saveCount = store.saveCount
+        #expect(registry.flushPendingSave())
+        #expect(store.saveCount == saveCount)
     }
 }

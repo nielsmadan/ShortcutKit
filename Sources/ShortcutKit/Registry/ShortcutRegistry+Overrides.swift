@@ -67,14 +67,10 @@ public extension ShortcutRegistry {
 
     package var allContexts: [AnyShortcutContext] { contexts }
 
-    private func notifyChanges(_ refs: some Sequence<ActionRef>) {
+    func notifyChanges(_ refs: some Sequence<ActionRef>) {
         let refs = Array(refs)
         guard !refs.isEmpty else { return }
         let contextsByID = Dictionary(uniqueKeysWithValues: contexts.map { ($0.id, $0) })
-        for ref in refs {
-            (contextsByID[ref.contextID] as? RegistryAttachable)?
-                .__notifyOverrideChange(actionID: ref.actionID)
-        }
         let affectedContextIDs = Set(refs.map(\.contextID))
         for contextID in affectedContextIDs {
             matchers[contextID]?.rebuild()
@@ -83,5 +79,9 @@ public extension ShortcutRegistry {
             matcher.rebuild()
         }
         refreshDerivedState()
+        for ref in refs {
+            (contextsByID[ref.contextID] as? RegistryAttachable)?
+                .__notifyOverrideChange(actionID: ref.actionID)
+        }
     }
 }

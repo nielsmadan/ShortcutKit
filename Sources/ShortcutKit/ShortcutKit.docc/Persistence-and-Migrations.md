@@ -26,17 +26,65 @@ let registry = ShortcutRegistry(contexts: contexts, store: store)
 
 ### Sharing a file with your own settings
 
-`FileStore`'s `key:` namespaces ShortcutKit's data under a subtree and does a
-read-modify-write, so the library's section can live in the same file as your
-app's other settings without clobbering them. `key: nil` puts the data at the file
-root.
+`FileStore`'s `key:` namespaces ShortcutKit's data under a subtree, so the
+library's section can live in the same file as your app's settings. Namespaced
+TOML saves change individual assignments: comments, formatting, unknown keys,
+line endings, and sibling tables stay as written. If changing an assignment
+would remove a comment embedded in its value, the save fails with a
+``TOMLDiagnostic`` instead.
+
+For one application-wide transaction, construct a shared ``TOMLFile`` and use a
+component-based namespace. This also supports quoted identifiers containing a
+dot without treating them as multiple path components.
+
+```swift
+let file = TOMLFile(url: configURL)
+let shortcutStore = FileStore(tomlFile: file, namespace: ["shortcuts"])
+```
+
+Read one immutable snapshot, strictly decode ShortcutKit's section, compose its
+edit plan with your settings edits, validate the combined candidate, and commit
+once:
+
+```swift
+let snapshot = try file.read()
+let base = try shortcutStore.decode(snapshot, mode: .strict)
+var desired = base
+desired[context: "editor", action: "save"] = ["cmd+s"]
+var settingsEdits = TOMLEditPlan()
+settingsEdits.set(.integer(12), at: ["settings", "window-gap"])
+let edits = settingsEdits.appending(shortcutStore.editPlan(from: base, to: desired))
+let candidate = try file.candidate(from: snapshot, applying: edits)
+let committed = try file.commit(candidate)
+```
+
+Strict decoding accepts both snapshots and uncommitted candidates, and rejects
+malformed shortcut values, preference values, and reserved table shapes with a
+component path and source position. The default `.compatible` mode retains the
+historical leniency of `FileStore.load()`.
+Candidate creation is pure; ``TOMLFile/commit(_:)`` rejects a stale source
+rather than overwriting it. ``TOMLFile/create(_:)`` atomically creates a missing
+file without replacing one that appeared in the meantime.
+
+`TOMLFile` follows symlinks component by component while retaining the logical
+URL. Replacing a symlinked file updates its referent and leaves the symlink in
+place. File watching and whole-application schema validation remain the
+adopter's responsibility.
 
 ### Re-reading after out-of-band changes
 
 If the file changes underneath you — a hand edit, a sync, a restore — call
-``ShortcutRegistry/reload()`` to re-read the store and refresh bindings, conflicts,
-and the published `keyBindings`. It returns `false` (and leaves current state
-untouched) if the read fails.
+``ShortcutRegistry/reload()`` to re-read the store and refresh bindings,
+conflicts, and the published `keyBindings`. It flushes a pending local edit
+first. It returns `false`, retains current runtime state, and leaves a failed
+local save pending for retry.
+
+An adopter that stages multiple schemas can use
+``ShortcutRegistry/prepare(_:)`` without changing live state, then apply the
+opaque result with ``ShortcutRegistry/commit(_:)`` after its aggregate file
+transaction succeeds. Observe ``ShortcutRegistry/saveResults`` for a receipt
+after each registry-initiated store attempt. A file-invalid rollback must be
+explicit through ``ShortcutRegistry/discardPendingSave(applying:)``.
 
 ### Wiping customization
 
@@ -89,7 +137,14 @@ preferences) suitable for bug reports.
 - ``ShortcutBindingsStore``
 - ``UserDefaultsStore``
 - ``FileStore``
+- ``TOMLFile``
+- ``TOMLPath``
+- ``TOMLValue``
+- ``TOMLEditPlan``
+- ``TOMLDiagnostic``
+- ``TOMLSourceLocation``
 - ``RawState``
 - ``Preferences``
+- ``ShortcutSaveResult``
 - ``ShortcutMigration``
 - ``ActionRef``

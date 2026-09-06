@@ -26,15 +26,34 @@ gains an initializer that accepts a shared instance and a way to decode
 `RawState` from a supplied snapshot. Existing URL initializers continue to work
 and create their own instance internally.
 
+`swift-toml-edit` 3.0.0 supplies the `Sendable`, concrete source model and
+format-preserving value edits. TOMLKit remains the semantic validator and
+decoder, including its source-region diagnostics. ShortcutKit wraps both rather
+than maintaining its own TOML lexer or parser.
+
 The lossless layer preserves untouched source bytes, including comments,
-whitespace, table ordering, and unknown content. A changed assignment may use
-canonical formatting. Deleting an assignment does not intentionally delete
-adjacent comments.
+whitespace, line endings, table ordering, and unknown content. A changed
+assignment may use canonical value formatting while retaining its key spelling,
+spacing, and comments. If an operation cannot retain comments embedded inside
+the value being changed, it is refused with a diagnostic instead of silently
+discarding them. Deleting an assignment retains adjacent comments.
 
 ShortcutKit continues to own shortcut encoding, decoding, preferences, and
 migrations. The shared file primitive does not model application settings.
 File watching, source selection, whole-application validation, UI, and runtime
 effects remain adopter responsibilities. JSON behavior is unchanged.
+
+`TOMLFile` serializes byte-level transactions, but it cannot know every schema
+sharing the document. An adopter that requires whole-application atomicity must
+use one aggregate writer to validate every owned schema before committing a
+candidate. All participating `FileStore` values share that writer rather than
+committing independently.
+
+The logical URL is retained even when path components are symlinks. A missing
+ordinary component is absence; a broken symlink, directory, non-regular target,
+unreadable file, or invalid UTF-8 file is present but invalid. Replacing a
+symlinked configuration updates its referent without replacing the logical
+symlink.
 
 ## Consequences
 
@@ -50,5 +69,6 @@ effects remain adopter responsibilities. JSON behavior is unchanged.
 - Atomic writes prevent torn files but cannot eliminate a last-writer-wins race
   with an uncooperative external editor. Writers patch the latest readable
   source immediately before replacement to minimize that window.
-- The lossless editing contract requires source-aware parsing in addition to
-  TOMLKit's semantic AST.
+- `swift-toml-edit` is pinned exactly while it remains a young, single-maintainer
+  dependency, and ShortcutKit keeps compatibility tests for the required edit
+  and preservation behavior.

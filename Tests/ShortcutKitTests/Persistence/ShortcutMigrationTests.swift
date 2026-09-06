@@ -15,9 +15,9 @@ import Testing
     }
 
     @Test("renameAction moves a key")
-    func renameActionMovesKey() {
+    func renameActionMovesKey() throws {
         var s = state(["editor": ["save": "cmd+s"]])
-        ShortcutMigrationApplier.apply(
+        try ShortcutMigrationApplier.apply(
             [.renameAction(context: "editor", from: "save", to: "saveFile")], to: &s
         )
         let expected: Shortcut = "cmd+s"
@@ -25,18 +25,18 @@ import Testing
     }
 
     @Test("renameAction is idempotent")
-    func renameActionIdempotent() {
+    func renameActionIdempotent() throws {
         var s = state(["editor": ["save": "cmd+s"]])
         let migration: ShortcutMigration = .renameAction(context: "editor", from: "save", to: "saveFile")
-        ShortcutMigrationApplier.apply([migration, migration], to: &s)
+        try ShortcutMigrationApplier.apply([migration, migration], to: &s)
         let expected: Shortcut = "cmd+s"
         #expect(expect(s, equals: ["editor": ["saveFile": expected]]))
     }
 
     @Test("renameAction with absent source is a no-op")
-    func renameActionMissingSource() {
+    func renameActionMissingSource() throws {
         var s = state(["editor": ["undo": "cmd+z"]])
-        ShortcutMigrationApplier.apply(
+        try ShortcutMigrationApplier.apply(
             [.renameAction(context: "editor", from: "save", to: "saveFile")], to: &s
         )
         let expected: Shortcut = "cmd+z"
@@ -44,9 +44,9 @@ import Testing
     }
 
     @Test("renameAction collision: source wins")
-    func renameActionCollisionSourceWins() {
+    func renameActionCollisionSourceWins() throws {
         var s = state(["editor": ["save": "cmd+s", "saveFile": "cmd+shift+s"]])
-        ShortcutMigrationApplier.apply(
+        try ShortcutMigrationApplier.apply(
             [.renameAction(context: "editor", from: "save", to: "saveFile")], to: &s
         )
         let expected: Shortcut = "cmd+s"
@@ -54,9 +54,9 @@ import Testing
     }
 
     @Test("moveAction relocates between contexts")
-    func moveActionBetweenContexts() {
+    func moveActionBetweenContexts() throws {
         var s = state(["editor": ["save": "cmd+s"]])
-        ShortcutMigrationApplier.apply(
+        try ShortcutMigrationApplier.apply(
             [.moveAction(
                 from: ActionRef(contextID: "editor", actionID: "save"),
                 to: ActionRef(contextID: "files", actionID: "save")
@@ -68,9 +68,9 @@ import Testing
     }
 
     @Test("resetOverride clears one key")
-    func resetOverrideClearsKey() {
+    func resetOverrideClearsKey() throws {
         var s = state(["editor": ["save": "cmd+s", "undo": "cmd+z"]])
-        ShortcutMigrationApplier.apply(
+        try ShortcutMigrationApplier.apply(
             [.resetOverride(context: "editor", action: "save")], to: &s
         )
         let expected: Shortcut = "cmd+z"
@@ -78,12 +78,12 @@ import Testing
     }
 
     @Test("renameContext merges with source-wins on collision")
-    func renameContextMerges() {
+    func renameContextMerges() throws {
         var s = state([
             "old": ["save": "cmd+s"],
             "new": ["save": "cmd+shift+s", "undo": "cmd+z"],
         ])
-        ShortcutMigrationApplier.apply(
+        try ShortcutMigrationApplier.apply(
             [.renameContext(from: "old", to: "new")], to: &s
         )
         let save: Shortcut = "cmd+s"
@@ -92,23 +92,33 @@ import Testing
     }
 
     @Test(".custom runs the closure")
-    func customRuns() {
+    func customRuns() throws {
         var s = state([:])
-        ShortcutMigrationApplier.apply(
+        try ShortcutMigrationApplier.apply(
             [.custom { $0.overrides["editor"] = ["save": ["cmd+s"]] }], to: &s
         )
         let expected: Shortcut = "cmd+s"
         #expect(expect(s, equals: ["editor": ["save": expected]]))
     }
 
-    @Test(".custom errors are caught — state stays as it was")
-    func customErrorCaught() {
+    @Test("a throwing migration propagates and leaves the whole input unchanged")
+    func customErrorIsAtomic() {
         struct DemoError: Error {}
         var s = state(["editor": ["save": "cmd+s"]])
-        ShortcutMigrationApplier.apply(
-            [.custom { _ in throw DemoError() }], to: &s
-        )
+        let original = s
+
+        #expect(throws: DemoError.self) {
+            try ShortcutMigrationApplier.apply([
+                .renameAction(context: "editor", from: "save", to: "save-file"),
+                .custom {
+                    $0.overrides["partial"] = ["change": ["cmd+p"]]
+                    throw DemoError()
+                },
+            ], to: &s)
+        }
+
         let expected: Shortcut = "cmd+s"
         #expect(expect(s, equals: ["editor": ["save": expected]]))
+        #expect(s == original)
     }
 }

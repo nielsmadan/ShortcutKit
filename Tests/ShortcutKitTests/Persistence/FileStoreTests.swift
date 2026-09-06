@@ -287,4 +287,234 @@ import Testing
         let text = try String(contentsOf: url, encoding: .utf8)
         #expect(text.contains("theme = \"dark\""))
     }
+
+    @Test("shared TOML save changes only owned assignment bytes")
+    func sharedTOMLPreservesSource() throws {
+        let url = tempURL("toml")
+        let source = """
+        # user configuration
+        [shortcuts.editor]
+        save   = "cmd+s" # keep this note
+
+        [general]
+        theme = 'as written'
+        """ + "\n"
+        try Data(source.utf8).write(to: url)
+        let file = TOMLFile(url: url)
+        let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+        let desired = RawState(overrides: ["editor": ["save": ["cmd+shift+s"]]])
+
+        try store.save(desired)
+
+        let expected = source.replacingOccurrences(of: "\"cmd+s\"", with: "\"shift+cmd+s\"")
+        #expect(try String(contentsOf: url, encoding: .utf8) == expected)
+        #expect(try store.load() == desired)
+    }
+
+    @Test("shared TOML clear retains shortcut comments and sibling bytes")
+    func sharedTOMLClearPreservesComments() throws {
+        let url = tempURL("toml")
+        let source = """
+        [shortcuts.editor]
+        # chosen for muscle memory
+        save = "cmd+s" # keep this note
+
+        [general]
+        theme = "dark"
+        """ + "\n"
+        try Data(source.utf8).write(to: url)
+        let store = FileStore(tomlFile: TOMLFile(url: url), namespace: ["shortcuts"])
+
+        try store.clear()
+
+        #expect(try String(contentsOf: url, encoding: .utf8) == """
+        [shortcuts.editor]
+        # chosen for muscle memory
+        # keep this note
+
+        [general]
+        theme = "dark"
+        """ + "\n")
+    }
+
+    @Test("strict decode rejects invalid preferences with source details")
+    func strictInvalidPreference() throws {
+        let url = tempURL("toml")
+        try Data("[shortcuts.preferences]\nhint-frequency = \"sometimes\"\n".utf8).write(to: url)
+        let file = TOMLFile(url: url)
+        let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+        let snapshot = try file.read()
+
+        #expect(try store.decode(snapshot, mode: .compatible).preferences.isDefault)
+        do {
+            _ = try store.decode(snapshot, mode: .strict)
+            Issue.record("expected strict decoding to fail")
+        } catch let diagnostic as TOMLDiagnostic {
+            #expect(diagnostic.kind == .invalidValue)
+            #expect(diagnostic.path == TOMLPath(["shortcuts", "preferences", "hint-frequency"]))
+            #expect(diagnostic.location == .init(line: 2, column: 1))
+            #expect(diagnostic.offendingValue?.contains("sometimes") == true)
+            #expect(diagnostic.expected?.contains("once-per-session") == true)
+            #expect(diagnostic.description.contains("found"))
+            #expect(diagnostic.description.contains("expected"))
+        }
+    }
+
+    @Test("strict decode rejects a non-positive hint timeout")
+    func strictInvalidHintTimeout() throws {
+        let url = tempURL("toml")
+        try Data("[shortcuts.preferences]\nhint-frequency = \"timeout:-1\"\n".utf8).write(to: url)
+        let file = TOMLFile(url: url)
+        let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+
+        #expect(throws: TOMLDiagnostic.self) {
+            _ = try store.decode(file.read(), mode: .strict)
+        }
+    }
+
+    @Test("strict decode rejects non-table namespace and context shapes")
+    func strictNamespaceShapes() throws {
+        let namespaceURL = tempURL("toml")
+        try Data("shortcuts = \"wrong\"\n".utf8).write(to: namespaceURL)
+        let namespaceFile = TOMLFile(url: namespaceURL)
+        let namespaceStore = FileStore(tomlFile: namespaceFile, namespace: ["shortcuts"])
+
+        do {
+            _ = try namespaceStore.decode(namespaceFile.read(), mode: .strict)
+            Issue.record("expected namespace shape to fail")
+        } catch let diagnostic as TOMLDiagnostic {
+            #expect(diagnostic.path == TOMLPath(["shortcuts"]))
+            #expect(diagnostic.expected == "table")
+        }
+
+        let contextURL = tempURL("toml")
+        try Data("[shortcuts]\nglobal = true\n".utf8).write(to: contextURL)
+        let contextFile = TOMLFile(url: contextURL)
+        let contextStore = FileStore(tomlFile: contextFile, namespace: ["shortcuts"])
+
+        do {
+            _ = try contextStore.decode(contextFile.read(), mode: .strict)
+            Issue.record("expected context shape to fail")
+        } catch let diagnostic as TOMLDiagnostic {
+            #expect(diagnostic.path == TOMLPath(["shortcuts", "global"]))
+            #expect(diagnostic.location == .init(line: 2, column: 1))
+        }
+    }
+
+    @Test("strict decode reports malformed shortcut array at its assignment")
+    func strictMalformedShortcut() throws {
+        let url = tempURL("toml")
+        try Data("[shortcuts.global]\ncycle = [\"cmd+j\", 3]\n".utf8).write(to: url)
+        let file = TOMLFile(url: url)
+        let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+
+        do {
+            _ = try store.decode(file.read(), mode: .strict)
+            Issue.record("expected shortcut shape to fail")
+        } catch let diagnostic as TOMLDiagnostic {
+            #expect(diagnostic.kind == .invalidValue)
+            #expect(diagnostic.path == TOMLPath(["shortcuts", "global", "cycle"]))
+            #expect(diagnostic.location == .init(line: 2, column: 1))
+            #expect(diagnostic.expected?.contains("shortcut string") == true)
+        }
+    }
+
+    @Test("supplied snapshot decoding is independent of later disk changes")
+    func snapshotDecodeIsStable() throws {
+        let url = tempURL("toml")
+        try Data("[shortcuts.editor]\nsave = \"cmd+s\"\n".utf8).write(to: url)
+        let file = TOMLFile(url: url)
+        let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+        let snapshot = try file.read()
+        try Data("[shortcuts.editor]\nsave = \"cmd+x\"\n".utf8).write(to: url)
+
+        let decoded = try store.decode(snapshot, mode: .strict)
+
+        #expect(decoded.overrides == ["editor": ["save": ["cmd+s"]]])
+    }
+
+    @Test("shortcut edit plans compose with adopter edits before one commit")
+    func editPlanComposition() throws {
+        let url = tempURL("toml")
+        let source = "[settings]\ngap = 8\n\n[shortcuts.editor]\nsave = \"cmd+s\"\n"
+        try Data(source.utf8).write(to: url)
+        let file = TOMLFile(url: url)
+        let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+        let snapshot = try file.read()
+        let base = try store.decode(snapshot, mode: .strict)
+        var desired = base
+        desired[context: "editor", action: "save"] = ["cmd+shift+s"]
+        var settingsPlan = TOMLEditPlan()
+        settingsPlan.set(.integer(12), at: ["settings", "gap"])
+        let plan = settingsPlan.appending(store.editPlan(from: base, to: desired))
+
+        let candidate = try file.candidate(from: snapshot, applying: plan)
+
+        #expect(try String(contentsOf: url, encoding: .utf8) == source)
+        #expect(candidate.source == "[settings]\ngap = 12\n\n[shortcuts.editor]\nsave = \"shift+cmd+s\"\n")
+        #expect(try store.decode(candidate, mode: .strict) == desired)
+        #expect(try file.value(at: ["settings", "gap"], in: candidate) == .integer(12))
+        _ = try file.commit(candidate)
+        #expect(try store.load() == desired)
+    }
+
+    @Test("namespaced save never overwrites an unreadable document model")
+    func saveDoesNotSwallowReadErrors() throws {
+        let url = tempURL("toml")
+        let source = "[general\ntheme = \"dark\"\n"
+        try Data(source.utf8).write(to: url)
+        let store = FileStore(url: url, key: "shortcuts")
+
+        #expect(throws: TOMLDiagnostic.self) {
+            try store.save(RawState(overrides: ["editor": ["save": ["cmd+s"]]]))
+        }
+        #expect(try String(contentsOf: url, encoding: .utf8) == source)
+    }
+
+    @Test("namespaced save retries stale revisions at most three times")
+    func saveRetriesAreBounded() throws {
+        let url = tempURL("toml")
+        try Data("[shortcuts.editor]\nsave = \"cmd+s\"\n".utf8).write(to: url)
+        let file = TOMLFile(url: url)
+        let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+        var attempts = 0
+        file.replacementVerificationHook = {
+            attempts += 1
+            try Data("[shortcuts.editor]\nsave = \"ctrl+s\" # race \(attempts)\n".utf8).write(to: url)
+        }
+
+        do {
+            try store.save(RawState(overrides: ["editor": ["save": ["cmd+shift+s"]]]))
+            Issue.record("expected repeated stale writes to fail")
+        } catch let diagnostic as TOMLDiagnostic {
+            #expect(diagnostic.kind == .staleRevision)
+        }
+
+        #expect(attempts == 3)
+        #expect(try String(contentsOf: url, encoding: .utf8) == "[shortcuts.editor]\nsave = \"ctrl+s\" # race 3\n")
+        #expect(try FileManager.default.contentsOfDirectory(
+            atPath: url.deletingLastPathComponent().path
+        ).sorted() == ["shortcuts.toml"])
+    }
+
+    @Test("DocC example: shared TOML transaction")
+    func test_DocExample_sharedTOMLTransaction() throws {
+        let configURL = tempURL("toml")
+        try Data("[settings]\nwindow-gap = 8\n".utf8).write(to: configURL)
+        let file = TOMLFile(url: configURL)
+        let shortcutStore = FileStore(tomlFile: file, namespace: ["shortcuts"])
+
+        let snapshot = try file.read()
+        let base = try shortcutStore.decode(snapshot, mode: .strict)
+        var desired = base
+        desired[context: "editor", action: "save"] = ["cmd+s"]
+        var settingsEdits = TOMLEditPlan()
+        settingsEdits.set(.integer(12), at: ["settings", "window-gap"])
+        let edits = settingsEdits.appending(shortcutStore.editPlan(from: base, to: desired))
+        let candidate = try file.candidate(from: snapshot, applying: edits)
+        let committed = try file.commit(candidate)
+
+        #expect(try file.value(at: ["settings", "window-gap"], in: committed) == .integer(12))
+        #expect(try shortcutStore.decode(committed, mode: .strict) == desired)
+    }
 }

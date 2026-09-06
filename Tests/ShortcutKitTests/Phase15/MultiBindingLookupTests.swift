@@ -22,6 +22,7 @@ struct MultiBindingLookupTests {
         let registry = ShortcutRegistry(contexts: [ctx])
         ctx.setShortcuts([Shortcut("opt+s")], for: .save)
         #expect(ctx.shortcuts(for: .save) == [Shortcut("opt+s")])
+        _ = registry
     }
 
     @Test func resetAllToDefaults() throws {
@@ -30,6 +31,7 @@ struct MultiBindingLookupTests {
         ctx.setShortcuts([Shortcut("opt+s")], for: .save)
         ctx.resetAll()
         #expect(ctx.shortcuts(for: .save) == [Shortcut("cmd+s"), Shortcut("ctrl+s")])
+        _ = registry
     }
 
     @Test func currentOccurrencesIncludesAllBindings() {
