@@ -169,8 +169,11 @@ struct TOMLFileTests {
         ]
         #expect(utimensat(AT_FDCWD, url.path, &times, 0) == 0)
 
-        #expect(throws: TOMLDiagnostic.self) {
+        do {
             _ = try file.commit(candidate)
+            Issue.record("expected the disguised change to invalidate the candidate")
+        } catch let diagnostic as TOMLDiagnostic {
+            #expect(diagnostic.kind == .staleRevision)
         }
         #expect(try String(contentsOf: url, encoding: .utf8) == "value = 2\n")
     }
@@ -195,6 +198,52 @@ struct TOMLFileTests {
             Issue.record("expected no-replace creation to fail")
         } catch let diagnostic as TOMLDiagnostic {
             #expect(diagnostic.kind == .staleRevision)
+        }
+    }
+
+    @Test("a file appearing at the final create boundary wins unchanged")
+    func createRace() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("config.toml")
+        let file = TOMLFile(url: url)
+        let candidate = try file.candidate(source: "value = \"ours\"\n")
+        file.creationVerificationHook = {
+            try Data("value = \"theirs\"\n".utf8).write(to: url)
+        }
+
+        do {
+            _ = try file.create(candidate)
+            Issue.record("expected no-replace creation to reject the raced file")
+        } catch let diagnostic as TOMLDiagnostic {
+            #expect(diagnostic.kind == .staleRevision)
+        }
+
+        #expect(try String(contentsOf: url, encoding: .utf8) == "value = \"theirs\"\n")
+        #expect(try directoryContents(at: directory) == ["config.toml"])
+    }
+
+    @Test("write permission failures report an unwritable diagnostic")
+    func unwritableDirectory() throws {
+        let directory = try temporaryDirectory()
+        defer {
+            _ = chmod(directory.path, 0o700)
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let url = directory.appendingPathComponent("config.toml")
+        try Data("value = 1\n".utf8).write(to: url)
+        let file = TOMLFile(url: url)
+        let snapshot = try file.read()
+        var plan = TOMLEditPlan()
+        plan.set(.integer(2), at: ["value"])
+        let candidate = try file.candidate(from: snapshot, applying: plan)
+        #expect(chmod(directory.path, 0o500) == 0)
+
+        do {
+            _ = try file.commit(candidate)
+            Issue.record("expected the write to fail")
+        } catch let diagnostic as TOMLDiagnostic {
+            #expect(diagnostic.kind == .unwritable)
         }
     }
 
@@ -261,6 +310,31 @@ struct TOMLFileTests {
         #expect(lstat(logical.path, &info) == 0)
         #expect(info.st_mode & S_IFMT == S_IFLNK)
         #expect(try String(contentsOf: target, encoding: .utf8) == "[settings]\ngap = 9\n")
+    }
+
+    @Test("dot-dot components are resolved after expanding symbolic links")
+    func symlinkBeforeParentComponent() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let nested = directory.appendingPathComponent("real/nested")
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        let link = directory.appendingPathComponent("linked")
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: "real/nested")
+        let referent = directory.appendingPathComponent("real/config.toml")
+        let lexicalTarget = directory.appendingPathComponent("config.toml")
+        try Data("value = 1\n".utf8).write(to: referent)
+        try Data("value = 99\n".utf8).write(to: lexicalTarget)
+        let logical = URL(fileURLWithPath: "\(link.path)/../config.toml")
+        #expect(logical.path.contains("/../"))
+        let file = TOMLFile(url: logical)
+        let snapshot = try file.read()
+        var plan = TOMLEditPlan()
+        plan.set(.integer(2), at: ["value"])
+
+        _ = try file.commit(file.candidate(from: snapshot, applying: plan))
+
+        #expect(try String(contentsOf: referent, encoding: .utf8) == "value = 2\n")
+        #expect(try String(contentsOf: lexicalTarget, encoding: .utf8) == "value = 99\n")
     }
 
     @Test("missing file below a symlinked parent can be created")

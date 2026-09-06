@@ -53,7 +53,7 @@ var desired = base
 desired[context: "editor", action: "save"] = ["cmd+s"]
 var settingsEdits = TOMLEditPlan()
 settingsEdits.set(.integer(12), at: ["settings", "window-gap"])
-let edits = settingsEdits.appending(shortcutStore.editPlan(from: base, to: desired))
+let edits = settingsEdits.appending(try shortcutStore.editPlan(from: base, to: desired))
 let candidate = try file.candidate(from: snapshot, applying: edits)
 let committed = try file.commit(candidate)
 ```
@@ -76,15 +76,25 @@ adopter's responsibility.
 If the file changes underneath you — a hand edit, a sync, a restore — call
 ``ShortcutRegistry/reload()`` to re-read the store and refresh bindings,
 conflicts, and the published `keyBindings`. It flushes a pending local edit
-first. It returns `false`, retains current runtime state, and leaves a failed
-local save pending for retry.
+first. Namespaced TOML stores merge those local changes into the latest file,
+so an unrelated outside edit is retained. The Boolean method returns `true`
+only when the complete reload and any migration write-back succeed.
+
+Use ``ShortcutRegistry/reloadResult()`` when the caller needs to distinguish a
+pending-save failure, load failure, migration failure, or a live reload whose
+migrated representation could not be written back. The last case updates the
+runtime state and leaves it pending for a later save.
 
 An adopter that stages multiple schemas can use
 ``ShortcutRegistry/prepare(_:)`` without changing live state, then apply the
-opaque result with ``ShortcutRegistry/commit(_:)`` after its aggregate file
-transaction succeeds. Observe ``ShortcutRegistry/saveResults`` for a receipt
-after each registry-initiated store attempt. A file-invalid rollback must be
-explicit through ``ShortcutRegistry/discardPendingSave(applying:)``.
+opaque result with `try` ``ShortcutRegistry/commit(_:)`` after its aggregate
+file transaction succeeds. Prepared state belongs to the registry and
+generation that created it and can be applied only once. The static
+``ShortcutRegistry/prepare(_:migrations:)`` validates and migrates data without
+creating registry-applicable state. Observe ``ShortcutRegistry/saveResults``
+for a receipt after each registry-initiated store attempt. A file-invalid
+rollback must be explicit through `try`
+``ShortcutRegistry/discardPendingSave(applying:)``.
 
 ### Wiping customization
 
@@ -124,6 +134,11 @@ The cases:
   changed and you want users back on it).
 - `.custom { state in … }` — arbitrary rewrites of the ``RawState``.
 
+Initialization preserves the historical best-effort migration behavior: a
+throwing custom migration is logged and later entries still run. Explicit
+preparation and reload are transactional; a thrown migration leaves live state
+unchanged and is reported by ``ShortcutRegistry/reloadResult()``.
+
 ## Diagnostics
 
 ``RawState`` is `CustomDebugStringConvertible` — its `debugDescription` is a
@@ -146,5 +161,6 @@ preferences) suitable for bug reports.
 - ``RawState``
 - ``Preferences``
 - ``ShortcutSaveResult``
+- ``ShortcutReloadResult``
 - ``ShortcutMigration``
 - ``ActionRef``

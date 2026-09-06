@@ -6,7 +6,6 @@ import Testing
 @MainActor
 struct LegendAppearanceTests {
     private let systemFamily = NSFont.systemFont(ofSize: 12).familyName
-    private let monoSystemFamily = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular).familyName
 
     @Test func defaultShortcutFaceIsTheLegendMonospace() {
         // NSFont.fontName is the PostScript name, not the family.
@@ -92,7 +91,8 @@ struct LegendAppearanceTests {
         var appearance = LegendAppearance.default
         appearance.shortcutFont = LegendFont(face: .monospacedSystem())
         let font = appearance.shortcutNSFont(defaultSize: 12)
-        #expect(font.familyName == monoSystemFamily)
+        let monospacedSystem = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        #expect(font.fontName == monospacedSystem.fontName)
         #expect(font.familyName != legendDefaultShortcutFontName)
     }
 

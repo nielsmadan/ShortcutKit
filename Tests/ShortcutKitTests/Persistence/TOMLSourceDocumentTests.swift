@@ -181,19 +181,19 @@ struct TOMLSourceDocumentTests {
         }
     }
 
-    @Test("inserting below an inline table is refused")
-    func inlineTableInsertionRefused() throws {
-        let source = "settings = { gap = 8 }\n"
+    @Test("nested inline-table fields can be inserted, replaced, and removed")
+    func inlineTableEdits() throws {
+        let source = "settings = { gap = 8, color = \"red\" }\n"
         var plan = TOMLEditPlan()
         plan.set(.string("blue"), at: ["settings", "color"])
+        plan.set(.boolean(true), at: ["settings", "animations"])
+        plan.remove(at: ["settings", "gap"])
 
-        do {
-            _ = try makeDocument(source).applying(plan)
-            Issue.record("expected the ambiguous insertion to fail")
-        } catch let diagnostic as TOMLDiagnostic {
-            #expect(diagnostic.kind == .unsupportedEdit)
-            #expect(diagnostic.path == TOMLPath(["settings", "color"]))
-        }
+        let output = try makeDocument(source).applying(plan)
+
+        #expect(try output.value(at: ["settings", "color"]) == .string("blue"))
+        #expect(try output.value(at: ["settings", "animations"]) == .boolean(true))
+        #expect(try output.value(at: ["settings", "gap"]) == nil)
     }
 
     @Test("inserting below an array of tables is refused")
@@ -222,6 +222,43 @@ struct TOMLSourceDocumentTests {
         }
     }
 
+    @Test("inserting into an empty table whose header ends at EOF adds a newline")
+    func insertIntoHeaderAtEOF() throws {
+        var plan = TOMLEditPlan()
+        plan.set(.integer(8), at: ["settings", "gap"])
+
+        let output = try makeDocument("[settings]").applying(plan)
+
+        #expect(output.source == "[settings]\ngap = 8\n")
+    }
+
+    @Test("multiline strings closed by four or five quotes retain following comments and entries")
+    func multilineStringClosingQuotes() throws {
+        for closingQuotes in ["\"\"\"\"", "\"\"\"\"\""] {
+            let source = "[settings]\ntext = \"\"\"value\(closingQuotes) # keep\nother = 1\n"
+            var plan = TOMLEditPlan()
+            plan.set(.string("changed"), at: ["settings", "text"])
+
+            let output = try makeDocument(source).applying(plan)
+
+            #expect(output.source == "[settings]\ntext = \"changed\" # keep\nother = 1\n")
+        }
+    }
+
+    @Test("a present temporal value reports an unsupported-value diagnostic")
+    func unsupportedTemporalValue() throws {
+        let document = try makeDocument("[settings]\nbirthday = 1979-05-27\n")
+
+        do {
+            _ = try document.value(at: ["settings", "birthday"])
+            Issue.record("expected the temporal value to be rejected")
+        } catch let diagnostic as TOMLDiagnostic {
+            #expect(diagnostic.kind == .unsupportedValue)
+            #expect(diagnostic.path == TOMLPath(["settings", "birthday"]))
+            #expect(diagnostic.location == .init(line: 2, column: 1))
+        }
+    }
+
     @Test("hand-edited fixture round-trips and supports a local edit")
     func handEditedFixture() throws {
         let fixture = try #require(Bundle.module.url(
@@ -237,7 +274,8 @@ struct TOMLSourceDocumentTests {
         let output = try document.applying(plan)
 
         #expect(document.data == data)
-        #expect(output.value(at: ["settings", "theme"]) == .string("solarized"))
+        #expect(try output.value(at: ["shortcuts", "global", "window.focus.left"]) == .string("cmd+h"))
+        #expect(try output.value(at: ["settings", "theme"]) == .string("solarized"))
         #expect(output.source.contains("enabled = true # unknown to ShortcutKit"))
     }
 
@@ -258,8 +296,8 @@ struct TOMLSourceDocumentTests {
 
                 let output = try makeDocument(source).applying(plan)
 
-                #expect(output.value(at: ["settings", "gap"]) == .integer(12))
-                #expect(output.value(at: ["unknown", "label"]) == .string("unchanged"))
+                #expect(try output.value(at: ["settings", "gap"]) == .integer(12))
+                #expect(try output.value(at: ["unknown", "label"]) == .string("unchanged"))
                 #expect(output.source.contains("gap = 12 # retained"))
                 #expect(output.source.hasPrefix(prefix))
             }
@@ -272,7 +310,7 @@ struct TOMLSourceDocumentTests {
             "[shortcuts.global]\n\"window.focus.left\" = [\"cmd+left\", { gesture = \"opt+scroll\", sensitivity = 1.25 }]\n"
         )
 
-        #expect(document.value(at: ["shortcuts", "global", "window.focus.left"]) == .array([
+        #expect(try document.value(at: ["shortcuts", "global", "window.focus.left"]) == .array([
             .string("cmd+left"),
             .inlineTable([
                 "gesture": .string("opt+scroll"),
@@ -287,6 +325,13 @@ struct TOMLSourceDocumentTests {
         let document = try makeDocument("# 🪟\r\n[settings]\r\n# note\r\n  gap = 8\r\n")
 
         #expect(document.location(of: ["settings", "gap"]) == .init(line: 4, column: 3))
+    }
+
+    @Test("table-header locations point at the first key component")
+    func tableHeaderLocation() throws {
+        let document = try makeDocument("# note\n  [settings] # retained\n")
+
+        #expect(document.location(of: ["settings"]) == .init(line: 2, column: 4))
     }
 
     private func makeDocument(_ source: String) throws -> TOMLSourceDocument {

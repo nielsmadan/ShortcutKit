@@ -71,6 +71,7 @@ struct TOMLSourceDocument {
     var data: Data { Data(annotated.render().utf8) }
 
     func applying(_ plan: TOMLEditPlan) throws -> Self {
+        guard !plan.isEmpty else { return self }
         var copy = self
         for operation in plan.operations {
             switch operation {
@@ -83,7 +84,7 @@ struct TOMLSourceDocument {
         return try Self(data: copy.data, fileURL: fileURL)
     }
 
-    func value(at path: TOMLPath) -> TOMLValue? {
+    func value(at path: TOMLPath) throws -> TOMLValue? {
         guard let leaf = path.components.last else { return nil }
         var table = semanticRoot
         for component in path.components.dropLast() {
@@ -91,7 +92,18 @@ struct TOMLSourceDocument {
             table = next
         }
         guard let value = table[leaf] else { return nil }
-        return Self.convert(value)
+        guard let converted = Self.convert(value) else {
+            throw TOMLDiagnostic(
+                kind: .unsupportedValue,
+                message: "TOML value is not representable by TOMLValue",
+                fileURL: fileURL,
+                path: path,
+                location: location(of: path),
+                offendingValue: value.debugDescription,
+                expected: "string, integer, float, boolean, array, or inline table"
+            )
+        }
+        return converted
     }
 
     func assignmentPaths() -> Set<TOMLPath> {
@@ -105,12 +117,12 @@ struct TOMLSourceDocument {
     }
 
     func location(of path: TOMLPath) -> TOMLSourceLocation? {
-        guard let location = entryLocation(for: path) else { return nil }
+        let location = entryLocation(for: path)
         var offset = annotated.leading.unicodeScalars.count
 
         for (index, entry) in annotated.root.entries.enumerated() {
             offset += entry.leading.unicodeScalars.count
-            if location.blockIndex == nil, location.entryIndex == index {
+            if location?.blockIndex == nil, location?.entryIndex == index {
                 return sourceLocation(at: offset + Self.keyOffset(in: entry.raw))
             }
             offset += entry.raw.unicodeScalars.count
@@ -125,7 +137,7 @@ struct TOMLSourceDocument {
             offset += block.headerRaw.unicodeScalars.count
             for (entryIndex, entry) in block.body.entries.enumerated() {
                 offset += entry.leading.unicodeScalars.count
-                if location.blockIndex == blockIndex, location.entryIndex == entryIndex {
+                if location?.blockIndex == blockIndex, location?.entryIndex == entryIndex {
                     return sourceLocation(at: offset + Self.keyOffset(in: entry.raw))
                 }
                 offset += entry.raw.unicodeScalars.count
@@ -140,27 +152,50 @@ struct TOMLSourceDocument {
             throw diagnostic("Cannot assign the TOML document root", path: path)
         }
         if let location = entryLocation(for: path) {
-            var entry = entry(at: location)
-            guard let layout = AssignmentLayout(raw: entry.raw) else {
-                throw diagnostic("Could not locate the assignment value", path: path)
-            }
-            guard !layout.hasCommentInsideValue else {
-                throw diagnostic(
-                    "Editing this value would remove an embedded comment; edit it in the file instead",
+            try replaceEntryValue(at: location, path: path, with: value)
+            return
+        }
+        if let blockIndex = annotated.blocks.firstIndex(where: {
+            $0.kind == .table && $0.path == path.components
+        }) {
+            if case let .inlineTable(fields) = value {
+                for key in fields.keys.sorted() {
+                    guard let field = fields[key] else { continue }
+                    try set(field, at: path.appending(key))
+                }
+            } else {
+                let preserved = try removeTable(
+                    at: blockIndex,
                     path: path,
-                    location: self.location(of: path)
+                    preserveInDocument: false
                 )
+                try insert(value, at: path)
+                guard let location = entryLocation(for: path) else {
+                    throw diagnostic("Could not replace a table-shaped value", path: path)
+                }
+                var replacement = entry(at: location)
+                replacement.leading = preserved + replacement.leading
+                replaceEntry(at: location, with: replacement)
             }
-            entry.raw = layout.replacingValue(in: entry.raw, with: value.encoded)
-            entry.valueText = value.encoded
-            replaceEntry(at: location, with: entry)
+            return
+        }
+        if try setInsideInlineTable(value, at: path) {
             return
         }
         try insert(value, at: path)
     }
 
     private mutating func remove(at path: TOMLPath) throws {
-        guard let location = entryLocation(for: path) else { return }
+        guard let location = entryLocation(for: path) else {
+            if let blockIndex = annotated.blocks.firstIndex(where: {
+                $0.kind == .table && $0.path == path.components
+            }) {
+                try removeTable(at: blockIndex, path: path)
+                return
+            }
+            _ = try removeInsideInlineTable(at: path)
+            return
+        }
         let removed = entry(at: location)
         guard let layout = AssignmentLayout(raw: removed.raw) else {
             throw diagnostic("Could not locate the assignment value", path: path)
@@ -174,6 +209,44 @@ struct TOMLSourceDocument {
         }
         let preserved = removed.leading + layout.standaloneTrailingComments(from: removed.raw)
         removeEntry(at: location, preserving: preserved)
+    }
+
+    @discardableResult
+    private mutating func removeTable(
+        at index: Int,
+        path: TOMLPath,
+        preserveInDocument: Bool = true
+    ) throws -> String {
+        guard !annotated.blocks.contains(where: {
+            $0.path.count > path.components.count && $0.path.starts(with: path.components)
+        }) else {
+            throw diagnostic(
+                "Cannot remove a table-shaped value that contains nested tables",
+                path: path,
+                location: location(of: path)
+            )
+        }
+
+        let block = annotated.blocks[index]
+        var preserved = block.leading
+        preserved += AssignmentLayout(raw: "value = \(block.headerRaw)")?
+            .allComments(from: "value = \(block.headerRaw)") ?? ""
+        for entry in block.body.entries {
+            preserved += entry.leading
+            preserved += AssignmentLayout(raw: entry.raw)?.allComments(from: entry.raw) ?? ""
+        }
+        preserved += block.body.trailing
+
+        annotated.blocks.remove(at: index)
+        guard preserveInDocument else { return preserved }
+        if annotated.blocks.indices.contains(index) {
+            annotated.blocks[index].leading = preserved + annotated.blocks[index].leading
+        } else if let lastIndex = annotated.blocks.indices.last {
+            annotated.blocks[lastIndex].body.trailing += preserved
+        } else {
+            annotated.root.trailing += preserved
+        }
+        return preserved
     }
 
     private mutating func insert(_ value: TOMLValue, at path: TOMLPath) throws {
@@ -192,6 +265,11 @@ struct TOMLSourceDocument {
         if let blockIndex = annotated.blocks.firstIndex(where: {
             $0.kind == .table && $0.path == parent
         }) {
+            if annotated.blocks[blockIndex].body.entries.isEmpty,
+               Self.newline(in: annotated.blocks[blockIndex].headerRaw) == nil
+            {
+                annotated.blocks[blockIndex].headerRaw += newlineStyle
+            }
             annotated.blocks[blockIndex].body = Self.appending(
                 entryForKey: leaf,
                 value: value,
@@ -228,6 +306,96 @@ struct TOMLSourceDocument {
             path: parent,
             body: .init(entries: [Self.makeEntry(key: leaf, value: value, indent: "", newline: newline)])
         ))
+    }
+
+    private mutating func replaceEntryValue(
+        at location: EntryLocation,
+        path: TOMLPath,
+        with value: TOMLValue
+    ) throws {
+        var entry = entry(at: location)
+        guard let layout = AssignmentLayout(raw: entry.raw) else {
+            throw diagnostic("Could not locate the assignment value", path: path)
+        }
+        guard !layout.hasCommentInsideValue else {
+            throw diagnostic(
+                "Editing this value would remove an embedded comment; edit it in the file instead",
+                path: path,
+                location: self.location(of: path)
+            )
+        }
+        entry.raw = layout.replacingValue(in: entry.raw, with: value.encoded)
+        entry.valueText = value.encoded
+        replaceEntry(at: location, with: entry)
+    }
+
+    private mutating func setInsideInlineTable(_ value: TOMLValue, at path: TOMLPath) throws -> Bool {
+        guard let ancestor = try inlineTableAncestor(of: path) else { return false }
+        let remainder = Array(path.components.dropFirst(ancestor.path.components.count))
+        guard let updated = Self.setting(value, in: ancestor.value, at: remainder) else {
+            throw diagnostic("Cannot insert below a non-table inline value", path: path)
+        }
+        try replaceEntryValue(at: ancestor.location, path: ancestor.path, with: updated)
+        return true
+    }
+
+    private mutating func removeInsideInlineTable(at path: TOMLPath) throws -> Bool {
+        guard let ancestor = try inlineTableAncestor(of: path) else { return false }
+        let remainder = Array(path.components.dropFirst(ancestor.path.components.count))
+        guard let updated = Self.removing(from: ancestor.value, at: remainder) else { return false }
+        try replaceEntryValue(at: ancestor.location, path: ancestor.path, with: updated)
+        return true
+    }
+
+    private func inlineTableAncestor(of path: TOMLPath) throws -> InlineTableAncestor? {
+        guard path.components.count > 1 else { return nil }
+        for count in stride(from: path.components.count - 1, through: 1, by: -1) {
+            let ancestorPath = TOMLPath(Array(path.components.prefix(count)))
+            guard let location = entryLocation(for: ancestorPath) else { continue }
+            let sourceValue = entry(at: location).valueText
+            let wrapper: TOMLTable
+            do {
+                wrapper = try TOMLTable(string: "value = \(sourceValue)")
+            } catch {
+                throw diagnostic("Could not decode an inline-table ancestor", path: ancestorPath)
+            }
+            guard let rawValue = wrapper["value"], let value = Self.convert(rawValue) else {
+                throw diagnostic(
+                    "Inline-table ancestor contains a value that cannot be edited safely",
+                    path: ancestorPath,
+                    location: self.location(of: ancestorPath)
+                )
+            }
+            guard case .inlineTable = value else { return nil }
+            return .init(path: ancestorPath, location: location, value: value)
+        }
+        return nil
+    }
+
+    private static func setting(_ value: TOMLValue, in container: TOMLValue, at path: [String]) -> TOMLValue? {
+        guard let head = path.first, case var .inlineTable(table) = container else { return nil }
+        if path.count == 1 {
+            table[head] = value
+            return .inlineTable(table)
+        }
+        guard let child = table[head],
+              let updated = setting(value, in: child, at: Array(path.dropFirst()))
+        else { return nil }
+        table[head] = updated
+        return .inlineTable(table)
+    }
+
+    private static func removing(from container: TOMLValue, at path: [String]) -> TOMLValue? {
+        guard let head = path.first, case var .inlineTable(table) = container else { return nil }
+        if path.count == 1 {
+            guard table.removeValue(forKey: head) != nil else { return nil }
+            return .inlineTable(table)
+        }
+        guard let child = table[head],
+              let updated = removing(from: child, at: Array(path.dropFirst()))
+        else { return nil }
+        table[head] = updated
+        return .inlineTable(table)
     }
 
     private func entryLocation(for path: TOMLPath) -> EntryLocation? {
@@ -423,6 +591,12 @@ private struct EntryLocation {
     let entryIndex: Int
 }
 
+private struct InlineTableAncestor {
+    let path: TOMLPath
+    let location: EntryLocation
+    let value: TOMLValue
+}
+
 private struct AssignmentLayout {
     let valueRange: Range<Int>
     let commentRanges: [Range<Int>]
@@ -472,9 +646,17 @@ private struct AssignmentLayout {
     }
 
     func standaloneTrailingComments(from raw: String) -> String {
+        comments(from: raw, ranges: commentRanges.filter { $0.lowerBound >= valueRange.upperBound })
+    }
+
+    func allComments(from raw: String) -> String {
+        comments(from: raw, ranges: commentRanges)
+    }
+
+    private func comments(from raw: String, ranges: [Range<Int>]) -> String {
         let scalars = Array(raw.unicodeScalars)
         var result = ""
-        for range in commentRanges where range.lowerBound >= valueRange.upperBound {
+        for range in ranges {
             var lineStart = range.lowerBound
             while lineStart > 0, scalars[lineStart - 1] != "\n" {
                 lineStart -= 1
@@ -518,12 +700,16 @@ private struct AssignmentLayout {
                 continue
             }
             if multiline {
-                if index + 2 < scalars.count,
-                   scalars[index] == quote,
-                   scalars[index + 1] == quote,
-                   scalars[index + 2] == quote
-                {
-                    return index + 3
+                if scalars[index] == quote {
+                    var run = 0
+                    while index + run < scalars.count, scalars[index + run] == quote {
+                        run += 1
+                    }
+                    if run >= 3 {
+                        return index + min(run - 3, 2) + 3
+                    }
+                    index += run
+                    continue
                 }
             } else if scalars[index] == quote {
                 return index + 1

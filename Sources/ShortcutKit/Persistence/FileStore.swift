@@ -7,15 +7,17 @@ import os.log
 /// state in a subtree while preserving sibling tables. `createIfMissing` writes
 /// an empty file at `urls[0]` when none of the candidate files exists.
 ///
-/// Concurrent writers: the library issues atomic single-process writes. If
-/// the adopter also writes to the same file from outside the library, they
-/// are responsible for serializing those writes; cross-process write races
-/// can drop one side's changes.
+/// Namespaced TOML saves re-read the latest file and apply only changes made
+/// since this store's last load, then use a stale-safe atomic replacement.
+/// Whole-file TOML and JSON stores remain last-writer-wins.
 @MainActor
 public final class FileStore: ShortcutBindingsStore {
     public enum Format: Sendable { case toml, json }
     /// Compatibility preserves historical leniency; strict rejects malformed owned values.
     public enum DecodingMode: Sendable { case compatible, strict }
+    public enum Error: Swift.Error, Sendable, Equatable {
+        case requiresNamespacedTOML
+    }
 
     public let urls: [URL]
     public let format: Format
@@ -24,6 +26,7 @@ public final class FileStore: ShortcutBindingsStore {
     public let namespace: TOMLPath?
     private let keyPath: [String]?
     private let tomlFile: TOMLFile?
+    private var lastKnownState: RawState?
 
     private static let logger = Logger(
         subsystem: "com.nielsmadan.shortcutkit",
@@ -46,7 +49,7 @@ public final class FileStore: ShortcutBindingsStore {
         self.format = format
         self.key = key
         keyPath = key.map { $0.split(separator: ".").map(String.init) }
-        namespace = keyPath.map(TOMLPath.init)
+        namespace = format == .toml ? keyPath.map(TOMLPath.init) : nil
         tomlFile = format == .toml && keyPath != nil && urls.count == 1
             ? TOMLFile(url: urls[0])
             : nil
@@ -89,9 +92,12 @@ public final class FileStore: ShortcutBindingsStore {
             for candidateURL in urls {
                 let file = tomlFile(for: candidateURL)
                 if let snapshot = try file.readIfPresent() {
-                    return try decode(snapshot, mode: .compatible)
+                    let state = try decode(snapshot, mode: .compatible)
+                    lastKnownState = candidateURL == urls[0] ? state : nil
+                    return state
                 }
             }
+            lastKnownState = RawState()
             return RawState()
         }
 
@@ -114,7 +120,10 @@ public final class FileStore: ShortcutBindingsStore {
         _ snapshot: TOMLFile.Snapshot,
         mode: DecodingMode = .compatible
     ) throws -> RawState {
-        try decode(snapshot.data, fileURL: snapshot.fileURL, mode: mode)
+        guard format == .toml, keyPath != nil else {
+            throw Error.requiresNamespacedTOML
+        }
+        return try decode(tomlFile(for: snapshot.fileURL).sourceDocument(for: snapshot), mode: mode)
     }
 
     /// Decodes this store's namespace from a validated, uncommitted candidate.
@@ -122,26 +131,28 @@ public final class FileStore: ShortcutBindingsStore {
         _ candidate: TOMLFile.Candidate,
         mode: DecodingMode = .compatible
     ) throws -> RawState {
-        try decode(candidate.data, fileURL: candidate.fileURL, mode: mode)
+        guard format == .toml, keyPath != nil else {
+            throw Error.requiresNamespacedTOML
+        }
+        return try decode(tomlFile(for: candidate.fileURL).sourceDocument(for: candidate), mode: mode)
     }
 
-    private func decode(_ data: Data, fileURL: URL, mode: DecodingMode) throws -> RawState {
-        guard let keyPath else {
-            preconditionFailure("FileStore.decode(_:mode:) requires a TOML namespace.")
+    private func decode(_ document: TOMLSourceDocument, mode: DecodingMode) throws -> RawState {
+        guard format == .toml, let keyPath else {
+            throw Error.requiresNamespacedTOML
         }
-        let document = try TOMLSourceDocument(data: data, fileURL: fileURL)
         switch mode {
         case .compatible:
-            return try TOMLCoding.decode(document.source, atKey: keyPath)
+            return try TOMLCoding.decode(document, atKey: keyPath)
         case .strict:
             return try TOMLCoding.decodeStrict(document, atKey: keyPath)
         }
     }
 
     /// Produces assignment-level changes without reading or writing the file.
-    public func editPlan(from base: RawState, to desired: RawState) -> TOMLEditPlan {
-        guard let keyPath else {
-            preconditionFailure("FileStore.editPlan(from:to:) requires a TOML namespace.")
+    public func editPlan(from base: RawState, to desired: RawState) throws -> TOMLEditPlan {
+        guard format == .toml, let keyPath else {
+            throw Error.requiresNamespacedTOML
         }
         return TOMLCoding.editPlan(from: base, to: desired, atKey: keyPath)
     }
@@ -189,15 +200,36 @@ public final class FileStore: ShortcutBindingsStore {
         for attempt in 0 ..< 3 {
             do {
                 if let snapshot = try file.readIfPresent() {
-                    let base = try decode(snapshot, mode: .compatible)
-                    let plan = editPlan(from: base, to: state)
-                    guard !plan.isEmpty else { return }
+                    let latest = try decode(snapshot, mode: .compatible)
+                    let base = lastKnownState ?? latest
+                    let merged = Self.mergingChanges(from: base, to: state, into: latest)
+                    let plan = try editPlan(from: latest, to: merged)
+                    guard !plan.isEmpty else {
+                        lastKnownState = latest
+                        return
+                    }
                     let candidate = try file.candidate(from: snapshot, applying: plan)
-                    _ = try file.commit(candidate)
+                    guard try decode(candidate, mode: .compatible) == merged else {
+                        throw TOMLDiagnostic(
+                            kind: .unsupportedEdit,
+                            message: "The existing TOML representation cannot express the requested shortcut changes safely",
+                            fileURL: file.url
+                        )
+                    }
+                    let committed = try file.commit(candidate)
+                    lastKnownState = try decode(committed, mode: .compatible)
                 } else {
-                    let plan = editPlan(from: RawState(), to: state)
+                    let plan = try editPlan(from: RawState(), to: state)
                     let candidate = try file.candidate(source: "", applying: plan)
-                    _ = try file.create(candidate)
+                    guard try decode(candidate, mode: .compatible) == state else {
+                        throw TOMLDiagnostic(
+                            kind: .unsupportedEdit,
+                            message: "Could not encode the requested shortcut state",
+                            fileURL: file.url
+                        )
+                    }
+                    let created = try file.create(candidate)
+                    lastKnownState = try decode(created, mode: .compatible)
                 }
                 return
             } catch let diagnostic as TOMLDiagnostic
@@ -209,10 +241,31 @@ public final class FileStore: ShortcutBindingsStore {
     }
 
     private func tomlFile(for url: URL) -> TOMLFile {
-        if let tomlFile, tomlFile.url == url.standardizedFileURL {
+        if let tomlFile, tomlFile.url == url {
             return tomlFile
         }
         return TOMLFile(url: url)
+    }
+
+    private static func mergingChanges(from base: RawState, to desired: RawState, into latest: RawState) -> RawState {
+        var merged = latest
+        let contextIDs = Set(base.overrides.keys).union(desired.overrides.keys)
+        for contextID in contextIDs {
+            let baseActions = base.overrides[contextID] ?? [:]
+            let desiredActions = desired.overrides[contextID] ?? [:]
+            for actionID in Set(baseActions.keys).union(desiredActions.keys)
+                where baseActions[actionID] != desiredActions[actionID]
+            {
+                merged[context: contextID, action: actionID] = desiredActions[actionID]
+            }
+        }
+        if base.preferences.hintsEnabled != desired.preferences.hintsEnabled {
+            merged.preferences.hintsEnabled = desired.preferences.hintsEnabled
+        }
+        if base.preferences.hintFrequency != desired.preferences.hintFrequency {
+            merged.preferences.hintFrequency = desired.preferences.hintFrequency
+        }
+        return merged
     }
 
     private var existingFileURL: URL? {

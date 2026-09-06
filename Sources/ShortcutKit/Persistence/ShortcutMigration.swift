@@ -41,6 +41,16 @@ enum ShortcutMigrationApplier {
         state = migrated
     }
 
+    static func applyBestEffort(_ migrations: [ShortcutMigration], to state: inout RawState) {
+        for migration in migrations {
+            do {
+                try applyOne(migration, &state)
+            } catch {
+                logger.error(".custom migration threw: \(String(describing: error))")
+            }
+        }
+    }
+
     private static func applyOne(
         _ migration: ShortcutMigration, _ state: inout RawState
     ) throws {

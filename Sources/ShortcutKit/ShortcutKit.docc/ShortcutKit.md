@@ -74,6 +74,7 @@ For system-wide hotkeys, add **ShortcutKitGlobal**.
 - ``RawState``
 - ``Preferences``
 - ``ShortcutSaveResult``
+- ``ShortcutReloadResult``
 - ``HintPolicy``
 - ``ShortcutMigration``
 

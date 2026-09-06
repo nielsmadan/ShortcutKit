@@ -17,9 +17,11 @@ public struct TOMLDiagnostic: Error, Sendable, Equatable, CustomStringConvertibl
         case syntax
         case invalidUTF8
         case invalidValue
+        case unsupportedValue
         case tooLarge
         case missing
         case unreadable
+        case unwritable
         case nonRegularFile
         case unsupportedEdit
         case staleRevision

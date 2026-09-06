@@ -33,7 +33,7 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
     }
 
     @Test("a single-step keyboard discrete shortcut matching the system set is flagged")
-    func detectsSystemShared() {
+    func detectsSystemShared() throws {
         let stub = StubSystemShortcuts([
             .init(keyCode: UInt16(kVK_ANSI_S), modifiers: .command),
         ])
@@ -48,7 +48,24 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
             if case .systemShared = c { return c } else { return nil }
         }
         #expect(systemShared.count == 1)
-        #expect(systemShared[0].severity == .warning)
+        #expect(try #require(systemShared.first).severity == .warning)
+    }
+
+    @Test("reload refreshes system conflicts even when bindings are unchanged")
+    func reloadRefreshesSystemConflicts() {
+        let stub = StubSystemShortcuts()
+        let context = ShortcutContext<SysAct>("editor")
+        let registry = ShortcutRegistry(
+            contexts: [context],
+            store: isolatedStore(),
+            systemShortcutsProvider: stub
+        )
+        #expect(registry.conflicts.contains { if case .systemShared = $0 { true } else { false } } == false)
+        stub.set = [.init(keyCode: UInt16(kVK_ANSI_S), modifiers: .command)]
+
+        #expect(registry.reload())
+
+        #expect(registry.conflicts.contains { if case .systemShared = $0 { true } else { false } })
     }
 
     @Test("multi-step shortcuts are not flagged (cannot map to a single system hotkey)")

@@ -3,12 +3,21 @@ import Foundation
 import Testing
 
 @MainActor
-@Suite("FileStore") struct FileStoreTests {
+@Suite("FileStore") final class FileStoreTests {
+    private let temporaryDirectory: URL
+
+    init() throws {
+        temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ShortcutKit-FileStore-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: false)
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: temporaryDirectory)
+    }
+
     private func tempURL(_ ext: String) -> URL {
-        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("ShortcutKitTests-\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("shortcuts.\(ext)")
+        temporaryDirectory.appendingPathComponent("\(UUID().uuidString).\(ext)")
     }
 
     private func sampleState() -> RawState {
@@ -311,6 +320,90 @@ import Testing
         #expect(try store.load() == desired)
     }
 
+    @Test("namespaced saves preserve unrelated external shortcut edits")
+    func namespacedSaveMergesExternalChanges() throws {
+        let url = tempURL("toml")
+        try Data("""
+        [shortcuts.editor]
+        save = "cmd+s"
+        undo = "cmd+z"
+        """.utf8).write(to: url)
+        let store = FileStore(url: url, key: "shortcuts")
+        var desired = try store.load()
+        desired[context: "editor", action: "undo"] = ["shift+cmd+z"]
+        try Data("""
+        [shortcuts.editor]
+        save = "ctrl+s" # changed outside the app
+        undo = "cmd+z"
+        """.utf8).write(to: url)
+
+        try store.save(desired)
+
+        let merged = try store.load()
+        #expect(merged.overrides["editor"]?["save"] == ["ctrl+s"])
+        #expect(merged.overrides["editor"]?["undo"] == ["shift+cmd+z"])
+        #expect(try String(contentsOf: url, encoding: .utf8).contains("# changed outside the app"))
+    }
+
+    @Test("compatible inline context tables remain editable")
+    func inlineContextTableEdits() throws {
+        let url = tempURL("toml")
+        try Data("""
+        shortcuts = { editor = { save = "cmd+s", undo = "cmd+z" } }
+        general = { theme = "dark" }
+        """.utf8).write(to: url)
+        let store = FileStore(url: url, key: "shortcuts")
+        var desired = try store.load()
+        desired[context: "editor", action: "save"] = ["shift+cmd+s"]
+        desired[context: "editor", action: "undo"] = nil
+        desired[context: "editor", action: "quit"] = ["cmd+q"]
+
+        try store.save(desired)
+
+        #expect(try store.load() == desired)
+        let source = try String(contentsOf: url, encoding: .utf8)
+        #expect(source.contains("theme = \"dark\""))
+    }
+
+    @Test("compatible table-shaped continuous shortcuts can be updated and removed")
+    func tableShapedContinuousEdits() throws {
+        let url = tempURL("toml")
+        try Data("""
+        [shortcuts.viewer.zoom]
+        gesture = "cmd+pinch-out"
+        sensitivity = 0.5 # chosen deliberately
+
+        [general]
+        theme = "dark"
+        """.utf8).write(to: url)
+        let store = FileStore(url: url, key: "shortcuts")
+        var desired = try store.load()
+        desired[context: "viewer", action: "zoom"] = [.continuous(.init(
+            kind: .pinchOut,
+            modifiers: .command,
+            sensitivity: 0.75
+        ))]
+
+        try store.save(desired)
+
+        #expect(try store.load() == desired)
+        #expect(try String(contentsOf: url, encoding: .utf8).contains("sensitivity = 0.75 # chosen deliberately"))
+
+        desired[context: "viewer", action: "zoom"] = ["cmd+z"]
+        try store.save(desired)
+
+        #expect(try store.load() == desired)
+        #expect(try String(contentsOf: url, encoding: .utf8).contains("# chosen deliberately"))
+
+        desired[context: "viewer", action: "zoom"] = nil
+        try store.save(desired)
+
+        #expect(try store.load() == desired)
+        let source = try String(contentsOf: url, encoding: .utf8)
+        #expect(source.contains("theme = \"dark\""))
+        #expect(source.contains("# chosen deliberately"))
+    }
+
     @Test("shared TOML clear retains shortcut comments and sibling bytes")
     func sharedTOMLClearPreservesComments() throws {
         let url = tempURL("toml")
@@ -419,6 +512,98 @@ import Testing
         }
     }
 
+    @Test("strict decoding accepts canonical continuous shortcuts and preferences")
+    func strictCanonicalContinuousAndPreferences() throws {
+        let url = tempURL("toml")
+        try Data("""
+        [shortcuts.viewer]
+        zoom = { gesture = "cmd+pinch-out", sensitivity = 0.75 }
+
+        [shortcuts.preferences]
+        hints-enabled = false
+        hint-frequency = "timeout:45.0"
+        """.utf8).write(to: url)
+        let file = TOMLFile(url: url)
+        let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+
+        let state = try store.decode(file.read(), mode: .strict)
+
+        #expect(state.overrides["viewer"]?["zoom"] == [.continuous(.init(
+            kind: .pinchOut,
+            modifiers: .command,
+            sensitivity: 0.75
+        ))])
+        #expect(state.preferences.hintsEnabled == false)
+        #expect(state.preferences.hintFrequency == .timeout(45))
+    }
+
+    @Test("strict decoding rejects malformed continuous shortcut forms")
+    func strictMalformedContinuousForms() throws {
+        let values = [
+            "{ gesture = \"cmd+pinch-out\" }",
+            "{ gesture = \"cmd+pinch-out\", sensitivity = 1.5 }",
+            "{ gesture = \"cmd+pinch-out\", sensitivity = 0.5, extra = true }",
+            "{ gesture = \"cmd+s\", sensitivity = 0.5 }",
+        ]
+        for value in values {
+            let url = tempURL("toml")
+            try Data("[shortcuts.viewer]\nzoom = \(value)\n".utf8).write(to: url)
+            let file = TOMLFile(url: url)
+            let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+
+            do {
+                _ = try store.decode(file.read(), mode: .strict)
+                Issue.record("expected strict decoding to reject \(value)")
+            } catch let diagnostic as TOMLDiagnostic {
+                #expect(diagnostic.kind == .invalidValue)
+                #expect(diagnostic.path == TOMLPath(["shortcuts", "viewer", "zoom"]))
+            }
+        }
+    }
+
+    @Test("strict decoding rejects invalid preference shapes and types")
+    func strictPreferenceShapesAndTypes() throws {
+        let sources = [
+            "[shortcuts]\npreferences = { hints-enabled = true }\n",
+            "[shortcuts.preferences]\nhints-enabled = \"yes\"\n",
+        ]
+        for source in sources {
+            let url = tempURL("toml")
+            try Data(source.utf8).write(to: url)
+            let file = TOMLFile(url: url)
+            let store = FileStore(tomlFile: file, namespace: ["shortcuts"])
+
+            do {
+                _ = try store.decode(file.read(), mode: .strict)
+                Issue.record("expected strict preference decoding to fail")
+            } catch let diagnostic as TOMLDiagnostic {
+                #expect(diagnostic.kind == .invalidValue)
+                #expect(diagnostic.path?.components.starts(with: ["shortcuts", "preferences"]) == true)
+            }
+        }
+    }
+
+    @Test("shared TOML APIs reject JSON and whole-file stores")
+    func sharedTOMLAPIsRequireNamespacedTOML() throws {
+        let url = tempURL("toml")
+        try Data("[shortcuts.editor]\nsave = \"cmd+s\"\n".utf8).write(to: url)
+        let snapshot = try TOMLFile(url: url).read()
+        let stores = [
+            FileStore(url: tempURL("json"), format: .json, key: "shortcuts"),
+            FileStore(url: tempURL("toml"), format: .toml),
+        ]
+
+        for store in stores {
+            #expect(store.namespace == nil)
+            #expect(throws: FileStore.Error.requiresNamespacedTOML) {
+                _ = try store.decode(snapshot)
+            }
+            #expect(throws: FileStore.Error.requiresNamespacedTOML) {
+                _ = try store.editPlan(from: RawState(), to: RawState())
+            }
+        }
+    }
+
     @Test("supplied snapshot decoding is independent of later disk changes")
     func snapshotDecodeIsStable() throws {
         let url = tempURL("toml")
@@ -446,7 +631,7 @@ import Testing
         desired[context: "editor", action: "save"] = ["cmd+shift+s"]
         var settingsPlan = TOMLEditPlan()
         settingsPlan.set(.integer(12), at: ["settings", "gap"])
-        let plan = settingsPlan.appending(store.editPlan(from: base, to: desired))
+        let plan = try settingsPlan.appending(store.editPlan(from: base, to: desired))
 
         let candidate = try file.candidate(from: snapshot, applying: plan)
 
@@ -494,7 +679,7 @@ import Testing
         #expect(try String(contentsOf: url, encoding: .utf8) == "[shortcuts.editor]\nsave = \"ctrl+s\" # race 3\n")
         #expect(try FileManager.default.contentsOfDirectory(
             atPath: url.deletingLastPathComponent().path
-        ).sorted() == ["shortcuts.toml"])
+        ).sorted() == [url.lastPathComponent])
     }
 
     @Test("DocC example: shared TOML transaction")
@@ -510,7 +695,7 @@ import Testing
         desired[context: "editor", action: "save"] = ["cmd+s"]
         var settingsEdits = TOMLEditPlan()
         settingsEdits.set(.integer(12), at: ["settings", "window-gap"])
-        let edits = settingsEdits.appending(shortcutStore.editPlan(from: base, to: desired))
+        let edits = try settingsEdits.appending(shortcutStore.editPlan(from: base, to: desired))
         let candidate = try file.candidate(from: snapshot, applying: edits)
         let committed = try file.commit(candidate)
 

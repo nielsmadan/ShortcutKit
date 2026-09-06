@@ -164,6 +164,36 @@ public enum ShortcutSaveResult: Sendable {
     }
 }
 
+/// The outcome of re-reading a registry's store.
+public enum ShortcutReloadResult: Sendable {
+    case reloaded
+    case pendingSaveFailed(any Error)
+    case loadFailed(any Error)
+    case migrationFailed(any Error)
+    case reloadedWithWritebackFailure(any Error)
+
+    public var didReload: Bool {
+        switch self {
+        case .reloaded, .reloadedWithWritebackFailure:
+            true
+        case .pendingSaveFailed, .loadFailed, .migrationFailed:
+            false
+        }
+    }
+
+    public var error: (any Error)? {
+        switch self {
+        case .reloaded:
+            nil
+        case let .pendingSaveFailed(error),
+             let .loadFailed(error),
+             let .migrationFailed(error),
+             let .reloadedWithWritebackFailure(error):
+            error
+        }
+    }
+}
+
 // MARK: - Store protocol
 
 /// Pluggable persistence for `RawState`.

@@ -40,10 +40,13 @@ public final class TOMLFile {
 
     public let url: URL
     var replacementVerificationHook: (() throws -> Void)?
+    var creationVerificationHook: (() throws -> Void)?
+    private var documentCache: [String: TOMLSourceDocument] = [:]
+    private var documentCacheOrder: [String] = []
 
     public init(url: URL) {
         precondition(url.isFileURL, "TOMLFile requires a file URL")
-        self.url = url.standardizedFileURL
+        self.url = url
     }
 
     /// Reads and validates the current regular file.
@@ -74,10 +77,10 @@ public final class TOMLFile {
     /// Applies lossless edits to supplied snapshot bytes without writing.
     public func candidate(from snapshot: Snapshot, applying plan: TOMLEditPlan) throws -> Candidate {
         try requireMatchingURL(snapshot.fileURL)
-        let document = try TOMLSourceDocument(data: snapshot.data, fileURL: url)
+        let document = try document(for: snapshot.data, digest: snapshot.contentDigest)
         let edited = try document.applying(plan)
         return makeCandidate(
-            data: edited.data,
+            document: edited,
             baseRevision: snapshot.revision,
             baseContentDigest: snapshot.contentDigest
         )
@@ -87,7 +90,7 @@ public final class TOMLFile {
     public func candidate(source: String, applying plan: TOMLEditPlan = .init()) throws -> Candidate {
         let document = try TOMLSourceDocument(data: Data(source.utf8), fileURL: url)
         let edited = try document.applying(plan)
-        return makeCandidate(data: edited.data, baseRevision: nil, baseContentDigest: nil)
+        return makeCandidate(document: edited, baseRevision: nil, baseContentDigest: nil)
     }
 
     /// Atomically replaces the candidate's unchanged base generation.
@@ -134,32 +137,32 @@ public final class TOMLFile {
 
     public func value(at path: TOMLPath, in snapshot: Snapshot) throws -> TOMLValue? {
         try requireMatchingURL(snapshot.fileURL)
-        return try TOMLSourceDocument(data: snapshot.data, fileURL: url).value(at: path)
+        return try document(for: snapshot.data, digest: snapshot.contentDigest).value(at: path)
     }
 
     public func value(at path: TOMLPath, in candidate: Candidate) throws -> TOMLValue? {
         try requireMatchingURL(candidate.fileURL)
-        return try TOMLSourceDocument(data: candidate.data, fileURL: url).value(at: path)
+        return try document(for: candidate.data, digest: candidate.contentDigest).value(at: path)
     }
 
     public func assignmentPaths(in snapshot: Snapshot) throws -> Set<TOMLPath> {
         try requireMatchingURL(snapshot.fileURL)
-        return try TOMLSourceDocument(data: snapshot.data, fileURL: url).assignmentPaths()
+        return try document(for: snapshot.data, digest: snapshot.contentDigest).assignmentPaths()
     }
 
     public func assignmentPaths(in candidate: Candidate) throws -> Set<TOMLPath> {
         try requireMatchingURL(candidate.fileURL)
-        return try TOMLSourceDocument(data: candidate.data, fileURL: url).assignmentPaths()
+        return try document(for: candidate.data, digest: candidate.contentDigest).assignmentPaths()
     }
 
     public func location(of path: TOMLPath, in snapshot: Snapshot) throws -> TOMLSourceLocation? {
         try requireMatchingURL(snapshot.fileURL)
-        return try TOMLSourceDocument(data: snapshot.data, fileURL: url).location(of: path)
+        return try document(for: snapshot.data, digest: snapshot.contentDigest).location(of: path)
     }
 
     public func location(of path: TOMLPath, in candidate: Candidate) throws -> TOMLSourceLocation? {
         try requireMatchingURL(candidate.fileURL)
-        return try TOMLSourceDocument(data: candidate.data, fileURL: url).location(of: path)
+        return try document(for: candidate.data, digest: candidate.contentDigest).location(of: path)
     }
 
     private func read(_ resolved: ResolvedFile) throws -> Snapshot {
@@ -206,13 +209,14 @@ public final class TOMLFile {
             throw RetryRead()
         }
 
-        let document = try TOMLSourceDocument(data: data, fileURL: url)
+        let contentDigest = Self.digest(data)
+        let document = try document(for: data, digest: contentDigest)
         let revision = Self.revision(stat: after, resolved: verified)
         return .init(
             fileURL: url,
-            data: document.data,
-            source: String(decoding: document.data, as: UTF8.self),
-            contentDigest: Self.digest(document.data),
+            data: data,
+            source: document.source,
+            contentDigest: contentDigest,
             revision: revision
         )
     }
@@ -233,7 +237,7 @@ public final class TOMLFile {
             throw diagnostic(.staleRevision, "TOML file changed immediately before commit")
         }
         guard Darwin.rename(temporary, target) == 0 else {
-            throw ioDiagnostic("Could not atomically replace TOML file", code: errno)
+            throw ioDiagnostic("Could not atomically replace TOML file", code: errno, access: .write)
         }
         removeTemporary = false
         try syncParent(of: target)
@@ -253,6 +257,7 @@ public final class TOMLFile {
         else {
             throw diagnostic(.topologyChanged, "TOML path changed immediately before creation")
         }
+        try creationVerificationHook?()
         if Darwin.renamex_np(temporary, target, UInt32(RENAME_EXCL)) == 0 {
             removeTemporary = false
             try syncParent(of: target)
@@ -263,17 +268,17 @@ public final class TOMLFile {
             throw diagnostic(.staleRevision, "TOML file appeared before it could be created")
         }
         guard renameError == ENOTSUP || renameError == EINVAL || renameError == ENOSYS else {
-            throw ioDiagnostic("Could not atomically create TOML file", code: renameError)
+            throw ioDiagnostic("Could not atomically create TOML file", code: renameError, access: .write)
         }
         guard Darwin.link(temporary, target) == 0 else {
             let linkError = errno
             if linkError == EEXIST {
                 throw diagnostic(.staleRevision, "TOML file appeared before it could be created")
             }
-            throw ioDiagnostic("Could not atomically create TOML file", code: linkError)
+            throw ioDiagnostic("Could not atomically create TOML file", code: linkError, access: .write)
         }
         guard unlink(temporary) == 0 else {
-            throw ioDiagnostic("Could not remove TOML staging link", code: errno)
+            throw ioDiagnostic("Could not remove TOML staging link", code: errno, access: .write)
         }
         removeTemporary = false
         try syncParent(of: target)
@@ -290,7 +295,7 @@ public final class TOMLFile {
         var template = Array("\(parent)/.\(name).shortcutkit.XXXXXX".utf8CString)
         let descriptor = template.withUnsafeMutableBufferPointer { mkstemp($0.baseAddress) }
         guard descriptor >= 0 else {
-            throw ioDiagnostic("Could not create TOML staging file", code: errno)
+            throw ioDiagnostic("Could not create TOML staging file", code: errno, access: .write)
         }
         let path = String(decoding: template.dropLast().map { UInt8(bitPattern: $0) }, as: UTF8.self)
         var keep = false
@@ -300,12 +305,17 @@ public final class TOMLFile {
         }
 
         guard fchmod(descriptor, mode) == 0 else {
-            throw ioDiagnostic("Could not set TOML staging permissions", code: errno)
+            throw ioDiagnostic("Could not set TOML staging permissions", code: errno, access: .write)
         }
         if let source {
+            let sourceDescriptor = Darwin.open(source, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
+            guard sourceDescriptor >= 0 else {
+                throw ioDiagnostic("Could not open TOML metadata source", code: errno)
+            }
+            defer { Darwin.close(sourceDescriptor) }
             let flags = copyfile_flags_t(COPYFILE_ACL | COPYFILE_XATTR)
-            guard copyfile(source, path, nil, flags) == 0 else {
-                throw ioDiagnostic("Could not preserve TOML file metadata", code: errno)
+            guard fcopyfile(sourceDescriptor, descriptor, nil, flags) == 0 else {
+                throw ioDiagnostic("Could not preserve TOML file metadata", code: errno, access: .write)
             }
         }
 
@@ -320,13 +330,13 @@ public final class TOMLFile {
                 )
                 if result < 0 {
                     if errno == EINTR { continue }
-                    throw ioDiagnostic("Could not write TOML staging file", code: errno)
+                    throw ioDiagnostic("Could not write TOML staging file", code: errno, access: .write)
                 }
                 written += result
             }
         }
         guard fsync(descriptor) == 0 else {
-            throw ioDiagnostic("Could not synchronize TOML staging file", code: errno)
+            throw ioDiagnostic("Could not synchronize TOML staging file", code: errno, access: .write)
         }
         keep = true
         return path
@@ -336,11 +346,11 @@ public final class TOMLFile {
         let parent = URL(fileURLWithPath: path).deletingLastPathComponent().path
         let descriptor = Darwin.open(parent, O_RDONLY | O_CLOEXEC)
         guard descriptor >= 0 else {
-            throw ioDiagnostic("Could not open TOML parent directory", code: errno)
+            throw ioDiagnostic("Could not open TOML parent directory", code: errno, access: .write)
         }
         defer { Darwin.close(descriptor) }
         guard fsync(descriptor) == 0 else {
-            throw ioDiagnostic("Could not synchronize TOML parent directory", code: errno)
+            throw ioDiagnostic("Could not synchronize TOML parent directory", code: errno, access: .write)
         }
     }
 
@@ -353,27 +363,63 @@ public final class TOMLFile {
                 attributes: [.posixPermissions: 0o700]
             )
         } catch {
-            throw diagnostic(.io, "Could not create TOML parent directory: \(error)")
+            let cocoaError = error as NSError
+            let kind: TOMLDiagnostic.Kind = cocoaError.domain == NSCocoaErrorDomain
+                && cocoaError.code == NSFileWriteNoPermissionError ? .unwritable : .io
+            throw diagnostic(kind, "Could not create TOML parent directory: \(error)")
         }
     }
 
     private func makeCandidate(
-        data: Data,
+        document: TOMLSourceDocument,
         baseRevision: Revision?,
         baseContentDigest: String?
     ) -> Candidate {
-        .init(
+        let data = Data(document.source.utf8)
+        let contentDigest = Self.digest(data)
+        cache(document, digest: contentDigest)
+        let source = String(decoding: data, as: UTF8.self)
+        return .init(
             fileURL: url,
             data: data,
-            source: String(decoding: data, as: UTF8.self),
-            contentDigest: Self.digest(data),
+            source: source,
+            contentDigest: contentDigest,
             baseRevision: baseRevision,
             baseContentDigest: baseContentDigest
         )
     }
 
+    func sourceDocument(for snapshot: Snapshot) throws -> TOMLSourceDocument {
+        try requireMatchingURL(snapshot.fileURL)
+        return try document(for: snapshot.data, digest: snapshot.contentDigest)
+    }
+
+    func sourceDocument(for candidate: Candidate) throws -> TOMLSourceDocument {
+        try requireMatchingURL(candidate.fileURL)
+        return try document(for: candidate.data, digest: candidate.contentDigest)
+    }
+
+    private func document(for data: Data, digest: String) throws -> TOMLSourceDocument {
+        if let cached = documentCache[digest], cached.source.utf8.elementsEqual(data) {
+            return cached
+        }
+        let document = try TOMLSourceDocument(data: data, fileURL: url)
+        cache(document, digest: digest)
+        return document
+    }
+
+    private func cache(_ document: TOMLSourceDocument, digest: String) {
+        if documentCache[digest] == nil {
+            documentCacheOrder.append(digest)
+        }
+        documentCache[digest] = document
+        while documentCacheOrder.count > 4 {
+            documentCache.removeValue(forKey: documentCacheOrder.removeFirst())
+        }
+    }
+
     private func requireMatchingURL(_ other: URL) throws {
-        guard other.standardizedFileURL == url else {
+        guard other == url else {
             throw diagnostic(.topologyChanged, "Snapshot or candidate belongs to a different TOML file")
         }
     }
@@ -410,14 +456,23 @@ public final class TOMLFile {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
-    private func ioDiagnostic(_ message: String, code: Int32) -> TOMLDiagnostic {
-        let kind: TOMLDiagnostic.Kind = code == EACCES || code == EPERM ? .unreadable : .io
+    private func ioDiagnostic(_ message: String, code: Int32, access: FileAccess = .read) -> TOMLDiagnostic {
+        let kind: TOMLDiagnostic.Kind = if code == EACCES || code == EPERM {
+            access == .read ? .unreadable : .unwritable
+        } else {
+            .io
+        }
         return diagnostic(kind, "\(message): \(String(cString: strerror(code)))")
     }
 
     private func diagnostic(_ kind: TOMLDiagnostic.Kind, _ message: String) -> TOMLDiagnostic {
         .init(kind: kind, message: message, fileURL: url)
     }
+}
+
+private enum FileAccess {
+    case read
+    case write
 }
 
 private struct RetryRead: Error {}
@@ -557,7 +612,7 @@ private enum PathResolver {
             throw pathDiagnostic("Could not open filesystem root", code: errno, fileURL: url)
         }
         let root = Directory(name: nil, descriptor: .init(rootValue))
-        let pending = url.standardizedFileURL.pathComponents.dropFirst().map {
+        let pending = url.pathComponents.dropFirst().map {
             PendingComponent(name: $0, fromSymlinkTarget: false)
         }
         return .init(root: root, directories: [root], pending: pending)

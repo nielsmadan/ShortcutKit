@@ -18,18 +18,22 @@ persistence in a shared file.
 
 ## Decision
 
-Add one additive public Core type, `TOMLFile`, representing a coordinated TOML
-file. It provides immutable, `Sendable` snapshots containing source text and a
-content revision, lossless assignment-level edits, serialized in-process
-writes, atomic replacement, and structured source diagnostics. `FileStore`
-gains an initializer that accepts a shared instance and a way to decode
-`RawState` from a supplied snapshot. Existing URL initializers continue to work
-and create their own instance internally.
+Add an additive public Core API centered on `TOMLFile`, representing a
+coordinated TOML file. Supporting path, value, edit-plan, and diagnostic types
+make the transaction usable without exposing either parser dependency. The API
+provides immutable, `Sendable` snapshots containing source text and a content
+revision, lossless assignment-level edits, serialized in-process writes,
+atomic replacement, and structured source diagnostics. `FileStore` gains an
+initializer that accepts a shared instance and a way to decode `RawState` from
+a supplied snapshot. Existing URL initializers continue to work and create
+their own instance internally.
 
-`swift-toml-edit` 3.0.0 supplies the `Sendable`, concrete source model and
-format-preserving value edits. TOMLKit remains the semantic validator and
-decoder, including its source-region diagnostics. ShortcutKit wraps both rather
-than maintaining its own TOML lexer or parser.
+`swift-toml-edit` 3.0.0 supplies the `Sendable`, concrete lossless source model.
+TOMLKit remains the semantic validator and decoder, including its source-region
+diagnostics. The dependency does not expose comment-aware assignment removal,
+nested inline-table mutation, or the value spans needed to implement them.
+ShortcutKit therefore keeps a narrow assignment scanner and source-model
+adapter for those operations; it does not maintain a second TOML parser.
 
 The lossless layer preserves untouched source bytes, including comments,
 whitespace, line endings, table ordering, and unknown content. A changed
@@ -66,9 +70,10 @@ symlink.
 - Existing `FileStore` source compatibility is preserved.
 - All in-process writers must share the same file instance to receive the
   serialization guarantee.
-- Atomic writes prevent torn files but cannot eliminate a last-writer-wins race
-  with an uncooperative external editor. Writers patch the latest readable
-  source immediately before replacement to minimize that window.
+- Atomic writes prevent torn files. A namespaced store remembers its last loaded
+  state, applies only the caller's semantic changes to the newest readable
+  source, and retries if that source changes before replacement. Simultaneous
+  edits to the same owned value still resolve to the last successful writer.
 - `swift-toml-edit` is pinned exactly while it remains a young, single-maintainer
   dependency, and ShortcutKit keeps compatibility tests for the required edit
   and preservation behavior.

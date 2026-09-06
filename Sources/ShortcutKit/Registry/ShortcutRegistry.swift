@@ -7,9 +7,20 @@ import ShortcutField
 /// Owns shortcut contexts, persistence, conflict analysis, and event routing.
 @MainActor
 public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
-    /// Opaque, migration-prepared registry state ready for an infallible live swap.
+    /// Opaque, migration-prepared state branded for one registry generation.
     public struct PreparedState: Sendable {
         fileprivate let rawState: RawState
+        fileprivate let ownerID: UUID?
+        fileprivate let generation: UInt64?
+        fileprivate let tokenID: UUID
+    }
+
+    /// A reason prepared state cannot be applied to a registry.
+    public enum PreparedStateError: Error, Sendable, Equatable {
+        case wrongRegistry
+        case stale
+        case alreadyApplied
+        case pendingChanges
     }
 
     /// A prepared state and its optional migrated persistence representation.
@@ -95,6 +106,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     var overrides: [String: [String: [Shortcut]]] = [:]
     private var pendingSave: DispatchWorkItem?
     private var hasUnsavedChanges = false
+    private let registryID = UUID()
+    private var mutationGeneration: UInt64 = 0
+    private var appliedPreparationIDs: Set<UUID> = []
     let router = RegistryEventRouter()
     var matchers: [String: any ContextMatching] = [:]
     var activeMatchers: [UUID: any ContextMatching] = [:]
@@ -144,24 +158,25 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
             attach(context: context)
         }
 
-        let preparation: Preparation
+        let loaded: RawState
         do {
-            preparation = try Self.makePreparation(store.load(), migrations: self.migrations)
+            loaded = try store.load()
         } catch {
-            Self.logger.error("load or migration failed: \(String(describing: error)); resetting")
-            preparation = .init(preparedState: .init(rawState: RawState()), persistenceWriteback: nil)
+            Self.logger.error("load failed: \(String(describing: error)); resetting")
+            loaded = RawState()
         }
-        if let writeback = preparation.persistenceWriteback {
-            do { try store.save(writeback) } catch {
+        var prepared = loaded
+        ShortcutMigrationApplier.applyBestEffort(self.migrations, to: &prepared)
+        if prepared != loaded {
+            do { try store.save(prepared) } catch {
                 Self.logger.error("post-migration save failed: \(String(describing: error))")
                 hasUnsavedChanges = true
             }
         }
-        let loaded = preparation.preparedState.rawState
-        overrides = loaded.overrides
-        hintsEnabledOverride = loaded.preferences.hintsEnabled
+        overrides = prepared.overrides
+        hintsEnabledOverride = prepared.preferences.hintsEnabled
         hintsEnabled = hintsEnabledOverride ?? defaultHintsEnabled
-        hintFrequencyOverride = loaded.preferences.hintFrequency
+        hintFrequencyOverride = prepared.preferences.hintFrequency
         hintFrequency = hintFrequencyOverride ?? defaultHintFrequency
         refreshDerivedState()
         checkDefaultLevelConflicts()
@@ -169,7 +184,12 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 
     /// Applies the registry's migration sequence without changing live state.
     public func prepare(_ state: RawState) throws -> Preparation {
-        try Self.makePreparation(state, migrations: migrations)
+        try Self.makePreparation(
+            state,
+            migrations: migrations,
+            ownerID: registryID,
+            generation: mutationGeneration
+        )
     }
 
     /// Applies a migration sequence without constructing or changing a registry.
@@ -177,20 +197,24 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         _ state: RawState,
         migrations: [ShortcutMigration] = []
     ) throws -> Preparation {
-        try makePreparation(state, migrations: [WrapSingleBindingsMigration.entry] + migrations)
+        try makePreparation(
+            state,
+            migrations: [WrapSingleBindingsMigration.entry] + migrations,
+            ownerID: nil,
+            generation: nil
+        )
     }
 
-    /// Applies prepared state after every pending mutation has been persisted.
-    public func commit(_ preparedState: PreparedState) {
-        precondition(
-            !hasUnsavedChanges,
-            "ShortcutRegistry.commit requires pending changes to be flushed or explicitly discarded."
-        )
+    /// Applies current, unused state prepared by this registry after pending mutations are persisted.
+    public func commit(_ preparedState: PreparedState) throws {
+        try validate(preparedState, requiresCurrentGeneration: true)
+        guard !hasUnsavedChanges else { throw PreparedStateError.pendingChanges }
         apply(preparedState)
     }
 
-    /// Discards a failed pending mutation and restores a prepared valid state.
-    public func discardPendingSave(applying preparedState: PreparedState) {
+    /// Discards a failed pending mutation and restores unused state prepared by this registry.
+    public func discardPendingSave(applying preparedState: PreparedState) throws {
+        try validate(preparedState, requiresCurrentGeneration: false)
         pendingSave?.cancel()
         pendingSave = nil
         hasUnsavedChanges = false
@@ -218,17 +242,34 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     /// Reloads out-of-band store changes and refreshes bindings, hint preferences,
     /// conflicts, `keyBindings`, and binding publishers.
     ///
-    /// Pending changes are flushed first. On failure, the current state and any
-    /// unsaved changes are retained and the method returns `false`.
+    /// Pending changes are flushed first. Returns `true` only when the load and
+    /// any migration write-back both succeed. Use ``reloadResult()`` to distinguish
+    /// a failed reload from a successful live reload whose write-back failed.
     @discardableResult
     public func reload() -> Bool {
-        guard flushPendingSave() else { return false }
+        let result = reloadResult()
+        return result.didReload && result.error == nil
+    }
+
+    /// Re-reads the store and distinguishes persistence, load, and migration failures.
+    @discardableResult
+    public func reloadResult() -> ShortcutReloadResult {
+        if let saveResult = flushPendingSaveResult(), let error = saveResult.error {
+            return .pendingSaveFailed(error)
+        }
+        let loaded: RawState
+        do {
+            loaded = try store.load()
+        } catch {
+            Self.logger.error("reload failed: \(String(describing: error)); keeping current state")
+            return .loadFailed(error)
+        }
         let preparation: Preparation
         do {
-            preparation = try prepare(store.load())
+            preparation = try prepare(loaded)
         } catch {
-            Self.logger.error("reload or migration failed: \(String(describing: error)); keeping current state")
-            return false
+            Self.logger.error("reload migration failed: \(String(describing: error)); keeping current state")
+            return .migrationFailed(error)
         }
 
         var writebackResult: ShortcutSaveResult?
@@ -240,24 +281,39 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
                 writebackResult = .failed(writeback, error)
             }
         }
-        commit(preparation.preparedState)
+        do {
+            try commit(preparation.preparedState)
+        } catch {
+            Self.logger.error("prepared reload became stale: \(String(describing: error)); keeping current state")
+            return .migrationFailed(error)
+        }
         if case .failed = writebackResult {
             hasUnsavedChanges = true
         }
         if let writebackResult {
             saveResultSubject.send(writebackResult)
         }
-        return true
+        if case let .failed(_, error) = writebackResult {
+            return .reloadedWithWritebackFailure(error)
+        }
+        return .reloaded
     }
 
     private static func makePreparation(
         _ state: RawState,
-        migrations: [ShortcutMigration]
+        migrations: [ShortcutMigration],
+        ownerID: UUID?,
+        generation: UInt64?
     ) throws -> Preparation {
         var migrated = state
         try ShortcutMigrationApplier.apply(migrations, to: &migrated)
         return .init(
-            preparedState: .init(rawState: migrated),
+            preparedState: .init(
+                rawState: migrated,
+                ownerID: ownerID,
+                generation: generation,
+                tokenID: UUID()
+            ),
             persistenceWriteback: migrated == state ? nil : migrated
         )
     }
@@ -275,7 +331,19 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         if hintsEnabled != nextHintsEnabled { hintsEnabled = nextHintsEnabled }
         if hintFrequency != nextHintFrequency { hintFrequency = nextHintFrequency }
 
+        appliedPreparationIDs.insert(preparedState.tokenID)
+        mutationGeneration &+= 1
         notifyChanges(affected)
+    }
+
+    private func validate(_ preparedState: PreparedState, requiresCurrentGeneration: Bool) throws {
+        guard preparedState.ownerID == registryID else { throw PreparedStateError.wrongRegistry }
+        guard !appliedPreparationIDs.contains(preparedState.tokenID) else {
+            throw PreparedStateError.alreadyApplied
+        }
+        if requiresCurrentGeneration, preparedState.generation != mutationGeneration {
+            throw PreparedStateError.stale
+        }
     }
 
     private static func changedActions(
@@ -496,6 +564,7 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
 
     func scheduleSave() {
         pendingSave?.cancel()
+        mutationGeneration &+= 1
         hasUnsavedChanges = true
         let work = DispatchWorkItem { [weak self] in
             Task { @MainActor in self?.savePendingChanges() }
@@ -505,20 +574,22 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     }
 
     @discardableResult
-    private func savePendingChanges() -> Bool {
-        guard hasUnsavedChanges else { return true }
+    private func savePendingChanges() -> ShortcutSaveResult? {
+        guard hasUnsavedChanges else { return nil }
         let state = currentRawState
         do {
             try store.save(state)
             hasUnsavedChanges = false
             pendingSave = nil
-            saveResultSubject.send(.saved(state))
-            return true
+            let result = ShortcutSaveResult.saved(state)
+            saveResultSubject.send(result)
+            return result
         } catch {
             pendingSave = nil
-            saveResultSubject.send(.failed(state, error))
+            let result = ShortcutSaveResult.failed(state, error)
+            saveResultSubject.send(result)
             Self.logger.error("save failed: \(String(describing: error))")
-            return false
+            return result
         }
     }
 
@@ -529,7 +600,11 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     /// Returns `false` when saving fails; the changes remain pending for retry.
     @discardableResult
     public func flushPendingSave() -> Bool {
-        guard hasUnsavedChanges else { return true }
+        flushPendingSaveResult()?.error == nil
+    }
+
+    private func flushPendingSaveResult() -> ShortcutSaveResult? {
+        guard hasUnsavedChanges else { return nil }
         pendingSave?.cancel()
         pendingSave = nil
         return savePendingChanges()

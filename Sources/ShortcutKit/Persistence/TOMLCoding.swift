@@ -14,7 +14,7 @@ enum TOMLCoding {
 
     static func encode(_ state: RawState) throws -> String {
         // Preferences require a namespace to avoid colliding with context tables.
-        let root = makeTable(from: state, includePreferences: false)
+        let root = makeTable(from: state)
         return serialize(root)
     }
 
@@ -27,25 +27,19 @@ enum TOMLCoding {
 
     static func decode(_ source: String, atKey keyPath: [String]) throws -> RawState {
         let root = try TOMLTable(string: source)
+        return try decode(root, atKey: keyPath)
+    }
+
+    @MainActor
+    static func decode(_ document: TOMLSourceDocument, atKey keyPath: [String]) throws -> RawState {
+        try decode(document.semanticRoot, atKey: keyPath)
+    }
+
+    private static func decode(_ root: TOMLTable, atKey keyPath: [String]) throws -> RawState {
         guard let subtable = navigate(root, path: keyPath) else {
             return RawState()
         }
         return try decodeTable(subtable)
-    }
-
-    static func encode(
-        _ state: RawState,
-        intoExisting existing: String?,
-        atKey keyPath: [String]
-    ) throws -> String {
-        let root: TOMLTable = if let existing, !existing.isEmpty {
-            try TOMLTable(string: existing)
-        } else {
-            TOMLTable()
-        }
-        let newSubtree = makeTable(from: state, includePreferences: true)
-        setSubtable(in: root, path: keyPath, to: newSubtree)
-        return serialize(root)
     }
 
     @MainActor
@@ -162,22 +156,9 @@ enum TOMLCoding {
         return current
     }
 
-    // TOMLTable children must be assigned back into their parent after mutation.
-    private static func setSubtable(in root: TOMLTable, path: [String], to value: TOMLTable) {
-        precondition(!path.isEmpty, "TOMLCoding.setSubtable: path must not be empty")
-        if path.count == 1 {
-            root[path[0]] = value
-            return
-        }
-        let head = path[0]
-        let headTable: TOMLTable = root[head]?.table ?? TOMLTable()
-        setSubtable(in: headTable, path: Array(path.dropFirst()), to: value)
-        root[head] = headTable
-    }
-
     private static let preferencesKey = "preferences"
 
-    private static func makeTable(from state: RawState, includePreferences: Bool) -> TOMLTable {
+    private static func makeTable(from state: RawState) -> TOMLTable {
         let root = TOMLTable()
         for (contextID, perAction) in state.overrides {
             let table = TOMLTable()
@@ -193,16 +174,6 @@ enum TOMLCoding {
                 }
             }
             root[contextID] = table
-        }
-        if includePreferences, !state.preferences.isDefault {
-            let prefs = TOMLTable()
-            if let hintsEnabled = state.preferences.hintsEnabled {
-                prefs["hints-enabled"] = hintsEnabled
-            }
-            if let hintFrequency = state.preferences.hintFrequency {
-                prefs["hint-frequency"] = hintFrequency.persistedString
-            }
-            root[preferencesKey] = prefs
         }
         return root
     }

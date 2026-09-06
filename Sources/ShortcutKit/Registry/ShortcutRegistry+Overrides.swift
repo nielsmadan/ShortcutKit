@@ -69,7 +69,6 @@ public extension ShortcutRegistry {
 
     func notifyChanges(_ refs: some Sequence<ActionRef>) {
         let refs = Array(refs)
-        guard !refs.isEmpty else { return }
         let contextsByID = Dictionary(uniqueKeysWithValues: contexts.map { ($0.id, $0) })
         let affectedContextIDs = Set(refs.map(\.contextID))
         for contextID in affectedContextIDs {
