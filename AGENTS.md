@@ -30,6 +30,9 @@ Temporary planning files are local working material. Anything durable belongs in
 Use `just` for the common workflow:
 
 ```bash
+just setup          # Resolve dependencies, install hooks, and verify the checkout
+just doctor         # Verify tools and hook installation
+just check          # Format check, lint, strict build, and tests
 just build          # Build the package (swift build -Xswiftc -warnings-as-errors)
 just test           # Run the full test suite (swift test)
 just lint           # Check style with SwiftLint (--strict)
@@ -38,11 +41,12 @@ just format         # Format the repository with SwiftFormat
 just clean          # Remove the build directory
 just example        # Build and run the SwiftUI example app
 just reset-example  # Clear the example app's persisted overrides
-just tag-release-patch  # Tag and push a patch release
-just tag-release-minor  # Tag and push a minor release
+just release          # Propose, check, confirm or override, and publish a version
+just release minor    # Propose a minor bump through the same confirmation flow
+just release --dry-run # Inspect the release proposal without checks or publication
 ```
 
-`pre-commit` (via `lefthook`) auto-runs `swiftformat` + `swiftlint --strict` on staged Swift files; `pre-push` runs `swift build` + `swift test`. Install hooks with `lefthook install` on a fresh checkout.
+`pre-commit` (via `lefthook`) auto-runs `swiftformat` + `swiftlint --strict` on staged Swift files; `pre-push` runs `swift build` + `swift test`. Run `just setup` on a fresh checkout to resolve dependencies and install hooks.
 
 ## Coding Style & Naming Conventions
 

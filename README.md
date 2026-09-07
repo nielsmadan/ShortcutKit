@@ -45,6 +45,24 @@ All three products — `ShortcutKit` (Core), `ShortcutKitUI`, and `ShortcutKitGl
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the forward-looking backlog and [`docs/architecture.md`](docs/architecture.md) for package boundaries and invariants.
 
+## Releases
+
+Run `just release` from a clean, current `main` checkout with complete history and matching
+local/origin release tags. It proposes a version, runs `just check`, then prompts. Enter `y` to
+publish, a version or `patch`/`minor`/`major` to revise the proposal, or press Enter to cancel.
+This tooling requires Python 3.9+ in addition to the development tools.
+
+`just release minor` and `just release 1.0.0` preselect an override through the same prompt.
+`just release --dry-run` reads Git state and previews without checks or publication. `--yes`
+explicitly confirms unattended use; other nonterminal invocations fail. `feat` proposes a minor
+bump, `fix`/`perf` a patch, and breaking changes a major bump (minor during `0.x`). Maintenance-only
+changes require an explicit bump.
+
+Confirmation atomically pushes `main` and an annotated tag for Swift Package Manager consumers.
+There is no version-file preparation commit. The preview counts existing local commits included
+in the push. Checks are declared in `scripts/release.json`. Failed pushes leave the local tag for
+inspection; public tags must not be replaced.
+
 ## License
 
 [MIT](LICENSE).
