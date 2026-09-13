@@ -6,6 +6,10 @@
     [
       "just",
       "check"
+    ],
+    [
+      "just",
+      "build-docs"
     ]
   ],
   "tools": [

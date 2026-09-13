@@ -57,6 +57,36 @@ lint-fix *files:
 format *files:
     @swiftformat {{ if files == "" { "." } else { files } }}
 
+# Build DocC docs for all three libraries and fail on any diagnostic (e.g. unresolved
+# symbol links). `xcodebuild docbuild` exits 0 even on warnings, so inspect the
+# diagnostics file each module writes. Dependency modules build too; only ours are gated.
+build-docs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rm -rf .build/docc
+    for scheme in ShortcutKit ShortcutKitUI ShortcutKitGlobal; do
+        xcodebuild docbuild -scheme "$scheme" -destination 'platform=macOS' -derivedDataPath .build/docc
+    done
+    total=0
+    for scheme in ShortcutKit ShortcutKitUI ShortcutKitGlobal; do
+        diag=$(find .build/docc -name "$scheme-diagnostics.json" | head -1)
+        if [ -z "$diag" ]; then
+            echo "error: no DocC diagnostics file for $scheme — docc did not run" >&2
+            exit 1
+        fi
+        count=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1]))['diagnostics']))" "$diag")
+        if [ "$count" -ne 0 ]; then
+            echo "$scheme:" >&2
+            python3 -c "import json,sys; [print('  -', x.get('summary','')) for x in json.load(open(sys.argv[1]))['diagnostics']]" "$diag" >&2
+        fi
+        total=$((total + count))
+    done
+    if [ "$total" -ne 0 ]; then
+        echo "error: DocC reported $total diagnostic(s)." >&2
+        exit 1
+    fi
+    echo "DocC: no diagnostics."
+
 clean:
     @rm -rf .build
     @echo "Build directory cleaned."
