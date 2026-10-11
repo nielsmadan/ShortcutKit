@@ -1,7 +1,6 @@
 # Repository Guidelines
 
-This is the single source of truth for agentic coding instructions. Claude Code
-reads it via an `@AGENTS.md` import in `CLAUDE.md`; other agents read it directly.
+This is the single source of truth for agentic coding instructions. Coding agents read this file directly.
 
 ## Project Structure & Module Organization
 
