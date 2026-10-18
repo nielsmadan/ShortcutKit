@@ -40,7 +40,7 @@ just format         # Format the repository with SwiftFormat
 just clean          # Remove the build directory
 just example        # Build and run the SwiftUI example app
 just reset-example  # Clear the example app's persisted overrides
-just release          # Propose, check, confirm or override, and publish a version
+just release          # Propose, check, confirm or override, and publish a version (needs curtains)
 just release minor    # Propose a minor bump through the same confirmation flow
 just release --dry-run # Inspect the release proposal without checks or publication
 ```

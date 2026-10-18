@@ -42,7 +42,6 @@ test:
 
 # Format check, lint, strict build and tests. The pre-push gate.
 check:
-    @python3 -B -m unittest discover -s scripts -p 'test_release*.py'
     @swiftformat --lint .
     @swiftlint --strict .
     @swift build -Xswiftc -warnings-as-errors
@@ -107,4 +106,4 @@ reset-example:
 
 [positional-arguments]
 release *args:
-    python3 scripts/release.py "$@"
+    @curtains "$@"

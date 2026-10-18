@@ -47,16 +47,20 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the forward-looking backlog and [`d
 
 ## Releases
 
-Run `just release` from a clean, current `main` checkout with complete history and matching
-local/origin release tags. It proposes a version, runs `just check`, then prompts. Enter `y` to
-publish, a version or `patch`/`minor`/`major` to revise the proposal, or press Enter to cancel.
-This tooling requires Python 3.9+ in addition to the development tools.
+Releases use [curtains](https://github.com/nielsmadan/curtaincall); install it first with
+`brew install nielsmadan/tap/curtaincall`. Run `just release` from a clean `main` checkout with
+complete history. It proposes a version, runs `just check` and `just build-docs`, then prompts.
+Enter `y` to publish, a version or `patch`/`minor`/`major` to revise the proposal, or press Enter
+to cancel.
 
 `just release minor` and `just release 1.0.0` preselect an override through the same prompt.
-`just release --dry-run` reads Git state and previews without checks or publication. `--yes`
-explicitly confirms unattended use; other nonterminal invocations fail. `feat` proposes a minor
-bump, `fix`/`perf` a patch, and breaking changes a major bump (minor during `0.x`). Maintenance-only
-changes require an explicit bump.
+`just release --dry-run` reads Git state and previews without the tool check, checks or
+publication. `--yes` explicitly confirms unattended use; other nonterminal invocations fail.
+`feat` proposes a minor bump, `fix`/`perf` a patch, and breaking changes a major bump (minor
+during `0.x`). Maintenance-only changes require an explicit bump.
+
+Curtains never fetches: the fetched `origin/main` must be an ancestor of `HEAD`. Every historical
+`vMAJOR.MINOR.PATCH` tag must exist both locally and on origin and point to the same commit.
 
 Confirmation atomically pushes `main` and an annotated tag for Swift Package Manager consumers.
 There is no version-file preparation commit. The preview counts existing local commits included
