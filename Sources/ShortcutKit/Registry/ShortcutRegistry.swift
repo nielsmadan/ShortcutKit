@@ -28,7 +28,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         public let preparedState: PreparedState
         public let persistenceWriteback: RawState?
 
-        public var requiresPersistenceWriteback: Bool { persistenceWriteback != nil }
+        public var requiresPersistenceWriteback: Bool {
+            persistenceWriteback != nil
+        }
     }
 
     @Published public private(set) var conflicts: [Conflict] = []
@@ -328,8 +330,12 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         hintFrequencyOverride = next.preferences.hintFrequency
         let nextHintsEnabled = hintsEnabledOverride ?? defaultHintsEnabled
         let nextHintFrequency = hintFrequencyOverride ?? defaultHintFrequency
-        if hintsEnabled != nextHintsEnabled { hintsEnabled = nextHintsEnabled }
-        if hintFrequency != nextHintFrequency { hintFrequency = nextHintFrequency }
+        if hintsEnabled != nextHintsEnabled {
+            hintsEnabled = nextHintsEnabled
+        }
+        if hintFrequency != nextHintFrequency {
+            hintFrequency = nextHintFrequency
+        }
 
         appliedPreparationIDs.insert(preparedState.tokenID)
         mutationGeneration &+= 1
@@ -594,7 +600,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
     }
 
     /// Whether the registry has a mutation that has not reached its store.
-    public var hasPendingSave: Bool { hasUnsavedChanges }
+    public var hasPendingSave: Bool {
+        hasUnsavedChanges
+    }
 
     /// Persists pending changes immediately, bypassing the 250 ms debounce.
     /// Returns `false` when saving fails; the changes remain pending for retry.
@@ -615,7 +623,9 @@ public final class ShortcutRegistry: ObservableObject, RegistryOverrideSource {
         router.__currentStackIDs
     }
 
-    var __router: RegistryEventRouter { router }
+    var __router: RegistryEventRouter {
+        router
+    }
     // swiftlint:enable identifier_name
 }
 

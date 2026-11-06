@@ -242,8 +242,8 @@ public final class ShortcutContext<Action: ShortcutAction>: AnyShortcutContext {
     // swiftlint:enable identifier_name
 
     func notifyOverrideChange(actionID: String) {
-        guard let subject = changeSubjects[actionID] else { return }
-        guard let action = Action.allCases.first(where: { $0.rawValue == actionID })
+        guard let subject = changeSubjects[actionID],
+              let action = Action.allCases.first(where: { $0.rawValue == actionID })
         else { return }
         subject.send(shortcuts(for: action))
     }

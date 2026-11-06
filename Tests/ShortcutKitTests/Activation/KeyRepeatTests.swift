@@ -86,10 +86,10 @@ enum RepeatAction: String, ShortcutAction {
     /// `NSEvent.isARepeat` throws on non-keyboard events, so the repeat check
     /// must short-circuit on event type before reading it.
     @Test("the repeat check does not read isARepeat on a scroll event")
-    func scrollEventDoesNotThrow() {
-        let cg = CGEvent(scrollWheelEvent2Source: nil, units: .pixel,
-                         wheelCount: 1, wheel1: 10, wheel2: 0, wheel3: 0)!
-        let scroll = NSEvent(cgEvent: cg)!
+    func scrollEventDoesNotThrow() throws {
+        let cg = try #require(CGEvent(scrollWheelEvent2Source: nil, units: .pixel,
+                                      wheelCount: 1, wheel1: 10, wheel2: 0, wheel3: 0))
+        let scroll = try #require(NSEvent(cgEvent: cg))
 
         #expect(ContextMatcher<RepeatAction>.isSuppressedRepeat(scroll, for: .deleteItem) == false)
     }

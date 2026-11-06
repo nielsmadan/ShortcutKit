@@ -8,7 +8,7 @@ import Testing
 @Suite("CarbonGlobalActivator") struct CarbonGlobalActivatorTests {
     enum GlobalAct: String, ShortcutAction {
         case ping
-        // Function keys minimize collisions with live system hotkeys.
+        /// Function keys minimize collisions with live system hotkeys.
         var definition: ShortcutActionDefinition {
             .init("Ping", Shortcut.discrete(DiscreteShortcut(keyCode: UInt16(kVK_F18), modifiers: [])))
         }
@@ -16,7 +16,9 @@ import Testing
 
     enum ChordAct: String, ShortcutAction {
         case palette
-        var definition: ShortcutActionDefinition { .init("Palette", Shortcut("cmd+k cmd+p")) }
+        var definition: ShortcutActionDefinition {
+            .init("Palette", Shortcut("cmd+k cmd+p"))
+        }
     }
 
     @Test("start registers a global binding and reports .registered")

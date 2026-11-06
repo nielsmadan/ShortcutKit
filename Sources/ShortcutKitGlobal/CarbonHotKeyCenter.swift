@@ -45,7 +45,9 @@ final class CarbonHotKeyCenter {
 
     private init() {}
 
-    var registeredCount: Int { hotKeys.count }
+    var registeredCount: Int {
+        hotKeys.count
+    }
 
     func register(
         combo: CarbonHotKeyCombo,

@@ -50,7 +50,11 @@ enum FocusGateAction: String, ShortcutAction {
         let run = { for event in events {
             _ = matcher.handle(event).result
         } }
-        if focused { withTextFieldFocus(run) } else { run() }
+        if focused {
+            withTextFieldFocus(run)
+        } else {
+            run()
+        }
         return fired
     }
 

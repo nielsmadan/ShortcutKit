@@ -62,7 +62,9 @@ struct ShortcutRowView: View {
         usesContainerVerticalSpacing ? 0 : (style == .dense ? 1 : 10)
     }
 
-    var bindingCount: Int { row.effectiveShortcuts.count }
+    var bindingCount: Int {
+        row.effectiveShortcuts.count
+    }
 
     var subtitleText: String? {
         guard showsDescription, let description = row.description else { return nil }

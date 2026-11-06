@@ -2,8 +2,13 @@ import AppKit
 
 @MainActor
 final class HintHUDPanel: NSPanel {
-    override var canBecomeKey: Bool { false }
-    override var canBecomeMain: Bool { false }
+    override var canBecomeKey: Bool {
+        false
+    }
+
+    override var canBecomeMain: Bool {
+        false
+    }
 
     init() {
         super.init(

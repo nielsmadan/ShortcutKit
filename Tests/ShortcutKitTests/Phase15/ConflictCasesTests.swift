@@ -6,12 +6,16 @@ import Testing
 struct ConflictCasesTests {
     enum LocalA: String, ShortcutAction {
         case save
-        var definition: ShortcutActionDefinition { .init("Save", "cmd+s") }
+        var definition: ShortcutActionDefinition {
+            .init("Save", "cmd+s")
+        }
     }
 
     enum GlobalA: String, ShortcutAction {
         case quickOpen
-        var definition: ShortcutActionDefinition { .init("Open", "cmd+s") }
+        var definition: ShortcutActionDefinition {
+            .init("Open", "cmd+s")
+        }
     }
 
     @Test func crossScopeIsShadowedByGlobal() {
@@ -22,7 +26,13 @@ struct ConflictCasesTests {
         let global = ShortcutContext<GlobalA>(global: "launcher") { _, _ in }
         let reg = ShortcutRegistry(contexts: [local, global])
         let conflicts = reg.conflicts
-        #expect(conflicts.contains { if case .shadowedByGlobal = $0 { true } else { false } })
+        #expect(conflicts.contains {
+            if case .shadowedByGlobal = $0 {
+                true
+            } else {
+                false
+            }
+        })
     }
 
     @Test func multiStepGlobalIsUnsupportedInScope() {
@@ -37,7 +47,13 @@ struct ConflictCasesTests {
         defer { ShortcutRegistry.assertionFunction = prior }
         let ctx = ShortcutContext<Chord>(global: "g") { _, _ in }
         let reg = ShortcutRegistry(contexts: [ctx])
-        #expect(reg.conflicts.contains { if case .unsupportedInScope = $0 { true } else { false } })
+        #expect(reg.conflicts.contains {
+            if case .unsupportedInScope = $0 {
+                true
+            } else {
+                false
+            }
+        })
     }
 
     @Test func perBindingOccurrenceForArrayOverrides() {
@@ -56,7 +72,11 @@ struct ConflictCasesTests {
         let ctx = ShortcutContext<Dup>("x")
         let reg = ShortcutRegistry(contexts: [ctx])
         let dups = reg.conflicts.compactMap { c -> [Occurrence]? in
-            if case let .duplicate(o) = c { return o } else { return nil }
+            if case let .duplicate(o) = c {
+                o
+            } else {
+                nil
+            }
         }
         #expect(dups.first?.count == 2)
     }

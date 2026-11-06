@@ -11,7 +11,7 @@ final class ContinuousCoalescer {
     }
 
     private var pending: [Key: Pending] = [:]
-    // Written once before use; `nonisolated(unsafe)` permits cleanup from `deinit`.
+    /// Written once before use; `nonisolated(unsafe)` permits cleanup from `deinit`.
     private nonisolated(unsafe) var observer: CFRunLoopObserver?
 
     init() {

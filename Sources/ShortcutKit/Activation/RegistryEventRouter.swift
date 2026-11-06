@@ -51,7 +51,9 @@ final class RegistryEventRouter {
             case let .advanced(consume):
                 didAdvance = true
                 consumeFromAdvance = consumeFromAdvance || consume
-                if advanced == nil { advanced = outcome.action }
+                if advanced == nil {
+                    advanced = outcome.action
+                }
             case .fired:
                 resetOthers(winner: matcher)
                 emitDebug(event) {
@@ -97,7 +99,10 @@ final class RegistryEventRouter {
         stack = matchers
     }
 
-    var __currentStackIDs: [String] { stack.map(\.contextID) }
+    var __currentStackIDs: [String] {
+        stack.map(\.contextID)
+    }
+
     // swiftlint:enable identifier_name
 
     /// Router order — outermost first. `nil` activation ids are skipped: only

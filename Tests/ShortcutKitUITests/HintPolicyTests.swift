@@ -54,6 +54,11 @@ struct HintPolicyTests {
 
 private final class MutableClock: @unchecked Sendable {
     private var t: TimeInterval = 0
-    func advance(by dt: TimeInterval) { t += dt }
-    var now: @Sendable () -> Date { { [weak self] in Date(timeIntervalSince1970: self?.t ?? 0) } }
+    func advance(by dt: TimeInterval) {
+        t += dt
+    }
+
+    var now: @Sendable () -> Date {
+        { [weak self] in Date(timeIntervalSince1970: self?.t ?? 0) }
+    }
 }

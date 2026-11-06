@@ -5,7 +5,7 @@ import ShortcutKit
 
 // MARK: - Per-mode action enums
 
-// Separate action types let bindings overlap across modes.
+/// Separate action types let bindings overlap across modes.
 enum SelectModeAction: String, ShortcutAction {
     case lasso, wand, move
 

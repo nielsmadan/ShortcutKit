@@ -6,7 +6,9 @@ import SwiftUI
 struct MainWindowView: View {
     private enum PlaygroundTab: String, CaseIterable, Identifiable {
         case legend, hints
-        var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
     }
 
     @ObservedObject var canvasModel = ContextWiring.canvas

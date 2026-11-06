@@ -137,8 +137,13 @@ private struct BuiltInShortcutHintToast: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    private var metrics: ShortcutHintMetrics { style.size.metrics }
-    private var colors: ShortcutHintColors { style.resolvedColors(for: colorScheme) }
+    private var metrics: ShortcutHintMetrics {
+        style.size.metrics
+    }
+
+    private var colors: ShortcutHintColors {
+        style.resolvedColors(for: colorScheme)
+    }
 
     @ViewBuilder
     private var text: some View {
@@ -156,7 +161,6 @@ private struct BuiltInShortcutHintToast: View {
             .padding(.vertical, metrics.verticalPadding)
     }
 
-    @ViewBuilder
     var body: some View {
         switch style.container {
         case .roundedRectangle:
@@ -202,15 +206,8 @@ struct AnyShortcutHintStyle: Sendable {
     }
 }
 
-private struct ShortcutHintStyleKey: EnvironmentKey {
-    static let defaultValue = AnyShortcutHintStyle(ShortcutHintToastStyle())
-}
-
 extension EnvironmentValues {
-    var shortcutHintStyle: AnyShortcutHintStyle {
-        get { self[ShortcutHintStyleKey.self] }
-        set { self[ShortcutHintStyleKey.self] = newValue }
-    }
+    @Entry var shortcutHintStyle: AnyShortcutHintStyle = .init(ShortcutHintToastStyle())
 }
 
 struct StyledShortcutHint: View {

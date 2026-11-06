@@ -6,8 +6,13 @@ struct GlobalActivatorTests {
     final class FakeActivator: GlobalActivator {
         var started = false
         var status: [BindingID: GlobalBindingStatus] = [:]
-        func start(_: ShortcutRegistry) throws { started = true }
-        func stop() { started = false }
+        func start(_: ShortcutRegistry) throws {
+            started = true
+        }
+
+        func stop() {
+            started = false
+        }
     }
 
     @Test func protocolShape() throws {

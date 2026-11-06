@@ -5,7 +5,9 @@ import Testing
 
 enum SnapshotAction: String, ShortcutAction {
     case save
-    var definition: ShortcutActionDefinition { .init("Save", "cmd+s") }
+    var definition: ShortcutActionDefinition {
+        .init("Save", "cmd+s")
+    }
 }
 
 @MainActor

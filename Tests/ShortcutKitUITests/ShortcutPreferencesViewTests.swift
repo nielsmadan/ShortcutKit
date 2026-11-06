@@ -7,7 +7,9 @@ import Testing
 struct ShortcutPreferencesViewTests {
     enum Act: String, ShortcutAction {
         case save
-        var definition: ShortcutActionDefinition { .init("Save", Shortcut("cmd+s")) }
+        var definition: ShortcutActionDefinition {
+            .init("Save", Shortcut("cmd+s"))
+        }
     }
 
     @Test func preferencesViewExposesRegistry() {

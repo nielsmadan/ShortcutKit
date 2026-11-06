@@ -55,10 +55,18 @@ enum ShortcutKitHelpers {
 
     private static func swiftUIModifiers(_ ns: NSEvent.ModifierFlags) -> EventModifiers {
         var out: EventModifiers = []
-        if ns.contains(.command) { out.insert(.command) }
-        if ns.contains(.shift) { out.insert(.shift) }
-        if ns.contains(.option) { out.insert(.option) }
-        if ns.contains(.control) { out.insert(.control) }
+        if ns.contains(.command) {
+            out.insert(.command)
+        }
+        if ns.contains(.shift) {
+            out.insert(.shift)
+        }
+        if ns.contains(.option) {
+            out.insert(.option)
+        }
+        if ns.contains(.control) {
+            out.insert(.control)
+        }
         return out
     }
 }

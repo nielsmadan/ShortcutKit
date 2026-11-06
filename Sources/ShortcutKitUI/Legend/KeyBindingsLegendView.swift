@@ -92,7 +92,9 @@ public struct KeyBindingsLegendView: View {
         self.label = label
     }
 
-    var styleForTest: LegendStyle { style }
+    var styleForTest: LegendStyle {
+        style
+    }
 
     public var body: some View {
         switch backing {
@@ -223,7 +225,7 @@ private struct LegendGrid: View {
     }
 }
 
-// AppKit does not cache failed font lookups.
+/// AppKit does not cache failed font lookups.
 struct LegendResolvedFonts {
     let shortcut: NSFont
     let label: NSFont
@@ -263,9 +265,17 @@ private struct LegendEntryCell: View {
 
     enum Mode: Equatable { case columns, inline }
 
-    private var primaryShortcut: Shortcut? { entry.effectiveShortcuts.first }
-    private var shortcut: String { primaryShortcut?.displayString ?? "" }
-    private var labelString: String { label(entry) ?? String(localized: entry.displayName) }
+    private var primaryShortcut: Shortcut? {
+        entry.effectiveShortcuts.first
+    }
+
+    private var shortcut: String {
+        primaryShortcut?.displayString ?? ""
+    }
+
+    private var labelString: String {
+        label(entry) ?? String(localized: entry.displayName)
+    }
 
     private var descriptionTooltip: String? {
         legendTooltipText(label: labelString, description: entry.description)

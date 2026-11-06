@@ -21,7 +21,9 @@ final class WizardContextModel: ObservableObject {
     @Published var pageIndex = 0
     let context: ShortcutContext<WizardAction>
 
-    var pageCount: Int { 3 }
+    var pageCount: Int {
+        3
+    }
 
     init() {
         context = ShortcutContext<WizardAction>("wizard", includeInSettings: false)

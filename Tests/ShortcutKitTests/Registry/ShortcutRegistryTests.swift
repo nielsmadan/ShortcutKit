@@ -23,17 +23,23 @@ private final class RecordingStore: ShortcutBindingsStore {
     var shouldFailSave = false
 
     func load() throws -> RawState {
-        if shouldFailLoad { throw Error.loadFailed }
+        if shouldFailLoad {
+            throw Error.loadFailed
+        }
         return state
     }
 
     func save(_ state: RawState) throws {
         saveCount += 1
-        if shouldFailSave { throw Error.saveFailed }
+        if shouldFailSave {
+            throw Error.saveFailed
+        }
         self.state = state
     }
 
-    func clear() throws { state = RawState() }
+    func clear() throws {
+        state = RawState()
+    }
 }
 
 @MainActor
@@ -271,7 +277,7 @@ private final class RecordingStore: ShortcutBindingsStore {
     }
 
     @Test("reload applies migrations through the same preparation path")
-    func reloadAppliesMigrations() throws {
+    func reloadAppliesMigrations() {
         let store = RecordingStore()
         store.state = RawState(overrides: ["editor": ["save-legacy": ["cmd+shift+s"]]])
         let context = ShortcutContext<DemoAction>("editor")
@@ -296,7 +302,9 @@ private final class RecordingStore: ShortcutBindingsStore {
         struct MigrationError: Error {}
         let store = RecordingStore()
         let migration: ShortcutMigration = .custom { state in
-            if state.overrides["invalid"] != nil { throw MigrationError() }
+            if state.overrides["invalid"] != nil {
+                throw MigrationError()
+            }
         }
         let context = ShortcutContext<DemoAction>("editor")
         let registry = ShortcutRegistry(contexts: [context], migrations: [migration], store: store)

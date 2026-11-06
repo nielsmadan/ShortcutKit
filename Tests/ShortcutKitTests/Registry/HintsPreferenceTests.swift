@@ -6,7 +6,9 @@ import Testing
 @Suite("HintsPreference") struct HintsPreferenceTests {
     enum Act: String, ShortcutAction {
         case save
-        var definition: ShortcutActionDefinition { .init("Save", "cmd+s") }
+        var definition: ShortcutActionDefinition {
+            .init("Save", "cmd+s")
+        }
     }
 
     private func isolatedStore() -> UserDefaultsStore {
@@ -30,7 +32,7 @@ import Testing
     }
 
     @Test("setHintsEnabled persists an override and survives reload")
-    func overridePersists() throws {
+    func overridePersists() {
         let store = isolatedStore()
         let registry = ShortcutRegistry(contexts: [ShortcutContext<Act>("editor")], store: store)
         registry.setHintsEnabled(false)
@@ -82,7 +84,7 @@ import Testing
     }
 
     @Test("setHintFrequency persists an override and survives reload")
-    func frequencyOverridePersists() throws {
+    func frequencyOverridePersists() {
         let store = isolatedStore()
         let registry = ShortcutRegistry(contexts: [ShortcutContext<Act>("editor")], store: store)
         registry.setHintFrequency(.always)

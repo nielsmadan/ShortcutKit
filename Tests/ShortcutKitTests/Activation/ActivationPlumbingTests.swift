@@ -8,7 +8,9 @@ import Testing
 
 enum PlumbAction: String, ShortcutAction {
     case save
-    var definition: ShortcutActionDefinition { .init("Save", "cmd+s") }
+    var definition: ShortcutActionDefinition {
+        .init("Save", "cmd+s")
+    }
 }
 
 @MainActor
@@ -51,7 +53,7 @@ enum PlumbAction: String, ShortcutAction {
     }
 
     @Test("matcher-driven dispatch fires the action via the router")
-    func endToEndMatcherDispatch() {
+    func endToEndMatcherDispatch() throws {
         var fired: (PlumbAction, ShortcutDispatch)?
         let ctx = ShortcutContext<PlumbAction>("editor")
         let activationID = UUID()
@@ -61,10 +63,10 @@ enum PlumbAction: String, ShortcutAction {
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         ctx.__activate(activationID: activationID)
 
-        let cg = CGEvent(keyboardEventSource: nil,
-                         virtualKey: CGKeyCode(kVK_ANSI_S), keyDown: true)!
+        let cg = try #require(CGEvent(keyboardEventSource: nil,
+                                      virtualKey: CGKeyCode(kVK_ANSI_S), keyDown: true))
         cg.flags = CGEventFlags(rawValue: UInt64(NSEvent.ModifierFlags.command.rawValue))
-        let event = NSEvent(cgEvent: cg)!
+        let event = try #require(NSEvent(cgEvent: cg))
 
         #expect(registry.__router.handle(event) == .fired)
         #expect(fired?.0 == .save)

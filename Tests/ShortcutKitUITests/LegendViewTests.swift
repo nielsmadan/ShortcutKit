@@ -22,7 +22,7 @@ struct LegendViewTests {
         return reg.bindings(for: ["editor"]).boundOnly()
     }
 
-    @Test func sheetRendersAtLeastOneEntry() throws {
+    @Test func sheetRendersAtLeastOneEntry() {
         let legend = sampleLegend()
         let view = KeyBindingsLegendView(bindings: legend, style: .sheet)
         #expect(view.styleForTest == .sheet)
@@ -98,7 +98,7 @@ struct LegendViewTests {
         let legend = sampleLegend()
         let filtered = includedLegendBindings(legend, isIncluded: { $0.actionID == "save" })
 
-        #expect(filtered.groups.map(\.entries).flatMap { $0 }.map(\.actionID) == ["save"])
+        #expect(filtered.groups.map(\.entries).flatMap(\.self).map(\.actionID) == ["save"])
     }
 
     @Test func includeOmitsEmptyGroups() {

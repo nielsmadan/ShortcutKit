@@ -46,7 +46,7 @@ struct ContextPickerView: View {
         .labelsHidden()
     }
 
-    @ViewBuilder private var entries: some View {
+    private var entries: some View {
         ForEach(visibleContexts, id: \.id) { ctx in
             HStack(spacing: 4) {
                 Text(label(for: ctx))

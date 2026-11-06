@@ -70,7 +70,9 @@ struct RegistryTypeErasedOverridesTests {
 
     enum NoDefaultAct: String, ShortcutAction {
         case run
-        var definition: ShortcutActionDefinition { .init("Run", kind: .discrete) }
+        var definition: ShortcutActionDefinition {
+            .init("Run", kind: .discrete)
+        }
     }
 
     @Test func scopeForContextIDFindsContext() {

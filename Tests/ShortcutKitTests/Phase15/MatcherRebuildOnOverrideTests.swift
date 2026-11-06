@@ -8,7 +8,9 @@ import Testing
 @Suite("MatcherRebuildOnOverride") struct MatcherRebuildOnOverrideTests {
     enum Act: String, ShortcutAction {
         case save
-        var definition: ShortcutActionDefinition { .init("Save", Shortcut("cmd+s")) }
+        var definition: ShortcutActionDefinition {
+            .init("Save", Shortcut("cmd+s"))
+        }
     }
 
     private func keyDown(_ keyCode: Int, _ modifiers: NSEvent.ModifierFlags) -> NSEvent {
@@ -18,13 +20,15 @@ import Testing
         return NSEvent(cgEvent: cg)!
     }
 
-    // Runtime overrides must rebuild the live matcher, not only persisted state.
+    /// Runtime overrides must rebuild the live matcher, not only persisted state.
     @Test("override change rebuilds matcher")
-    func overrideRebuildsMatcher() throws {
+    func overrideRebuildsMatcher() {
         var fired = 0
         let ctx = ShortcutContext<Act>("editor")
         ctx.__setActiveHandler { action, _ in
-            if action == .save { fired += 1 }
+            if action == .save {
+                fired += 1
+            }
         }
         let registry = ShortcutRegistry(contexts: [ctx])
 

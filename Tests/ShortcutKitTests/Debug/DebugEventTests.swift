@@ -152,7 +152,7 @@ enum DebugAction: String, ShortcutAction {
 
     /// Mirrors the snippets in `ShortcutKit.docc/Debugging.md`. Keeps them
     /// compiling as the API moves.
-    @Test func test_DocExample_debuggingShortcuts() {
+    @Test func test_DocExample_debuggingShortcuts() throws {
         let ctx = ShortcutContext<DebugAction>("editor")
         ctx.__setActiveHandler { _, _ in }
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
@@ -180,9 +180,9 @@ enum DebugAction: String, ShortcutAction {
             }
             .store(in: &cancellables)
 
-        let cg = CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_ANSI_S), keyDown: true)!
+        let cg = try #require(CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_ANSI_S), keyDown: true))
         cg.flags = CGEventFlags(rawValue: UInt64(NSEvent.ModifierFlags.command.rawValue))
-        _ = registry.router.handle(NSEvent(cgEvent: cg)!)
+        _ = try registry.router.handle(#require(NSEvent(cgEvent: cg)))
 
         #expect(lines == ["editor \(registry.activationSnapshot.entries[0].activationID)",
                           "⌘s → save at depth 0"])

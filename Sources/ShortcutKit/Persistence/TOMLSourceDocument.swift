@@ -20,6 +20,7 @@ struct TOMLSourceDocument {
                 expected: "at most \(Self.maximumByteCount) bytes"
             )
         }
+        // swiftlint:disable:next optional_data_string_conversion
         let source = String(decoding: data, as: UTF8.self)
         guard source.utf8.elementsEqual(data) else {
             throw TOMLDiagnostic(
@@ -68,7 +69,9 @@ struct TOMLSourceDocument {
         self.annotated = annotated
     }
 
-    var data: Data { Data(annotated.render().utf8) }
+    var data: Data {
+        Data(annotated.render().utf8)
+    }
 
     func applying(_ plan: TOMLEditPlan) throws -> Self {
         guard !plan.isEmpty else { return self }
@@ -502,8 +505,12 @@ struct TOMLSourceDocument {
     }
 
     private static func newline(in text: String) -> String? {
-        if text.contains("\r\n") { return "\r\n" }
-        if text.contains("\n") { return "\n" }
+        if text.contains("\r\n") {
+            return "\r\n"
+        }
+        if text.contains("\n") {
+            return "\n"
+        }
         return nil
     }
 
@@ -663,7 +670,9 @@ private struct AssignmentLayout {
             }
             let indent = scalars[lineStart ..< range.lowerBound].prefix { $0 == " " || $0 == "\t" }
             var comment = Array(scalars[range])
-            if comment.last == "\r" { comment.removeLast() }
+            if comment.last == "\r" {
+                comment.removeLast()
+            }
             result += Self.string(indent)
             result += Self.string(comment[...])
             if range.upperBound < scalars.count, scalars[range.upperBound] == "\n" {

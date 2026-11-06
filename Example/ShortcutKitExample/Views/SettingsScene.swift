@@ -93,7 +93,10 @@ private struct LegendStylesView: View {
 
     private enum ColumnChoice: String, CaseIterable, Identifiable {
         case auto, two, single
-        var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
+
         var columns: LegendColumns {
             switch self {
             case .auto: .auto(minWidth: 150)
@@ -149,13 +152,20 @@ private struct LegendStylesView: View {
 struct HUDPlaygroundConfiguration {
     enum RendererChoice: String, CaseIterable, Identifiable {
         case builtIn, custom
-        var id: String { rawValue }
-        var label: String { self == .builtIn ? "Built-in style" : "Custom view" }
+        var id: String {
+            rawValue
+        }
+
+        var label: String {
+            self == .builtIn ? "Built-in style" : "Custom view"
+        }
     }
 
     enum TransitionChoice: String, CaseIterable, Identifiable {
         case automatic, fade, scale, move, none
-        var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
 
         func transition(edge: Edge) -> HintHUDTransition {
             switch self {
@@ -170,7 +180,9 @@ struct HUDPlaygroundConfiguration {
 
     enum FontChoice: String, CaseIterable, Identifiable {
         case automatic, caption, body, headline, monospaced
-        var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
 
         var font: Font? {
             switch self {
@@ -431,7 +443,9 @@ private struct DiagnosticsView: View {
                         Button("Dump RawState (debugDescription)") {
                             dump = (try? UserDefaultsStore().load().debugDescription) ?? "(load failed)"
                         }
-                        if !dump.isEmpty { monospaced(dump) }
+                        if !dump.isEmpty {
+                            monospaced(dump)
+                        }
                         Button("Export overrides to a TOML FileStore") {
                             let state = (try? UserDefaultsStore().load()) ?? RawState()
                             let url = FileManager.default.temporaryDirectory
@@ -439,7 +453,9 @@ private struct DiagnosticsView: View {
                             try? FileStore(url: url, format: .toml, key: "shortcuts").save(state)
                             toml = (try? String(contentsOf: url, encoding: .utf8)) ?? "(export failed)"
                         }
-                        if !toml.isEmpty { monospaced(toml) }
+                        if !toml.isEmpty {
+                            monospaced(toml)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }

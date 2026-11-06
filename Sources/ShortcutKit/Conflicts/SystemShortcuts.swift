@@ -19,10 +19,6 @@ public struct SystemHotKey: Hashable, Sendable {
         hasher.combine(keyCode)
         hasher.combine(modifiers.rawValue)
     }
-
-    public static func == (lhs: SystemHotKey, rhs: SystemHotKey) -> Bool {
-        lhs.keyCode == rhs.keyCode && lhs.modifiers == rhs.modifiers
-    }
 }
 
 public extension SystemHotKey {
@@ -73,10 +69,18 @@ public final class CarbonSystemShortcuts: SystemShortcutsProvider {
 
     private static func nsModifiers(fromCarbon mask: UInt32) -> NSEvent.ModifierFlags {
         var flags: NSEvent.ModifierFlags = []
-        if mask & UInt32(cmdKey) != 0 { flags.insert(.command) }
-        if mask & UInt32(shiftKey) != 0 { flags.insert(.shift) }
-        if mask & UInt32(optionKey) != 0 { flags.insert(.option) }
-        if mask & UInt32(controlKey) != 0 { flags.insert(.control) }
+        if mask & UInt32(cmdKey) != 0 {
+            flags.insert(.command)
+        }
+        if mask & UInt32(shiftKey) != 0 {
+            flags.insert(.shift)
+        }
+        if mask & UInt32(optionKey) != 0 {
+            flags.insert(.option)
+        }
+        if mask & UInt32(controlKey) != 0 {
+            flags.insert(.control)
+        }
         return flags
     }
 }

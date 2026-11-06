@@ -183,9 +183,13 @@ public final class TOMLFile {
         var buffer = [UInt8](repeating: 0, count: 64 * 1024)
         while true {
             let result = Darwin.read(descriptor, &buffer, buffer.count)
-            if result == 0 { break }
+            if result == 0 {
+                break
+            }
             if result < 0 {
-                if errno == EINTR { continue }
+                if errno == EINTR {
+                    continue
+                }
                 throw ioDiagnostic("Could not read TOML file", code: errno)
             }
             data.append(buffer, count: result)
@@ -198,9 +202,7 @@ public final class TOMLFile {
         guard fstat(descriptor, &after) == 0 else {
             throw ioDiagnostic("Could not inspect TOML file after reading", code: errno)
         }
-        guard Self.sameFileState(before, after) else { throw RetryRead() }
-
-        guard case let .file(verified) = try PathResolver.resolve(url),
+        guard Self.sameFileState(before, after), case let .file(verified) = try PathResolver.resolve(url),
               verified.referentPath == resolved.referentPath,
               verified.topology == resolved.topology,
               UInt64(after.st_dev) == verified.deviceID,
@@ -226,7 +228,9 @@ public final class TOMLFile {
         let temporary = try stage(data, beside: target, mode: mode_t(current.revision.mode), copyMetadataFrom: target)
         var removeTemporary = true
         defer {
-            if removeTemporary { unlink(temporary) }
+            if removeTemporary {
+                unlink(temporary)
+            }
         }
 
         try replacementVerificationHook?()
@@ -248,7 +252,9 @@ public final class TOMLFile {
         let temporary = try stage(data, beside: target, mode: 0o600, copyMetadataFrom: nil)
         var removeTemporary = true
         defer {
-            if removeTemporary { unlink(temporary) }
+            if removeTemporary {
+                unlink(temporary)
+            }
         }
 
         guard case let .absent(verified) = try PathResolver.resolve(url),
@@ -297,11 +303,14 @@ public final class TOMLFile {
         guard descriptor >= 0 else {
             throw ioDiagnostic("Could not create TOML staging file", code: errno, access: .write)
         }
+        // swiftlint:disable:next optional_data_string_conversion
         let path = String(decoding: template.dropLast().map { UInt8(bitPattern: $0) }, as: UTF8.self)
         var keep = false
         defer {
             Darwin.close(descriptor)
-            if !keep { unlink(path) }
+            if !keep {
+                unlink(path)
+            }
         }
 
         guard fchmod(descriptor, mode) == 0 else {
@@ -329,7 +338,9 @@ public final class TOMLFile {
                     bytes.count - written
                 )
                 if result < 0 {
-                    if errno == EINTR { continue }
+                    if errno == EINTR {
+                        continue
+                    }
                     throw ioDiagnostic("Could not write TOML staging file", code: errno, access: .write)
                 }
                 written += result
@@ -378,11 +389,10 @@ public final class TOMLFile {
         let data = Data(document.source.utf8)
         let contentDigest = Self.digest(data)
         cache(document, digest: contentDigest)
-        let source = String(decoding: data, as: UTF8.self)
         return .init(
             fileURL: url,
             data: data,
-            source: source,
+            source: document.source,
             contentDigest: contentDigest,
             baseRevision: baseRevision,
             baseContentDigest: baseContentDigest
@@ -483,7 +493,9 @@ private struct SymlinkRecord: Sendable, Equatable, Hashable, CustomStringConvert
     let deviceID: UInt64
     let fileID: UInt64
 
-    var description: String { "\(path)\u{0}\(target)\u{0}\(deviceID)\u{0}\(fileID)" }
+    var description: String {
+        "\(path)\u{0}\(target)\u{0}\(deviceID)\u{0}\(fileID)"
+    }
 }
 
 private struct ResolvedFile {
@@ -523,7 +535,9 @@ private enum PathResolver {
         var seenSymlinks: Set<FileIdentity> = []
         var traversals = 0
 
-        var currentDirectory: Directory { directories[directories.count - 1] }
+        var currentDirectory: Directory {
+            directories[directories.count - 1]
+        }
     }
 
     static func resolve(_ url: URL) throws -> ResolvedPath {
@@ -546,9 +560,13 @@ private enum PathResolver {
 
         while !state.pending.isEmpty {
             let component = state.pending.removeFirst()
-            if component.name == "." { continue }
+            if component.name == "." {
+                continue
+            }
             if component.name == ".." {
-                if state.directories.count > 1 { state.directories.removeLast() }
+                if state.directories.count > 1 {
+                    state.directories.removeLast()
+                }
                 continue
             }
             let directory = state.currentDirectory
@@ -648,7 +666,9 @@ private enum PathResolver {
         let expanded = targetComponents
             .dropFirst(target.hasPrefix("/") ? 1 : 0)
             .map { PendingComponent(name: $0, fromSymlinkTarget: true) }
-        if target.hasPrefix("/") { state.directories = [state.root] }
+        if target.hasPrefix("/") {
+            state.directories = [state.root]
+        }
         state.pending.insert(contentsOf: expanded, at: 0)
     }
 
@@ -731,10 +751,13 @@ private enum PathResolver {
             var buffer = [CChar](repeating: 0, count: capacity)
             let result = Darwin.readlinkat(directory, name, &buffer, buffer.count)
             guard result >= 0 else {
-                if errno == ENOENT || errno == EINVAL { throw RetryPathResolution() }
+                if errno == ENOENT || errno == EINVAL {
+                    throw RetryPathResolution()
+                }
                 throw pathDiagnostic("Could not read symbolic link", code: errno, fileURL: fileURL)
             }
             if result < buffer.count {
+                // swiftlint:disable:next optional_data_string_conversion
                 return String(
                     decoding: buffer.prefix(Int(result)).map { UInt8(bitPattern: $0) },
                     as: UTF8.self
@@ -750,7 +773,9 @@ private enum PathResolver {
     }
 
     private static func openFailure(code: Int32, fileURL: URL) throws -> TOMLDiagnostic {
-        if code == ENOENT || code == ELOOP { throw RetryPathResolution() }
+        if code == ENOENT || code == ELOOP {
+            throw RetryPathResolution()
+        }
         return pathDiagnostic("Could not open TOML path component", code: code, fileURL: fileURL)
     }
 

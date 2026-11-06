@@ -16,17 +16,23 @@ enum TableAct: String, ShortcutAction {
 
 private enum DottedContextAction: String, ShortcutAction {
     case colliding = "c"
-    var definition: ShortcutActionDefinition { .init("Colliding", "cmd+s") }
+    var definition: ShortcutActionDefinition {
+        .init("Colliding", "cmd+s")
+    }
 }
 
 private enum DottedActionIDAction: String, ShortcutAction {
     case unrelated = "b.c"
-    var definition: ShortcutActionDefinition { .init("Unrelated", "cmd+k") }
+    var definition: ShortcutActionDefinition {
+        .init("Unrelated", "cmd+k")
+    }
 }
 
 private enum DuplicateAction: String, ShortcutAction {
     case duplicate
-    var definition: ShortcutActionDefinition { .init("Duplicate", "cmd+s") }
+    var definition: ShortcutActionDefinition {
+        .init("Duplicate", "cmd+s")
+    }
 }
 
 @MainActor
@@ -49,12 +55,12 @@ private enum DuplicateAction: String, ShortcutAction {
     }
 
     @Test("rows carry displayName, kind, effectiveShortcuts, isCustomized")
-    func rowFields() {
+    func rowFields() throws {
         let ctx = ShortcutContext<TableAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         registry.setShortcuts(["cmd+shift+s"], contextID: "editor", actionID: "save")
         let table = registry.keyBindings
-        let save = table.groups[0].entries.first { $0.actionID == "save" }!
+        let save = try #require(table.groups[0].entries.first { $0.actionID == "save" })
         #expect(save.displayName == "Save File")
         let expected: Shortcut = "cmd+shift+s"
         #expect(save.effectiveShortcuts.first == expected)
@@ -74,7 +80,7 @@ private enum DuplicateAction: String, ShortcutAction {
     }
 
     @Test("rows expose all default bindings via effectiveShortcuts")
-    func rowExposesAllBindings() {
+    func rowExposesAllBindings() throws {
         enum MultiAct: String, ShortcutAction, CaseIterable {
             case save
             var definition: ShortcutActionDefinition {
@@ -83,7 +89,7 @@ private enum DuplicateAction: String, ShortcutAction {
         }
         let ctx = ShortcutContext<MultiAct>("editor")
         let registry = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
-        let row = registry.keyBindings.groups[0].entries.first!
+        let row = try #require(registry.keyBindings.groups[0].entries.first)
         #expect(row.effectiveShortcuts.count == 2)
         #expect(row.effectiveShortcuts == [Shortcut("cmd+s"), Shortcut("ctrl+s")])
         #expect(row.effectiveShortcuts.first == Shortcut("cmd+s"))

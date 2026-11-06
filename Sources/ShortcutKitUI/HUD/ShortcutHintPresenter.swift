@@ -216,7 +216,9 @@ public final class ShortcutHintPresenter {
 private func windowIsDescendant(_ window: NSWindow, of ancestor: NSWindow) -> Bool {
     var candidate: NSWindow? = window
     while let current = candidate {
-        if current === ancestor { return true }
+        if current === ancestor {
+            return true
+        }
         candidate = current.sheetParent ?? current.parent
     }
     return false

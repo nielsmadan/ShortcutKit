@@ -17,7 +17,7 @@ struct MultiBindingLookupTests {
         #expect(ctx.shortcuts(for: .save).first == Shortcut("cmd+s"))
     }
 
-    @Test func overrideArrayWins() throws {
+    @Test func overrideArrayWins() {
         let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         ctx.setShortcuts([Shortcut("opt+s")], for: .save)
@@ -25,7 +25,7 @@ struct MultiBindingLookupTests {
         _ = registry
     }
 
-    @Test func resetAllToDefaults() throws {
+    @Test func resetAllToDefaults() {
         let ctx = ShortcutContext<Act>("editor")
         let registry = ShortcutRegistry(contexts: [ctx])
         ctx.setShortcuts([Shortcut("opt+s")], for: .save)

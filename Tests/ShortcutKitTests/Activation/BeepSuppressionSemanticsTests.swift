@@ -4,7 +4,7 @@ import ShortcutField
 @testable import ShortcutKit
 import Testing
 
-// Serialized because ShortcutTracking is process-wide state.
+/// Serialized because ShortcutTracking is process-wide state.
 @MainActor
 @Suite("BeepSuppressionSemantics", .serialized) struct BeepSuppressionSemanticsTests {
     private func keyDown(_ keyCode: Int, _ modifiers: NSEvent.ModifierFlags) -> NSEvent {
@@ -15,7 +15,9 @@ import Testing
     }
 
     private func beeps(_ result: ShortcutMatchResult) -> Bool {
-        if case .ignored = result { return true }
+        if case .ignored = result {
+            return true
+        }
         return false
     }
 

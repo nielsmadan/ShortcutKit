@@ -7,7 +7,9 @@ import Testing
 struct ContextPickerViewTests {
     enum Act: String, ShortcutAction {
         case noop
-        var definition: ShortcutActionDefinition { .init("Noop") }
+        var definition: ShortcutActionDefinition {
+            .init("Noop")
+        }
     }
 
     private func ctx(_ id: String, scope: ContextScope = .local,

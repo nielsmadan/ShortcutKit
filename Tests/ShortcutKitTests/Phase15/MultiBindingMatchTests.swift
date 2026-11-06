@@ -21,11 +21,13 @@ import Testing
     }
 
     @Test("both default bindings fire dispatch")
-    func eitherBindingFires() throws {
+    func eitherBindingFires() {
         var fired = 0
         let ctx = ShortcutContext<Act>("editor")
         ctx.__setActiveHandler { action, _ in
-            if action == .save { fired += 1 }
+            if action == .save {
+                fired += 1
+            }
         }
         let matcher = ContextMatcher(context: ctx)
 

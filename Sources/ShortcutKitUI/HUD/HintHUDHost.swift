@@ -60,8 +60,13 @@ final class HintHUDHost: ObservableObject, ShortcutHintHost {
         }
     }
 
-    var window: NSWindow? { anchorView?.window }
-    var presentationPanel: HintHUDPanel? { panel }
+    var window: NSWindow? {
+        anchorView?.window
+    }
+
+    var presentationPanel: HintHUDPanel? {
+        panel
+    }
 
     var anchorArea: CGFloat {
         guard let anchorView else { return 0 }

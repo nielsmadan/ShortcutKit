@@ -55,7 +55,9 @@ final class ContextMatcher<Action: ShortcutAction>: ContextMatching {
             case let .advanced(consume):
                 didAdvance = true
                 consumeFromAdvance = consumeFromAdvance || consume
-                if advancedAction == nil { advancedAction = ref(action) }
+                if advancedAction == nil {
+                    advancedAction = ref(action)
+                }
             case .fired:
                 resetOthers(exceptIndex: index)
                 let suppressed = Self.isSuppressedRepeat(event, for: action)

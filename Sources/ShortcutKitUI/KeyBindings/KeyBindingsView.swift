@@ -83,13 +83,21 @@ public struct KeyBindingsView: View {
 
     // swiftlint:disable identifier_name
     var __modeIsFull: Bool {
-        if case .full = mode { true } else { false }
+        if case .full = mode {
+            true
+        } else {
+            false
+        }
     }
 
     var __searchEnabledForTest: Bool {
         switch mode {
         case let .full(presentation):
-            if case let .standalone(search, _) = presentation { search } else { false }
+            if case let .standalone(search, _) = presentation {
+                search
+            } else {
+                false
+            }
         case let .inline(_, enabled): enabled
         }
     }
@@ -103,16 +111,21 @@ public struct KeyBindingsView: View {
     }
 
     var __presentationForTest: KeyBindingsPresentation? {
-        if case let .full(presentation) = mode { presentation } else { nil }
+        if case let .full(presentation) = mode {
+            presentation
+        } else {
+            nil
+        }
     }
 
-    var __showsDescriptionsForTest: Bool { showsDescriptions }
+    var __showsDescriptionsForTest: Bool {
+        showsDescriptions
+    }
 
     // swiftlint:enable identifier_name
 
     // MARK: - Full mode body
 
-    @ViewBuilder
     private func fullBody(
         registry: ShortcutRegistry, searchEnabled: Bool, layout: ContextLayout
     ) -> some View {
@@ -148,11 +161,12 @@ public struct KeyBindingsView: View {
 
     // MARK: - Embedded mode body
 
-    @ViewBuilder
     private func embeddedBody(registry: ShortcutRegistry) -> some View {
         ForEach(visibleGroups(registry).filter { !$0.entries.isEmpty }, id: \.id) { group in
             Section {
-                if style == .dense { denseColumnHeader }
+                if style == .dense {
+                    denseColumnHeader
+                }
                 ForEach(group.entries, id: \.id) { row in
                     shortcutRow(row, registry: registry, usesContainerVerticalSpacing: true)
                 }
@@ -278,14 +292,15 @@ public struct KeyBindingsView: View {
 
     // MARK: - Inline mode body
 
-    @ViewBuilder
     private func inlineBody(
         context: AnyShortcutContext,
         registry: ShortcutRegistry,
         searchEnabled: Bool
     ) -> some View {
         VStack(alignment: .leading) {
-            if searchEnabled { SearchField(query: $query) }
+            if searchEnabled {
+                SearchField(query: $query)
+            }
             let scoped = registry.keyBindings.groups
                 .first(where: { $0.contextID == context.id })?
                 .entries ?? []

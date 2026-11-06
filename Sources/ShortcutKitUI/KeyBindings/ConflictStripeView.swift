@@ -18,14 +18,20 @@ struct ConflictStripeView: View {
             .fill(Self.color(for: conflicts))
             .frame(width: 3)
             .contentShape(Rectangle())
-            .onTapGesture { if !conflicts.isEmpty { popoverShown.toggle() } }
+            .onTapGesture {
+                if !conflicts.isEmpty {
+                    popoverShown.toggle()
+                }
+            }
             .popover(isPresented: $popoverShown) {
                 ConflictPopover(conflicts: conflicts, onJump: onJump)
             }
     }
 
     static func color(for conflicts: [Conflict]) -> Color {
-        if conflicts.isEmpty { return .clear }
+        if conflicts.isEmpty {
+            return .clear
+        }
         return conflicts.contains { $0.severity == .error } ? .red : .yellow
     }
 }

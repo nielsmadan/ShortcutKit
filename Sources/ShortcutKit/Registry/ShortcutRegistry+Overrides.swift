@@ -65,7 +65,9 @@ public extension ShortcutRegistry {
         contexts.first(where: { $0.id == contextID })?.scope ?? .local
     }
 
-    package var allContexts: [AnyShortcutContext] { contexts }
+    package var allContexts: [AnyShortcutContext] {
+        contexts
+    }
 
     func notifyChanges(_ refs: some Sequence<ActionRef>) {
         let refs = Array(refs)

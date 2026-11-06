@@ -97,7 +97,9 @@ struct LegendMetrics: Sendable, Hashable {
     let labelWidth: CGFloat
     let gutter: CGFloat
 
-    var cellWidth: CGFloat { shortcutWidth + gutter + labelWidth }
+    var cellWidth: CGFloat {
+        shortcutWidth + gutter + labelWidth
+    }
 }
 
 /// Layout and appearance options for ``KeyBindingsLegendView``.
@@ -141,11 +143,15 @@ public struct LegendOptions: Sendable, Hashable {
 
     public static let `default` = LegendOptions()
 
-    var metrics: LegendMetrics { size.metrics }
+    var metrics: LegendMetrics {
+        size.metrics
+    }
 
     /// Minimum width of a grouped entry cell, including its shortcut, gutter, and label.
     /// Flexible labels report their minimum width.
-    public var cellWidth: CGFloat { resolvedCellWidth(for: self) }
+    public var cellWidth: CGFloat {
+        resolvedCellWidth(for: self)
+    }
 }
 
 func resolvedCellWidth(for options: LegendOptions) -> CGFloat {

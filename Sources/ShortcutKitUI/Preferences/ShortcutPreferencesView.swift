@@ -24,7 +24,9 @@ public struct ShortcutPreferencesView: View {
         self.showsDescriptions = showsDescriptions
     }
 
-    var registryForTest: ShortcutRegistry { registry }
+    var registryForTest: ShortcutRegistry {
+        registry
+    }
 
     public var body: some View {
         Form {

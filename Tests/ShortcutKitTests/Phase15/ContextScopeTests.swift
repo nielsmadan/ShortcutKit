@@ -5,7 +5,9 @@ import Testing
 struct ContextScopeTests {
     enum NoopAction: String, ShortcutAction {
         case noop
-        var definition: ShortcutActionDefinition { .init("Noop") }
+        var definition: ShortcutActionDefinition {
+            .init("Noop")
+        }
     }
 
     @Test func defaultScopeIsLocal() {

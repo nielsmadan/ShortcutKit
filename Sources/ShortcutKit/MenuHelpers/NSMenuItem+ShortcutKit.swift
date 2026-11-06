@@ -23,7 +23,9 @@ final class ShortcutKitMenuItem<A: ShortcutAction>: NSMenuItem {
         }
     }
 
-    @available(*, unavailable) required init(coder _: NSCoder) { fatalError("init(coder:) unavailable") }
+    @available(*, unavailable) required init(coder _: NSCoder) {
+        fatalError("init(coder:) unavailable")
+    }
 
     @objc private func performShortcut() {
         context.dispatch(actionValue)
@@ -44,12 +46,12 @@ final class ShortcutKitMenuItem<A: ShortcutAction>: NSMenuItem {
     }
 }
 
+@MainActor
 public extension NSMenuItem {
     /// Creates a menu item that dispatches `action` through `context`.
     ///
     /// Its key equivalent tracks a single-step keyboard binding. Other binding
     /// types produce a clickable menu item without a displayed shortcut.
-    @MainActor
     static func shortcutKitItem<A>(
         _ action: A,
         in context: ShortcutContext<A>,

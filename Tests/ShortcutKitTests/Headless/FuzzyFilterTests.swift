@@ -8,16 +8,16 @@ import Testing
     }
 
     @Test("contiguous match beats non-contiguous match for same length")
-    func contiguousBeatsScattered() {
-        let cont = FuzzyFilter.match(query: "sav", in: "Save File")!
-        let scat = FuzzyFilter.match(query: "sav", in: "Search Above Vault")!
+    func contiguousBeatsScattered() throws {
+        let cont = try #require(FuzzyFilter.match(query: "sav", in: "Save File"))
+        let scat = try #require(FuzzyFilter.match(query: "sav", in: "Search Above Vault"))
         #expect(cont.score > scat.score)
     }
 
     @Test("start-of-word matches outscore mid-word matches")
-    func startOfWordBeatsMidWord() {
-        let start = FuzzyFilter.match(query: "p", in: "Print")!
-        let mid = FuzzyFilter.match(query: "p", in: "Compile")!
+    func startOfWordBeatsMidWord() throws {
+        let start = try #require(FuzzyFilter.match(query: "p", in: "Print"))
+        let mid = try #require(FuzzyFilter.match(query: "p", in: "Compile"))
         #expect(start.score > mid.score)
     }
 

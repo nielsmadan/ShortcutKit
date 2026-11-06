@@ -28,11 +28,17 @@ enum FuzzyFilter {
             score += 10
         }
         for idx in matched {
-            if idx == 0 { score += 15; continue }
+            if idx == 0 {
+                score += 15; continue
+            }
             let prev = haystack[idx - 1]
-            if prev == " " || prev == "-" || prev == "_" || prev == "+" { score += 10 }
+            if prev == " " || prev == "-" || prev == "_" || prev == "+" {
+                score += 10
+            }
         }
-        if let first = matched.first { score -= first }
+        if let first = matched.first {
+            score -= first
+        }
         return score
     }
 }

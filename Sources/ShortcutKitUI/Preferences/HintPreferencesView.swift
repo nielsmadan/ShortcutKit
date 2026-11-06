@@ -32,8 +32,12 @@ public struct HintPreferencesView: View {
     }
 
     private var timeoutTag: HintPolicy? {
-        if case .timeout = registry.hintFrequency { return registry.hintFrequency }
-        if case .timeout = registry.defaultHintFrequency { return registry.defaultHintFrequency }
+        if case .timeout = registry.hintFrequency {
+            return registry.hintFrequency
+        }
+        if case .timeout = registry.defaultHintFrequency {
+            return registry.defaultHintFrequency
+        }
         return nil
     }
 }

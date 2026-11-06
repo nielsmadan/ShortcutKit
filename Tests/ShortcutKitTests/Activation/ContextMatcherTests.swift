@@ -56,7 +56,9 @@ enum SeqAction: String, ShortcutAction {
         let matcher = ContextMatcher(context: ctx)
 
         let advance = matcher.handle(keyDown(kVK_ANSI_K, .command)).result
-        if case .advanced = advance {} else { Issue.record("expected .advanced") }
+        if case .advanced = advance {} else {
+            Issue.record("expected .advanced")
+        }
         #expect(fired == nil)
 
         let fire = matcher.handle(keyDown(kVK_ANSI_O, .command)).result

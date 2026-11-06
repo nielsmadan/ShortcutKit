@@ -15,7 +15,9 @@ enum EditorAct: String, ShortcutAction {
 
 enum ViewerAct: String, ShortcutAction {
     case secondSave
-    var definition: ShortcutActionDefinition { .init("Save (Viewer)", "cmd+s") }
+    var definition: ShortcutActionDefinition {
+        .init("Save (Viewer)", "cmd+s")
+    }
 }
 
 @MainActor
@@ -37,7 +39,9 @@ enum ViewerAct: String, ShortcutAction {
         if case let .duplicate(occurrences) = conflicts[0] {
             #expect(occurrences.count == 2)
             #expect(conflicts[0].severity == .error)
-        } else { Issue.record("expected .duplicate") }
+        } else {
+            Issue.record("expected .duplicate")
+        }
     }
 
     @Test("same-trigger duplicates across contexts = .warning")
@@ -75,7 +79,13 @@ enum ViewerAct: String, ShortcutAction {
             ],
             mutuallyExclusiveContexts: []
         )
-        #expect(conflicts.filter { if case .duplicate = $0 { true } else { false } }.isEmpty)
+        #expect(conflicts.filter {
+            if case .duplicate = $0 {
+                true
+            } else {
+                false
+            }
+        }.isEmpty)
     }
 
     @Test("cross-kind duplicate: discrete scroll-up vs continuous scroll-up")
@@ -94,7 +104,9 @@ enum ViewerAct: String, ShortcutAction {
             mutuallyExclusiveContexts: []
         )
         #expect(conflicts.count == 1)
-        if case .duplicate = conflicts[0] {} else { Issue.record("expected .duplicate") }
+        if case .duplicate = conflicts[0] {} else {
+            Issue.record("expected .duplicate")
+        }
     }
 
     @Test("unreachable prefix within a single context = .error")
@@ -107,7 +119,11 @@ enum ViewerAct: String, ShortcutAction {
             mutuallyExclusiveContexts: []
         )
         let prefixes = conflicts.compactMap { (c: Conflict) -> Conflict? in
-            if case .unreachablePrefix = c { return c } else { return nil }
+            if case .unreachablePrefix = c {
+                c
+            } else {
+                nil
+            }
         }
         #expect(prefixes.count == 1)
         #expect(prefixes[0].severity == .error)
@@ -123,7 +139,11 @@ enum ViewerAct: String, ShortcutAction {
             mutuallyExclusiveContexts: []
         )
         let prefixes = conflicts.compactMap { (c: Conflict) -> Conflict? in
-            if case .unreachablePrefix = c { return c } else { return nil }
+            if case .unreachablePrefix = c {
+                c
+            } else {
+                nil
+            }
         }
         #expect(prefixes.count == 1)
         #expect(prefixes[0].severity == .warning)

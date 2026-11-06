@@ -14,7 +14,9 @@ public struct BindingID: Sendable, Hashable {
     }
 
     /// The action reference without the binding index.
-    public var ref: ActionRef { ActionRef(contextID: contextID, actionID: actionID) }
+    public var ref: ActionRef {
+        ActionRef(contextID: contextID, actionID: actionID)
+    }
 }
 
 /// An effective shortcut eligible for global registration.

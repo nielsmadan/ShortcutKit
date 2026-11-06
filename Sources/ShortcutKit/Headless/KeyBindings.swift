@@ -23,7 +23,9 @@ public struct KeyBindings: Sendable, Equatable {
         public let conflicts: [Conflict]
 
         /// Stable identity unique across contexts.
-        public var id: String { "\(contextID).\(actionID)" }
+        public var id: String {
+            "\(contextID).\(actionID)"
+        }
 
         public init(
             contextID: String, actionID: String,
@@ -48,7 +50,10 @@ public struct KeyBindings: Sendable, Equatable {
         public let contextID: String
         public let displayName: LocalizedStringResource
         public let entries: [Entry]
-        public var id: String { contextID }
+        public var id: String {
+            contextID
+        }
+
         public init(contextID: String, displayName: LocalizedStringResource, entries: [Entry]) {
             self.contextID = contextID
             self.displayName = displayName
@@ -57,7 +62,9 @@ public struct KeyBindings: Sendable, Equatable {
     }
 
     public let groups: [Group]
-    public init(groups: [Group] = []) { self.groups = groups }
+    public init(groups: [Group] = []) {
+        self.groups = groups
+    }
 
     /// Fuzzy-filters display names and ASCII binding strings case-insensitively.
     ///
@@ -74,7 +81,7 @@ public struct KeyBindings: Sendable, Equatable {
                 let asciiScore = entry.effectiveShortcuts
                     .compactMap { FuzzyFilter.match(query: trimmed, in: $0.ascii)?.score }
                     .max()
-                guard let best = [nameScore, asciiScore].compactMap({ $0 }).max()
+                guard let best = [nameScore, asciiScore].compactMap(\.self).max()
                 else { return nil }
                 return (entry, best)
             }

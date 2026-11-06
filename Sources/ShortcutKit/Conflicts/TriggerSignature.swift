@@ -21,8 +21,4 @@ struct TriggerSignature: Hashable {
         hasher.combine(kind)
         hasher.combine(modifiers.rawValue)
     }
-
-    static func == (lhs: TriggerSignature, rhs: TriggerSignature) -> Bool {
-        lhs.kind == rhs.kind && lhs.modifiers == rhs.modifiers
-    }
 }

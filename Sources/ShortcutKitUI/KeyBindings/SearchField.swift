@@ -5,7 +5,9 @@ import SwiftUI
 struct SearchField: View {
     @Binding var query: String
 
-    init(query: Binding<String>) { _query = query }
+    init(query: Binding<String>) {
+        _query = query
+    }
 
     var body: some View {
         TextField(uiString("Search"), text: $query)
@@ -16,7 +18,9 @@ struct SearchField: View {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return entries }
         return entries.filter { row in
-            if String(localized: row.displayName).lowercased().contains(q) { return true }
+            if String(localized: row.displayName).lowercased().contains(q) {
+                return true
+            }
             return row.effectiveShortcuts.contains { $0.displayString.lowercased().contains(q) }
         }
     }

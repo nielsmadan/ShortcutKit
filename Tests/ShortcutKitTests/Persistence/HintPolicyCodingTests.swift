@@ -29,7 +29,7 @@ import Testing
         #expect(try JSONDecoder().decode(Preferences.self, from: data) == prefs)
     }
 
-    // Invalid policy text must not discard the rest of the persisted state.
+    /// Invalid policy text must not discard the rest of the persisted state.
     @Test func jsonMalformedHintFrequencyDecodesToNilInsteadOfThrowing() throws {
         let json = Data(#"{"hintsEnabled":true,"hintFrequency":"bogus"}"#.utf8)
         let prefs = try JSONDecoder().decode(Preferences.self, from: json)

@@ -35,8 +35,12 @@ struct LocalizationCoverageTests {
             var depth = 1
             var index = open.upperBound
             while index < rest.endIndex, depth > 0 {
-                if rest[index] == "(" { depth += 1 }
-                if rest[index] == ")" { depth -= 1 }
+                if rest[index] == "(" {
+                    depth += 1
+                }
+                if rest[index] == ")" {
+                    depth -= 1
+                }
                 index = rest.index(after: index)
             }
             out += "%@"

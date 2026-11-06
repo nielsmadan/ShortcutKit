@@ -48,7 +48,9 @@ enum MenuKitAct: String, ShortcutAction {
         var fired = false
         let ctx = ShortcutContext<MenuKitAct>("editor")
         ctx.__setActiveHandler { action, _ in
-            if action == .save { fired = true }
+            if action == .save {
+                fired = true
+            }
         }
         _ = ShortcutRegistry(contexts: [ctx], store: isolatedStore())
         let item = NSMenuItem.shortcutKitItem(.save, in: ctx)

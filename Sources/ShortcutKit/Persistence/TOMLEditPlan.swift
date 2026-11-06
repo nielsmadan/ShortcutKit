@@ -13,7 +13,9 @@ public struct TOMLEditPlan: Sendable, Equatable {
         operations = []
     }
 
-    public var isEmpty: Bool { operations.isEmpty }
+    public var isEmpty: Bool {
+        operations.isEmpty
+    }
 
     public mutating func set(_ value: TOMLValue, at path: TOMLPath) {
         operations.append(.set(path: path, value: value))

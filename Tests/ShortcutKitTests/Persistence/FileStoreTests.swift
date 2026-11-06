@@ -112,7 +112,7 @@ import Testing
     }
 
     @Test("createIfMissing writes an empty file when none exists")
-    func createIfMissingBootstraps() throws {
+    func createIfMissingBootstraps() {
         let url = tempURL("toml")
         #expect(FileManager.default.fileExists(atPath: url.path) == false)
         _ = FileStore(url: url, createIfMissing: true)

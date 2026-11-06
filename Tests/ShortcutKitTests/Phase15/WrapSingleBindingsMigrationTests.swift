@@ -5,13 +5,13 @@ import Testing
 
 @MainActor
 @Suite("WrapSingleBindingsMigration") struct WrapSingleBindingsMigrationTests {
-    // Legacy JSON stores each action's shortcut as a scalar.
+    /// Legacy JSON stores each action's shortcut as a scalar.
     private static let legacyScalarJSON = Data("""
     {"overrides":{"editor":{"save":{"kind":"discrete","discrete":{"steps":\
     [{"keyCode":1,"modifiers":1048576,"type":"key"}]}}}}}
     """.utf8)
 
-    // Current JSON stores each action's shortcuts as an array.
+    /// Current JSON stores each action's shortcuts as an array.
     private static let newArrayJSON = Data("""
     {"overrides":{"editor":{"save":[\
     {"kind":"discrete","discrete":{"steps":[{"keyCode":1,"modifiers":1048576,"type":"key"}]}},\

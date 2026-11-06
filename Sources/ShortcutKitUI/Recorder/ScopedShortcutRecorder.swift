@@ -46,7 +46,9 @@ struct ScopedShortcutRecorder: View {
     private var discreteRecorder: some View {
         ShortcutRecorderView(Binding<DiscreteShortcut?>(
             get: {
-                if case let .discrete(discrete) = shortcut { return discrete }
+                if case let .discrete(discrete) = shortcut {
+                    return discrete
+                }
                 return nil
             },
             set: { newValue in
@@ -67,7 +69,9 @@ struct ScopedShortcutRecorder: View {
     private func continuousRecorder(initial: ContinuousShortcut) -> some View {
         ContinuousShortcutRecorderView(Binding<ContinuousShortcut?>(
             get: {
-                if case let .continuous(continuous) = shortcut { return continuous }
+                if case let .continuous(continuous) = shortcut {
+                    return continuous
+                }
                 return initial
             },
             set: { newValue in

@@ -14,7 +14,11 @@ struct CanvasObject: Identifiable, Hashable, Sendable {
     }
 
     var isShape: Bool {
-        if case .text = kind { false } else { true }
+        if case .text = kind {
+            false
+        } else {
+            true
+        }
     }
 }
 

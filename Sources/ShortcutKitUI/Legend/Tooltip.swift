@@ -32,7 +32,9 @@ struct TooltipModifier: ViewModifier {
                 if hovering {
                     pendingTask = Task { @MainActor in
                         try? await Task.sleep(for: delay)
-                        if !Task.isCancelled { isShowing = true }
+                        if !Task.isCancelled {
+                            isShowing = true
+                        }
                     }
                 } else {
                     isShowing = false

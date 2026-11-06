@@ -19,8 +19,13 @@ enum SysAct: String, ShortcutAction {
 @MainActor
 final class StubSystemShortcuts: SystemShortcutsProvider {
     var set: Set<SystemHotKey>
-    init(_ set: Set<SystemHotKey> = []) { self.set = set }
-    func currentSystemShortcuts() -> Set<SystemHotKey> { set }
+    init(_ set: Set<SystemHotKey> = []) {
+        self.set = set
+    }
+
+    func currentSystemShortcuts() -> Set<SystemHotKey> {
+        set
+    }
 }
 
 @MainActor
@@ -45,7 +50,11 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
         )
 
         let systemShared = registry.conflicts.compactMap { (c: Conflict) -> Conflict? in
-            if case .systemShared = c { return c } else { return nil }
+            if case .systemShared = c {
+                c
+            } else {
+                nil
+            }
         }
         #expect(systemShared.count == 1)
         #expect(try #require(systemShared.first).severity == .warning)
@@ -60,12 +69,24 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
             store: isolatedStore(),
             systemShortcutsProvider: stub
         )
-        #expect(registry.conflicts.contains { if case .systemShared = $0 { true } else { false } } == false)
+        #expect(registry.conflicts.contains {
+            if case .systemShared = $0 {
+                true
+            } else {
+                false
+            }
+        } == false)
         stub.set = [.init(keyCode: UInt16(kVK_ANSI_S), modifiers: .command)]
 
         #expect(registry.reload())
 
-        #expect(registry.conflicts.contains { if case .systemShared = $0 { true } else { false } })
+        #expect(registry.conflicts.contains {
+            if case .systemShared = $0 {
+                true
+            } else {
+                false
+            }
+        })
     }
 
     @Test("multi-step shortcuts are not flagged (cannot map to a single system hotkey)")
@@ -80,7 +101,11 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
             systemShortcutsProvider: stub
         )
         let flaggedActions = registry.conflicts.compactMap { c -> String? in
-            if case let .systemShared(action) = c { action.actionID } else { nil }
+            if case let .systemShared(action) = c {
+                action.actionID
+            } else {
+                nil
+            }
         }
         #expect(flaggedActions == ["save"])
     }
@@ -97,7 +122,11 @@ final class StubSystemShortcuts: SystemShortcutsProvider {
             systemShortcutsProvider: stub
         )
         let zoomFlags = registry.conflicts.contains { c in
-            if case let .systemShared(action) = c { action.actionID == "zoom" } else { false }
+            if case let .systemShared(action) = c {
+                action.actionID == "zoom"
+            } else {
+                false
+            }
         }
         #expect(zoomFlags == false)
     }

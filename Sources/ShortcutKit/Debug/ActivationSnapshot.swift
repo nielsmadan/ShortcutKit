@@ -12,7 +12,9 @@ public struct ActivationSnapshot: Sendable, Equatable {
         public let displayName: LocalizedStringResource
         public let scope: ContextScope
 
-        public var id: UUID { activationID }
+        public var id: UUID {
+            activationID
+        }
 
         public init(
             activationID: UUID,
@@ -36,7 +38,11 @@ public struct ActivationSnapshot: Sendable, Equatable {
     }
 
     /// Innermost first — dispatch order, and the order to render in.
-    public var innermostFirst: [Entry] { entries.reversed() }
+    public var innermostFirst: [Entry] {
+        entries.reversed()
+    }
 
-    public var isEmpty: Bool { entries.isEmpty }
+    public var isEmpty: Bool {
+        entries.isEmpty
+    }
 }

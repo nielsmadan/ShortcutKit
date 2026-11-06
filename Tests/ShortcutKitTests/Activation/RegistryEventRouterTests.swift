@@ -29,8 +29,13 @@ final class FakeContextMatcher: ContextMatching {
         )
     }
 
-    func reset() { resetCount += 1 }
-    func rebuild() { rebuildCount += 1 }
+    func reset() {
+        resetCount += 1
+    }
+
+    func rebuild() {
+        rebuildCount += 1
+    }
 }
 
 @MainActor

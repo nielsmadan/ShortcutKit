@@ -33,10 +33,18 @@ enum MenuShortcutWalker {
 
     private static func canonicalize(_ mask: NSEvent.ModifierFlags) -> NSEvent.ModifierFlags {
         var out: NSEvent.ModifierFlags = []
-        if mask.contains(.command) { out.insert(.command) }
-        if mask.contains(.shift) { out.insert(.shift) }
-        if mask.contains(.option) { out.insert(.option) }
-        if mask.contains(.control) { out.insert(.control) }
+        if mask.contains(.command) {
+            out.insert(.command)
+        }
+        if mask.contains(.shift) {
+            out.insert(.shift)
+        }
+        if mask.contains(.option) {
+            out.insert(.option)
+        }
+        if mask.contains(.control) {
+            out.insert(.control)
+        }
         return out
     }
 

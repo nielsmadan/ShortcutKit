@@ -7,7 +7,9 @@ import Testing
 @Suite("V1Convenience") struct V1ConvenienceTests {
     enum Act: String, ShortcutAction {
         case save
-        var definition: ShortcutActionDefinition { .init("Save", "cmd+s") }
+        var definition: ShortcutActionDefinition {
+            .init("Save", "cmd+s")
+        }
     }
 
     private func isolatedStore() -> UserDefaultsStore {

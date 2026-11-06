@@ -6,14 +6,18 @@ import Testing
 @Suite("GlobalRegistryAPI") struct GlobalRegistryAPITests {
     enum GlobalAct: String, ShortcutAction {
         case ping
-        var definition: ShortcutActionDefinition { .init("Ping", Shortcut("ctrl+opt+cmd+k")) }
+        var definition: ShortcutActionDefinition {
+            .init("Ping", Shortcut("ctrl+opt+cmd+k"))
+        }
     }
 
     @Test("dispatchGlobalAction invokes the dispatch closure with source: .shortcut")
     func dispatchGlobalActionDispatches() {
         var fired = 0
         let ctx = ShortcutContext<GlobalAct>(global: "global") { action, kind in
-            if action == .ping, kind == .discrete { fired += 1 }
+            if action == .ping, kind == .discrete {
+                fired += 1
+            }
         }
         let registry = ShortcutRegistry(contexts: [ctx])
         var source: ActionFiredEvent.Source?
@@ -37,7 +41,9 @@ import Testing
 
     enum LocalAct: String, ShortcutAction {
         case save
-        var definition: ShortcutActionDefinition { .init("Save", Shortcut("cmd+s")) }
+        var definition: ShortcutActionDefinition {
+            .init("Save", Shortcut("cmd+s"))
+        }
     }
 
     @Test("globalBindings returns only global-scoped contexts' effective bindings")

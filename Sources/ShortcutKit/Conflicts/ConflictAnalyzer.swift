@@ -158,7 +158,9 @@ enum ConflictAnalyzer {
     // MARK: Mutex helpers
 
     private static func canCoactivate(_ a: String, _ b: String, mutex: [Set<String>]) -> Bool {
-        if a == b { return true }
+        if a == b {
+            return true
+        }
         return !mutex.contains { $0.contains(a) && $0.contains(b) }
     }
 
@@ -166,7 +168,9 @@ enum ConflictAnalyzer {
         _ occurrences: [Occurrence], mutex: [Set<String>]
     ) -> Bool {
         let ids = Array(Set(occurrences.map(\.contextID)))
-        if ids.count == 1 { return true }
+        if ids.count == 1 {
+            return true
+        }
         for i in ids.indices {
             for j in (i + 1) ..< ids.count where canCoactivate(ids[i], ids[j], mutex: mutex) {
                 return true

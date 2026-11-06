@@ -238,7 +238,10 @@ private final class Fixture {
     let presenter: ShortcutHintPresenter
     let host: TestHintHost
     private let announcementRecorder: AnnouncementRecorder
-    var announcements: [String] { announcementRecorder.values }
+    var announcements: [String] {
+        announcementRecorder.values
+    }
+
     private var registration: UUID?
 
     init(

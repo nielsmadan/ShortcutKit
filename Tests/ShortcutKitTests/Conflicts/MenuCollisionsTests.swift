@@ -7,7 +7,9 @@ import Testing
 
 enum MenuAct: String, ShortcutAction {
     case save
-    var definition: ShortcutActionDefinition { .init("Save", "cmd+s") }
+    var definition: ShortcutActionDefinition {
+        .init("Save", "cmd+s")
+    }
 }
 
 @MainActor
@@ -37,7 +39,9 @@ enum MenuAct: String, ShortcutAction {
         if case let .menuCollision(action, menuItemTitle) = collisions[0] {
             #expect(action.actionID == "save")
             #expect(menuItemTitle == "File…")
-        } else { Issue.record("expected .menuCollision") }
+        } else {
+            Issue.record("expected .menuCollision")
+        }
     }
 
     @Test("a non-colliding menu item is not reported")

@@ -15,11 +15,13 @@ public struct Preferences: Sendable, Equatable, Codable {
     }
 
     /// True when no preference diverges from its default (nothing to persist).
-    public var isDefault: Bool { hintsEnabled == nil && hintFrequency == nil }
+    public var isDefault: Bool {
+        hintsEnabled == nil && hintFrequency == nil
+    }
 
     private enum CodingKeys: String, CodingKey { case hintsEnabled, hintFrequency }
 
-    // Invalid hint preferences must not prevent binding overrides from loading.
+    /// Invalid hint preferences must not prevent binding overrides from loading.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         hintsEnabled = try container.decodeIfPresent(Bool.self, forKey: .hintsEnabled)
@@ -90,7 +92,9 @@ enum ShortcutOrArray: Decodable {
 
 public extension RawState {
     /// All context IDs with at least one persisted override, in unspecified order.
-    var contextIDs: [String] { Array(overrides.keys) }
+    var contextIDs: [String] {
+        Array(overrides.keys)
+    }
 
     /// All action IDs with persisted overrides in `contextID`, in unspecified order.
     /// Empty if the context has no overrides.
@@ -207,5 +211,7 @@ public extension ShortcutBindingsStore {
     /// Removes all persisted ShortcutKit state.
     ///
     /// The default saves an empty state, preserving sibling data in namespaced stores.
-    func clear() throws { try save(RawState()) }
+    func clear() throws {
+        try save(RawState())
+    }
 }
