@@ -1,0 +1,3 @@
+harnesses = ["claude", "codex", "pi"]
+instructions = ["main"]
+kits = ["macos", "macos-vm"]
